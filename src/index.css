@@ -1106,6 +1106,109 @@ a:hover {
   transform: none;
 }
 
+.chat-settings-btn {
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--bg-card);
+  cursor: pointer;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: border-color 0.2s;
+}
+
+.chat-settings-btn:hover {
+  border-color: var(--accent);
+}
+
+.chat-settings-panel {
+  position: absolute;
+  bottom: 70px;
+  left: 16px;
+  width: 300px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  z-index: 100;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.chat-settings-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 700;
+  font-size: 14px;
+  margin-bottom: 14px;
+}
+
+.chat-settings-close {
+  background: none;
+  border: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.chat-settings-group {
+  margin-bottom: 12px;
+}
+
+.chat-settings-group label {
+  display: block;
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+
+.chat-settings-group select,
+.chat-settings-group input[type="range"] {
+  width: 100%;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  padding: 6px 8px;
+  font-size: 12px;
+}
+
+.chat-settings-group input[type="range"] {
+  padding: 0;
+  height: 4px;
+  border: none;
+  accent-color: var(--accent);
+}
+
+.chat-settings-group input[type="checkbox"] {
+  accent-color: var(--accent);
+}
+
+.chat-meta-display {
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+  margin-top: 4px;
+}
+
+.chat-meta-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 8px;
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+.chat-message-tools {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  margin-top: 4px;
+  padding-left: 16px;
+}
+
 /* ─── Content Planner ─────────────────────────────────────────────────────── */
 .content-inbox {
   display: flex;

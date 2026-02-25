@@ -1,4 +1,6 @@
 import { BrowserRouter, Routes, Route, NavLink, useLocation } from 'react-router-dom';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '../convex/_generated/api';
 import { useProjects } from './hooks/useProjects';
 import { useAuth } from './hooks/useAuth';
 import { WORKSPACES } from './lib/types';
@@ -102,14 +104,7 @@ function AppShell() {
         )}
 
         {/* AI Sidebar */}
-        {activeWs.id === 'ai' && (
-          <aside className="sidebar">
-            <div className="sidebar-section">
-              <div className="sidebar-section-title">Sessions</div>
-              <NavLink to="/ai" end className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}><span className="nav-icon">💬</span> New Chat</NavLink>
-            </div>
-          </aside>
-        )}
+        {activeWs.id === 'ai' && <AISidebar userId={auth.user?.id} />}
 
         {/* Projects & Tasks Sidebar */}
         {activeWs.id === 'projects' && (
@@ -168,6 +163,50 @@ function AppShell() {
         </div>
       </div>
     </div>
+  );
+}
+
+function AISidebar({ userId }: { userId?: string }) {
+  const sessions = useQuery(api.chatSessions.listSessions, userId ? { userId: userId as any } : 'skip');
+  const createSession = useMutation(api.chatSessions.createSession);
+
+  const timeAgo = (ts: number) => {
+    const d = Date.now() - ts;
+    if (d < 60000) return 'just now';
+    if (d < 3600000) return `${Math.floor(d / 60000)}m ago`;
+    if (d < 86400000) return `${Math.floor(d / 3600000)}h ago`;
+    return `${Math.floor(d / 86400000)}d ago`;
+  };
+
+  return (
+    <aside className="sidebar">
+      <div className="sidebar-section">
+        <div className="sidebar-section-title">Sessions</div>
+        <button
+          className="nav-link"
+          style={{ cursor: 'pointer', width: '100%', textAlign: 'left', border: 'none', background: 'none', color: 'inherit', font: 'inherit', padding: '6px 8px' }}
+          onClick={async () => {
+            if (!userId) return;
+            await createSession({ userId: userId as any });
+          }}
+        >
+          <span className="nav-icon">➕</span> New Chat
+        </button>
+      </div>
+      {sessions && sessions.length > 0 && (
+        <div className="sidebar-section">
+          <div className="sidebar-section-title">Recent</div>
+          {sessions.slice(0, 20).map((s: any) => (
+            <div key={s._id} className="nav-link" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, padding: '5px 8px' }}>
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }} title={s.title}>
+                💬 {s.title}
+              </span>
+              <span style={{ color: 'var(--text-tertiary)', fontSize: 10, flexShrink: 0, marginLeft: 4 }}>{timeAgo(s.updatedAt)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </aside>
   );
 }
 

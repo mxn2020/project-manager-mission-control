@@ -8,7 +8,10 @@
  * @module
  */
 
+import type * as aiConfig from "../aiConfig.js";
+import type * as aiLogs from "../aiLogs.js";
 import type * as auth from "../auth.js";
+import type * as chatSessions from "../chatSessions.js";
 
 import type {
   ApiFromModules,
@@ -17,7 +20,10 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  aiConfig: typeof aiConfig;
+  aiLogs: typeof aiLogs;
   auth: typeof auth;
+  chatSessions: typeof chatSessions;
 }>;
 
 /**

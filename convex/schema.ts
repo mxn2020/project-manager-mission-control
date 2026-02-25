@@ -20,6 +20,66 @@ export default defineSchema({
         .index("by_token", ["token"])
         .index("by_user", ["userId"]),
 
+    // ─── AI Providers & Models ───────────────────────────────────────────
+    aiProviders: defineTable({
+        name: v.string(),
+        slug: v.string(),
+        baseUrl: v.string(),
+        apiKeyEnvVar: v.string(),
+        isEnabled: v.boolean(),
+        createdAt: v.number(),
+    }).index("by_slug", ["slug"]),
+
+    aiModels: defineTable({
+        providerId: v.id("aiProviders"),
+        modelId: v.string(),
+        displayName: v.string(),
+        maxTokens: v.number(),
+        contextWindow: v.number(),
+        costPerMillionInput: v.number(),
+        costPerMillionOutput: v.number(),
+        costPerMillionThinking: v.optional(v.number()),
+        isEnabled: v.boolean(),
+        isDefault: v.boolean(),
+        createdAt: v.number(),
+    }).index("by_provider", ["providerId"]),
+
+    // ─── AI Logs ─────────────────────────────────────────────────────────
+    aiLogs: defineTable({
+        userId: v.optional(v.id("users")),
+        sessionId: v.optional(v.id("chatSessions")),
+        model: v.string(),
+        provider: v.string(),
+        caller: v.string(),
+        promptMessages: v.string(),
+        responseContent: v.string(),
+        toolCalls: v.optional(v.string()),
+        promptTokens: v.optional(v.number()),
+        completionTokens: v.optional(v.number()),
+        totalTokens: v.optional(v.number()),
+        costCents: v.optional(v.number()),
+        durationMs: v.number(),
+        status: v.string(),
+        errorMessage: v.optional(v.string()),
+        createdAt: v.number(),
+    })
+        .index("by_user", ["userId"])
+        .index("by_session", ["sessionId"])
+        .index("by_created", ["createdAt"]),
+
+    // ─── AI Settings (per-user) ──────────────────────────────────────────
+    aiSettings: defineTable({
+        userId: v.id("users"),
+        defaultModelId: v.optional(v.id("aiModels")),
+        temperature: v.number(),
+        maxResponseTokens: v.number(),
+        historyLength: v.number(),
+        toolsEnabled: v.boolean(),
+        enabledTools: v.optional(v.array(v.string())),
+        systemPromptOverride: v.optional(v.string()),
+        updatedAt: v.number(),
+    }).index("by_user", ["userId"]),
+
     // ─── Chat / AI Workspace ─────────────────────────────────────────────
     chatSessions: defineTable({
         userId: v.id("users"),
@@ -32,6 +92,8 @@ export default defineSchema({
         sessionId: v.id("chatSessions"),
         role: v.string(), // user | assistant | system
         content: v.string(),
+        toolCalls: v.optional(v.string()),
+        tokenCount: v.optional(v.number()),
         createdAt: v.number(),
     }).index("by_session", ["sessionId"]),
 
@@ -40,10 +102,10 @@ export default defineSchema({
         projectPath: v.string(),
         title: v.string(),
         description: v.optional(v.string()),
-        taskType: v.string(), // feature | bug | chore | spike
-        status: v.string(), // todo | in_progress | review | done
-        priority: v.string(), // high | medium | low
-        effort: v.optional(v.string()), // xs | s | m | l | xl
+        taskType: v.string(),
+        status: v.string(),
+        priority: v.string(),
+        effort: v.optional(v.string()),
         dueDate: v.optional(v.number()),
         githubIssueUrl: v.optional(v.string()),
         tags: v.optional(v.array(v.string())),
@@ -57,7 +119,7 @@ export default defineSchema({
     taskRelations: defineTable({
         sourceTaskId: v.id("tasks"),
         targetTaskId: v.id("tasks"),
-        relationType: v.string(), // blocks | depends_on | relates_to
+        relationType: v.string(),
         createdAt: v.number(),
     }).index("by_source", ["sourceTaskId"]),
 
@@ -68,7 +130,7 @@ export default defineSchema({
         releaseTitle: v.optional(v.string()),
         releaseNotes: v.optional(v.string()),
         releaseDate: v.optional(v.number()),
-        status: v.string(), // unprocessed | planned | published | skipped
+        status: v.string(),
         createdAt: v.number(),
         updatedAt: v.number(),
     })
@@ -79,7 +141,7 @@ export default defineSchema({
         planId: v.id("contentPlans"),
         platform: v.string(),
         content: v.string(),
-        status: v.string(), // draft | scheduled | posted | skipped
+        status: v.string(),
         scheduledAt: v.optional(v.number()),
         postedAt: v.optional(v.number()),
         metrics: v.optional(v.object({

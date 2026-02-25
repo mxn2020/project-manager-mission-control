@@ -411,12 +411,13 @@ app.post('/api/scan', async (req, res) => {
 app.post('/api/ai/chat', async (req, res) => {
     try {
         if (!minionsReady) return res.status(503).json({ error: 'Minions not initialized' });
-        const { messages } = req.body;
+        const { messages, sessionId } = req.body;
         if (!messages || !Array.isArray(messages)) {
             return res.status(400).json({ error: 'messages array required' });
         }
-        const response = await handleChat(messages);
-        res.json({ response });
+        const userId = req.user?.id || undefined;
+        const result = await handleChat(messages, { userId, sessionId });
+        res.json(result);
     } catch (err) {
         console.error('AI chat error:', err.message);
         res.status(500).json({ error: err.message });
