@@ -329,11 +329,24 @@ async function callNvidia(messages) {
 // ─── Extract Tool Call ──────────────────────────────────────────────────────
 
 function extractToolCall(text) {
-    const match = text.match(/```tool_call\n([\s\S]*?)```/);
-    if (!match) return null;
-    try {
-        const parsed = JSON.parse(match[1].trim());
-        if (parsed.name && parsed.arguments !== undefined) return parsed;
-    } catch { /* not valid JSON */ }
+    // Try multiple patterns the LLM might use
+    const patterns = [
+        /```tool_call\s*\n?([\s\S]*?)```/,          // Block format
+        /```tool_call\s+([\s\S]*?)```/,              // Inline format
+        /```json\s*\n?\s*\{[\s\S]*?"name"\s*:/,      // JSON block with name field
+    ];
+
+    for (const pattern of patterns) {
+        const match = text.match(pattern);
+        if (match) {
+            let jsonStr = match[1] || match[0];
+            // Extract just the JSON if wrapped in backticks
+            jsonStr = jsonStr.replace(/^```(?:tool_call|json)?\s*\n?/, '').replace(/\n?```$/, '').trim();
+            try {
+                const parsed = JSON.parse(jsonStr);
+                if (parsed.name && parsed.arguments !== undefined) return parsed;
+            } catch { /* continue to next pattern */ }
+        }
+    }
     return null;
 }
