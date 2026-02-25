@@ -351,6 +351,38 @@ app.post('/api/scan', async (req, res) => {
     }
 });
 
+// ─── Minions Type Registry Route ────────────────────────────────────────────
+
+// GET /api/minions-types — list all registered types with counts
+app.get('/api/minions-types', async (req, res) => {
+    try {
+        if (!minionsReady) return res.status(503).json({ error: 'Minions not initialized' });
+        const mc = getMinions();
+        const registry = getRegistry();
+        const allMinions = await mc.listMinions();
+
+        // Count items per type
+        const countByType = {};
+        for (const m of allMinions) {
+            countByType[m.minionTypeId] = (countByType[m.minionTypeId] || 0) + 1;
+        }
+
+        // Get all registered types from our custom types (not built-in)
+        const { ALL_TYPES } = await import('./minions-adapter.mjs');
+        const types = ALL_TYPES.map(t => ({
+            slug: t.slug,
+            name: t.name,
+            icon: t.icon || '📄',
+            description: t.description || '',
+            count: countByType[t.id] || 0,
+        })).filter(t => t.count > 0); // Only show types that have data
+
+        res.json({ types, totalItems: allMinions.length });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // ─── Minions Generic CRUD Routes ────────────────────────────────────────────
 
 // GET /api/minions/:typeSlug — list all minions of a type

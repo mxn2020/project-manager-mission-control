@@ -79,6 +79,7 @@ export interface Workspace {
 
 export const WORKSPACES: Workspace[] = [
     { id: 'dashboard', label: 'Dashboard', icon: '📊', path: '/' },
+    { id: 'minions', label: 'Minions', icon: '📦', path: '/minions' },
     { id: 'ai', label: 'AI Assistant', icon: '🤖', path: '/ai' },
     { id: 'projects', label: 'Projects', icon: '📋', path: '/projects' },
     { id: 'content', label: 'Content', icon: '📢', path: '/content' },

@@ -11,6 +11,7 @@ import ProjectPage from './pages/ProjectPage';
 import AIPage from './pages/AIPage';
 import TasksPage from './pages/TasksPage';
 import ContentPage from './pages/ContentPage';
+import MinionsPage from './pages/MinionsPage';
 import LoginPage from './pages/LoginPage';
 
 function AppShell() {
@@ -41,6 +42,7 @@ function AppShell() {
   // ─── Determine active workspace ──────────────────────────────────────
   const getActiveWorkspace = () => {
     const p = location.pathname;
+    if (p.startsWith('/minions')) return WORKSPACES.find(ws => ws.id === 'minions')!;
     if (p.startsWith('/ai')) return WORKSPACES.find(ws => ws.id === 'ai')!;
     if (p.startsWith('/projects')) return WORKSPACES.find(ws => ws.id === 'projects')!;
     if (p.startsWith('/content')) return WORKSPACES.find(ws => ws.id === 'content')!;
@@ -160,6 +162,7 @@ function AppShell() {
               <Route path="/ai" element={<AIPage />} />
               <Route path="/projects" element={<TasksPage />} />
               <Route path="/content" element={<ContentPage />} />
+              <Route path="/minions" element={<MinionsPage />} />
             </Routes>
           )}
         </div>
