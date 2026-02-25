@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import type { StatusData, Project, Tier, Priority } from '../lib/types';
+import type { StatusData, Tier, Priority } from '../lib/types';
 import { TIER_CONFIG, TIER_ORDER, PRIORITY_CONFIG, PRIORITY_ORDER, LANE_COLORS } from '../lib/types';
 
 type SortField = 'name' | 'tier' | 'lane' | 'priority' | 'health_score' | 'last_active' | 'oss';

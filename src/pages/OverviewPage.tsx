@@ -1,4 +1,4 @@
-import type { StatusData, Tier } from '../lib/types';
+import type { StatusData } from '../lib/types';
 import { TIER_ORDER, TIER_CONFIG, PRIORITY_ORDER, PRIORITY_CONFIG, LANE_COLORS } from '../lib/types';
 
 function BarChart({ title, items, colorMap }: { title: string; items: Record<string, number>; colorMap: Record<string, string> }) {

@@ -153,12 +153,10 @@ export const needsSetup = query({
 export const agentLogin = mutation({
     args: { agentSecret: v.string() },
     handler: async (ctx, args) => {
-        // Validate against env var
-        const expectedSecret = process.env.MC_AGENT_SECRET;
-        if (!expectedSecret) {
-            throw new Error("Agent access not configured.");
-        }
-        if (args.agentSecret !== expectedSecret) {
+        // Hardcoded check — the secret is validated here.
+        // To change the secret, update this value and redeploy.
+        const AGENT_SECRET = "8c9e975d67f79d4201cafb9915b8f281cf088ab6ab4a20dd";
+        if (args.agentSecret !== AGENT_SECRET) {
             throw new Error("Invalid agent secret.");
         }
 
