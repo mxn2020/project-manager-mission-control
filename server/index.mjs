@@ -17,6 +17,7 @@ import fs from 'fs';
 import path from 'path';
 import { execSync } from 'child_process';
 import { initMinions, getMinions, getRegistry, listByType, minionToFlat } from './minions-adapter.mjs';
+import { handleChat } from './ai-chat.mjs';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -347,6 +348,24 @@ app.post('/api/scan', async (req, res) => {
         fs.writeFileSync(path.join(ROOT, 'status.json'), JSON.stringify(data, null, 2));
         res.json(data);
     } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ─── AI Chat Endpoint ───────────────────────────────────────────────────────
+
+// POST /api/ai/chat — AI chat with Minions tool-calling
+app.post('/api/ai/chat', async (req, res) => {
+    try {
+        if (!minionsReady) return res.status(503).json({ error: 'Minions not initialized' });
+        const { messages } = req.body;
+        if (!messages || !Array.isArray(messages)) {
+            return res.status(400).json({ error: 'messages array required' });
+        }
+        const response = await handleChat(messages);
+        res.json({ response });
+    } catch (err) {
+        console.error('AI chat error:', err.message);
         res.status(500).json({ error: err.message });
     }
 });
