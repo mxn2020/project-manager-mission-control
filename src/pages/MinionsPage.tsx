@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { getAuthHeaders, API_BASE } from '../lib/api';
 
 interface MinionItem {
     id: string;
@@ -19,7 +20,7 @@ interface TypeInfo {
     count: number;
 }
 
-const API_BASE = import.meta.env.DEV ? 'http://localhost:3001' : '';
+// API_BASE imported from api.ts
 
 export default function MinionsPage() {
     const [types, setTypes] = useState<TypeInfo[]>([]);
@@ -31,7 +32,7 @@ export default function MinionsPage() {
 
     // Load type summary
     useEffect(() => {
-        fetch(`${API_BASE}/api/minions-types`)
+        fetch(`${API_BASE}/api/minions-types`, { headers: getAuthHeaders() })
             .then(r => r.json())
             .then(d => {
                 setTypes(d.types || []);
@@ -45,7 +46,7 @@ export default function MinionsPage() {
         if (items[slug]) return; // Already loaded
         setLoadingType(slug);
         try {
-            const res = await fetch(`${API_BASE}/api/minions/${slug}`);
+            const res = await fetch(`${API_BASE}/api/minions/${slug}`, { headers: getAuthHeaders() });
             const data = await res.json();
             setItems(prev => ({ ...prev, [slug]: data.items || [] }));
         } catch { /* ignore */ }

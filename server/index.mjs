@@ -22,24 +22,77 @@ import { handleChat } from './ai-chat.mjs';
 const app = express();
 const PORT = process.env.PORT || 3001;
 const ROOT = process.env.PROJECT_ROOT || path.resolve(path.dirname(new URL(import.meta.url).pathname), '../..');
-const API_KEY = process.env.MC_API_KEY || 'dev-key-change-in-production';
-const ACCESS_TOKEN = process.env.MC_ACCESS_TOKEN || '';
+const API_KEY = process.env.MC_API_KEY || '';
 const MINIONS_DIR = path.join(ROOT, '.minions');
+const CONVEX_URL = process.env.CONVEX_URL || 'https://academic-buzzard-501.eu-west-1.convex.cloud';
 
 let minionsReady = false;
+
+// Token cache: { token → { user, expiresAt } }
+const tokenCache = new Map();
+const TOKEN_CACHE_TTL = 5 * 60 * 1000; // 5 min
 
 app.use(cors());
 app.use(express.json({ limit: '5mb' }));
 
-// ─── Auth Middleware ─────────────────────────────────────────────────────────
+// ─── Auth Middleware (Convex Token Validation) ──────────────────────────────
+
+async function validateConvexToken(token) {
+    // Check cache first
+    const cached = tokenCache.get(token);
+    if (cached && cached.expiresAt > Date.now()) {
+        return cached.user;
+    }
+
+    try {
+        const res = await fetch(`${CONVEX_URL}/api/query`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                path: 'auth:me',
+                args: { token },
+                format: 'json',
+            }),
+        });
+        if (!res.ok) return null;
+        const data = await res.json();
+        const user = data.value;
+        if (user && user.id) {
+            tokenCache.set(token, { user, expiresAt: Date.now() + TOKEN_CACHE_TTL });
+            return user;
+        }
+    } catch (err) {
+        console.error('Convex token validation error:', err.message);
+    }
+    return null;
+}
 
 function authMiddleware(req, res, next) {
+    // Health check is always public
+    if (req.path === '/api/health') return next();
+
+    // Skip auth in dev mode
     if (process.env.NODE_ENV !== 'production') return next();
+
     const authHeader = req.headers.authorization;
-    if (!authHeader) return res.status(401).json({ error: 'Unauthorized' });
+    if (!authHeader) return res.status(401).json({ error: 'Authorization required' });
+
     const token = authHeader.replace('Bearer ', '');
-    if (token === API_KEY || (ACCESS_TOKEN && token === ACCESS_TOKEN)) return next();
-    return res.status(401).json({ error: 'Unauthorized' });
+
+    // Static API key (backwards compat for agents/scripts)
+    if (API_KEY && token === API_KEY) return next();
+
+    // Validate Convex session token
+    validateConvexToken(token)
+        .then(user => {
+            if (user) {
+                req.user = user;
+                next();
+            } else {
+                res.status(401).json({ error: 'Invalid or expired session' });
+            }
+        })
+        .catch(() => res.status(401).json({ error: 'Auth validation failed' }));
 }
 
 app.use('/api', authMiddleware);

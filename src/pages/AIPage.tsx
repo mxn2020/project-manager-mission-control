@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { getAuthHeaders, API_BASE } from '../lib/api';
 
 interface Message {
     id: string;
@@ -7,7 +8,7 @@ interface Message {
     timestamp: number;
 }
 
-const API_BASE = import.meta.env.DEV ? 'http://localhost:3001' : '';
+// API_BASE imported from api.ts
 
 const WELCOME_MSG: Message = {
     id: 'welcome',
@@ -64,7 +65,7 @@ export default function AIPage() {
 
             const res = await fetch(`${API_BASE}/api/ai/chat`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
                 body: JSON.stringify({ messages: history }),
             });
 
