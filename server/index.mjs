@@ -69,7 +69,7 @@ async function validateConvexToken(token) {
 
 function authMiddleware(req, res, next) {
     // Health check is always public
-    if (req.path === '/api/health') return next();
+    if (req.path === '/health') return next();
 
     // Skip auth in dev mode
     if (process.env.NODE_ENV !== 'production') return next();
