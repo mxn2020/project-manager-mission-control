@@ -1,7 +1,6 @@
-import { useState, useMemo } from 'react';
-import { useQuery, useMutation } from 'convex/react';
-import { api } from '../../convex/_generated/api';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useProjects } from '../hooks/useProjects';
+import { api } from '../lib/api';
 import SearchableSelect, { type SelectOption } from '../components/SearchableSelect';
 
 const STATUS_FLOW = [
@@ -16,13 +15,8 @@ const PLATFORMS = ['twitter', 'reddit', 'youtube', 'linkedin', 'devto', 'github'
 
 export default function ContentPage() {
     const { data: projectData } = useProjects();
-    const plans = useQuery(api.content.listPlans, {});
-    const stats = useQuery(api.content.getContentStats);
-    const createPlan = useMutation(api.content.createPlan);
-    const updatePlan = useMutation(api.content.updatePlan);
-    const deletePlan = useMutation(api.content.deletePlan);
-    const addItem = useMutation(api.content.addItem);
-    const updateItem = useMutation(api.content.updateItem);
+    const [plans, setPlans] = useState<any[] | null>(null);
+    const [stats, setStats] = useState<any>(null);
 
     const [filter, setFilter] = useState('all');
     const [showCreate, setShowCreate] = useState(false);
@@ -36,13 +30,26 @@ export default function ContentPage() {
     const [newTitle, setNewTitle] = useState('');
     const [newNotes, setNewNotes] = useState('');
 
+    const loadPlans = useCallback(async () => {
+        try {
+            const [p, s] = await Promise.all([api.content.list(), api.content.stats()]);
+            setPlans(p);
+            setStats(s);
+        } catch (err) {
+            console.error('Failed to load content plans:', err);
+            setPlans([]);
+        }
+    }, []);
+
+    useEffect(() => { loadPlans(); }, [loadPlans]);
+
     const allPlans = plans || [];
     const filtered = allPlans.filter((p: any) => filter === 'all' || p.status === filter);
 
     const projectOptions: SelectOption[] = useMemo(() => {
         const allPaths = new Set<string>();
         for (const p of (projectData?.projects || [])) allPaths.add(p.path);
-        for (const p of allPlans) allPaths.add((p as any).projectPath);
+        for (const p of allPlans) allPaths.add(p.projectPath);
         return [...allPaths].sort().map(path => {
             const segments = path.split('/');
             return { value: path, label: segments[segments.length - 1] || path, sublabel: segments.slice(0, -1).join('/'), group: segments[0], icon: '📁' };
@@ -57,7 +64,7 @@ export default function ContentPage() {
 
     const handleCreate = async () => {
         if (!newProject.trim() || !newTag.trim()) return;
-        const id = await createPlan({
+        const plan = await api.content.create({
             projectPath: newProject.trim(),
             releaseTag: newTag.trim(),
             releaseTitle: newTitle.trim() || undefined,
@@ -68,25 +75,38 @@ export default function ContentPage() {
         setNewTag('');
         setNewTitle('');
         setNewNotes('');
-        setExpandedPlan(id);
+        setExpandedPlan(plan.id);
+        await loadPlans();
     };
 
-    // Load plan detail with items
-    const expandedDetail = useQuery(
-        api.content.getPlan,
-        expandedPlan ? { id: expandedPlan as any } : 'skip'
-    );
+    const handleUpdatePlan = async (id: string, updates: Record<string, unknown>) => {
+        await api.content.update(id, updates);
+        await loadPlans();
+    };
+
+    const handleDeletePlan = async (id: string) => {
+        await api.content.delete(id);
+        if (expandedPlan === id) setExpandedPlan(null);
+        await loadPlans();
+    };
 
     const handleAddItem = async () => {
         if (!expandedPlan || !newItemContent.trim()) return;
-        await addItem({
-            planId: expandedPlan as any,
+        await api.content.addItem(expandedPlan, {
             platform: newItemPlatform,
             content: newItemContent.trim(),
         });
         setNewItemContent('');
+        await loadPlans();
     };
 
+    const handleUpdateItem = async (planId: string, itemId: string, updates: Record<string, unknown>) => {
+        await api.content.updateItem(planId, itemId, updates);
+        await loadPlans();
+    };
+
+    // Get expanded plan from the loaded plans (items embedded)
+    const expandedDetail = expandedPlan ? allPlans.find((p: any) => p.id === expandedPlan) : null;
 
     return (
         <div>
@@ -94,7 +114,7 @@ export default function ContentPage() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <div>
                         <h1 className="page-title">📢 Content Planner</h1>
-                        <p className="page-description">Manage release announcements across platforms</p>
+                        <p className="page-description">Manage release announcements across platforms · Minions-backed</p>
                     </div>
                     <button className="btn btn-primary" onClick={() => setShowCreate(!showCreate)}>+ New Plan</button>
                 </div>
@@ -155,7 +175,7 @@ export default function ContentPage() {
 
             {/* Plans List */}
             <div style={{ marginTop: 16 }}>
-                {!plans ? (
+                {plans === null ? (
                     <div className="loading"><div className="loading-spinner" /> Loading plans...</div>
                 ) : filtered.length === 0 ? (
                     <div className="empty-state">
@@ -164,13 +184,13 @@ export default function ContentPage() {
                     </div>
                 ) : (
                     filtered.map((plan: any) => (
-                        <div key={plan._id} style={{
+                        <div key={plan.id} style={{
                             background: 'var(--bg-secondary)', borderRadius: 10, marginBottom: 8,
-                            border: expandedPlan === plan._id ? '1px solid var(--accent)' : '1px solid var(--border)',
+                            border: expandedPlan === plan.id ? '1px solid var(--accent)' : '1px solid var(--border)',
                         }}>
                             <div
                                 style={{ padding: '14px 16px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12 }}
-                                onClick={() => setExpandedPlan(expandedPlan === plan._id ? null : plan._id)}
+                                onClick={() => setExpandedPlan(expandedPlan === plan.id ? null : plan.id)}
                             >
                                 <span style={{ fontSize: 18 }}>{STATUS_FLOW.find(s => s.key === plan.status)?.icon || '📝'}</span>
                                 <div style={{ flex: 1 }}>
@@ -181,20 +201,20 @@ export default function ContentPage() {
                                 </div>
                                 <select
                                     value={plan.status}
-                                    onChange={e => { e.stopPropagation(); updatePlan({ id: plan._id, status: e.target.value }); }}
+                                    onChange={e => { e.stopPropagation(); handleUpdatePlan(plan.id, { status: e.target.value }); }}
                                     onClick={e => e.stopPropagation()}
                                     style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'inherit', fontSize: 11 }}
                                 >
                                     {STATUS_FLOW.map(s => <option key={s.key} value={s.key}>{s.icon} {s.label}</option>)}
                                 </select>
                                 <button
-                                    onClick={e => { e.stopPropagation(); deletePlan({ id: plan._id }); }}
+                                    onClick={e => { e.stopPropagation(); handleDeletePlan(plan.id); }}
                                     style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer' }}
                                 >✕</button>
                             </div>
 
                             {/* Expanded Detail */}
-                            {expandedPlan === plan._id && expandedDetail && (
+                            {expandedPlan === plan.id && expandedDetail && (
                                 <div style={{ padding: '0 16px 16px', borderTop: '1px solid var(--border)' }}>
                                     {expandedDetail.releaseNotes && (
                                         <div style={{ padding: '12px 0', color: 'var(--text-secondary)', fontSize: 13, whiteSpace: 'pre-wrap' }}>
@@ -221,7 +241,7 @@ export default function ContentPage() {
                                                 </div>
                                                 <select
                                                     value={item.status}
-                                                    onChange={e => updateItem({ id: item._id, status: e.target.value })}
+                                                    onChange={e => handleUpdateItem(plan.id, item._id, { status: e.target.value })}
                                                     style={{ padding: '2px 6px', borderRadius: 4, border: '1px solid var(--border)', background: 'var(--bg-secondary)', color: 'inherit', fontSize: 10 }}
                                                 >
                                                     <option value="draft">Draft</option>

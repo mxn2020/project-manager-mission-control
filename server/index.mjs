@@ -16,7 +16,7 @@ import cors from 'cors';
 import fs from 'fs';
 import path from 'path';
 import { execSync } from 'child_process';
-import { initMinions, getMinions, getRegistry, listByType, minionToFlat } from './minions-adapter.mjs';
+import { initMinions, getMinions, getRegistry, listByType, minionToFlat, createMinion, getMinion, updateMinion, deleteMinion, isMinionsReady } from './minions-adapter.mjs';
 import { handleChat } from './ai-chat.mjs';
 
 const app = express();
@@ -566,6 +566,258 @@ app.post('/api/config/reset', (req, res) => {
     for (const p of DEFAULT_CONFIG.ignorePatterns) SKIP_DIRS.add(p);
     saveScannerConfig();
     res.json(scannerConfig);
+});
+
+// ─── Tasks API (Minions-backed) ─────────────────────────────────────────────
+
+// GET /api/tasks — list tasks with optional filters
+app.get('/api/tasks', async (req, res) => {
+    try {
+        if (!minionsReady) return res.status(503).json({ error: 'Minions not initialized' });
+        const all = await listByType('mc-task');
+        let tasks = all.map(minionToFlat);
+
+        // Apply filters
+        const { status, priority, project } = req.query;
+        if (status) tasks = tasks.filter(t => t.status === status);
+        if (priority) tasks = tasks.filter(t => t.priority === priority);
+        if (project) tasks = tasks.filter(t => t.projectPath === project);
+
+        // Sort by updatedAt descending
+        tasks.sort((a, b) => new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime());
+        res.json(tasks);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// GET /api/tasks/stats — task statistics
+app.get('/api/tasks/stats', async (req, res) => {
+    try {
+        if (!minionsReady) return res.status(503).json({ error: 'Minions not initialized' });
+        const all = await listByType('mc-task');
+        const tasks = all.map(minionToFlat);
+        const byStatus = {};
+        const byPriority = {};
+        const byProject = {};
+        for (const t of tasks) {
+            byStatus[t.status] = (byStatus[t.status] || 0) + 1;
+            byPriority[t.priority] = (byPriority[t.priority] || 0) + 1;
+            if (t.projectPath) byProject[t.projectPath] = (byProject[t.projectPath] || 0) + 1;
+        }
+        res.json({ total: tasks.length, byStatus, byPriority, byProject });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// POST /api/tasks — create task
+app.post('/api/tasks', async (req, res) => {
+    try {
+        if (!minionsReady) return res.status(503).json({ error: 'Minions not initialized' });
+        const { projectPath, title, description, taskType, status, priority, effort, dueDate, tags } = req.body;
+        if (!title) return res.status(400).json({ error: 'title is required' });
+
+        const task = await createMinion('mc-task', {
+            title,
+            description: description || '',
+            status: status || 'todo',
+            priority: priority || 'medium',
+            tags: tags || [],
+            projectPath: projectPath || '',
+            taskType: taskType || 'feature',
+            effort: effort || 'M',
+            dueDate: dueDate || null,
+        });
+        res.status(201).json(task);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// PUT /api/tasks/:id — update task
+app.put('/api/tasks/:id', async (req, res) => {
+    try {
+        if (!minionsReady) return res.status(503).json({ error: 'Minions not initialized' });
+        const task = await updateMinion(req.params.id, req.body);
+        res.json(task);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// DELETE /api/tasks/:id — delete task
+app.delete('/api/tasks/:id', async (req, res) => {
+    try {
+        if (!minionsReady) return res.status(503).json({ error: 'Minions not initialized' });
+        await deleteMinion(req.params.id);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ─── Content API (Minions-backed) ───────────────────────────────────────────
+
+// GET /api/content — list content plans
+app.get('/api/content', async (req, res) => {
+    try {
+        if (!minionsReady) return res.status(503).json({ error: 'Minions not initialized' });
+        const all = await listByType('contentPlan');
+        let plans = all.map(m => {
+            const flat = minionToFlat(m);
+            // Parse items from JSON string if stored
+            if (flat.items && typeof flat.items === 'string') {
+                try { flat.items = JSON.parse(flat.items); } catch { flat.items = []; }
+            }
+            if (!flat.items) flat.items = [];
+            return flat;
+        });
+
+        const { status, project } = req.query;
+        if (status) plans = plans.filter(p => p.status === status);
+        if (project) plans = plans.filter(p => p.projectPath === project);
+
+        plans.sort((a, b) => new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime());
+        res.json(plans);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// GET /api/content/stats — content statistics
+app.get('/api/content/stats', async (req, res) => {
+    try {
+        if (!minionsReady) return res.status(503).json({ error: 'Minions not initialized' });
+        const all = await listByType('contentPlan');
+        const plans = all.map(minionToFlat);
+        const byStatus = {};
+        const byPlatform = {};
+        let totalItems = 0;
+        for (const p of plans) {
+            byStatus[p.status] = (byStatus[p.status] || 0) + 1;
+            let items = [];
+            if (p.items) {
+                try { items = typeof p.items === 'string' ? JSON.parse(p.items) : (p.items || []); } catch { }
+            }
+            totalItems += items.length;
+            for (const item of items) {
+                if (item.platform) byPlatform[item.platform] = (byPlatform[item.platform] || 0) + 1;
+            }
+        }
+        res.json({ totalPlans: plans.length, totalItems, byStatus, byPlatform });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// POST /api/content — create content plan
+app.post('/api/content', async (req, res) => {
+    try {
+        if (!minionsReady) return res.status(503).json({ error: 'Minions not initialized' });
+        const { projectPath, releaseTag, releaseTitle, releaseNotes, releaseDate } = req.body;
+        if (!projectPath || !releaseTag) return res.status(400).json({ error: 'projectPath and releaseTag required' });
+
+        const plan = await createMinion('contentPlan', {
+            title: releaseTitle || releaseTag,
+            description: releaseNotes || '',
+            status: 'draft',
+            projectPath,
+            releaseTag,
+            releaseTitle: releaseTitle || '',
+            releaseNotes: releaseNotes || '',
+            releaseDate: releaseDate || null,
+            items: '[]',
+        });
+        plan.items = [];
+        res.status(201).json(plan);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// PUT /api/content/:id — update content plan
+app.put('/api/content/:id', async (req, res) => {
+    try {
+        if (!minionsReady) return res.status(503).json({ error: 'Minions not initialized' });
+        const updates = { ...req.body };
+        // If items is an array, serialize to JSON string for storage
+        if (Array.isArray(updates.items)) {
+            updates.items = JSON.stringify(updates.items);
+        }
+        const plan = await updateMinion(req.params.id, updates);
+        // Parse items back for response
+        if (plan.items && typeof plan.items === 'string') {
+            try { plan.items = JSON.parse(plan.items); } catch { plan.items = []; }
+        }
+        res.json(plan);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// DELETE /api/content/:id — delete content plan
+app.delete('/api/content/:id', async (req, res) => {
+    try {
+        if (!minionsReady) return res.status(503).json({ error: 'Minions not initialized' });
+        await deleteMinion(req.params.id);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// POST /api/content/:id/items — add item to content plan
+app.post('/api/content/:id/items', async (req, res) => {
+    try {
+        if (!minionsReady) return res.status(503).json({ error: 'Minions not initialized' });
+        const existing = await getMinion(req.params.id);
+        if (!existing) return res.status(404).json({ error: 'Plan not found' });
+
+        let items = [];
+        if (existing.items) {
+            try { items = typeof existing.items === 'string' ? JSON.parse(existing.items) : existing.items; } catch { }
+        }
+
+        const newItem = {
+            _id: `item_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+            platform: req.body.platform || 'twitter',
+            content: req.body.content || '',
+            status: 'draft',
+            scheduledAt: req.body.scheduledAt || null,
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+        };
+        items.push(newItem);
+
+        await updateMinion(req.params.id, { items: JSON.stringify(items) });
+        res.status(201).json(newItem);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// PUT /api/content/:id/items/:itemId — update item in content plan
+app.put('/api/content/:id/items/:itemId', async (req, res) => {
+    try {
+        if (!minionsReady) return res.status(503).json({ error: 'Minions not initialized' });
+        const existing = await getMinion(req.params.id);
+        if (!existing) return res.status(404).json({ error: 'Plan not found' });
+
+        let items = [];
+        if (existing.items) {
+            try { items = typeof existing.items === 'string' ? JSON.parse(existing.items) : existing.items; } catch { }
+        }
+
+        const idx = items.findIndex(i => i._id === req.params.itemId);
+        if (idx === -1) return res.status(404).json({ error: 'Item not found' });
+
+        items[idx] = { ...items[idx], ...req.body, updatedAt: Date.now() };
+        await updateMinion(req.params.id, { items: JSON.stringify(items) });
+        res.json(items[idx]);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // ─── AI Config Endpoint ─────────────────────────────────────────────────────

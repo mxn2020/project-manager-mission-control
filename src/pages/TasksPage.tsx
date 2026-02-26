@@ -1,7 +1,6 @@
-import { useState, useMemo } from 'react';
-import { useQuery, useMutation } from 'convex/react';
-import { api } from '../../convex/_generated/api';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useProjects } from '../hooks/useProjects';
+import { api } from '../lib/api';
 import SearchableSelect, { type SelectOption } from '../components/SearchableSelect';
 
 const STATUS_COLS = [
@@ -19,11 +18,8 @@ const PRIORITY_CONFIG: Record<string, { label: string; color: string }> = {
 const EFFORT_OPTIONS = ['XS', 'S', 'M', 'L', 'XL'];
 
 export default function TasksPage() {
-    const tasks = useQuery(api.tasks.listTasks, {});
-    const stats = useQuery(api.tasks.getTaskStats);
-    const createTask = useMutation(api.tasks.createTask);
-    const updateTask = useMutation(api.tasks.updateTask);
-    const deleteTask = useMutation(api.tasks.deleteTask);
+    const [tasks, setTasks] = useState<any[] | null>(null);
+    const [stats, setStats] = useState<any>(null);
     const { data: projectData } = useProjects();
 
     const [view, setView] = useState<'kanban' | 'list'>('kanban');
@@ -39,19 +35,26 @@ export default function TasksPage() {
     const [newDescription, setNewDescription] = useState('');
     const [newType, setNewType] = useState('feature');
 
+    const loadTasks = useCallback(async () => {
+        try {
+            const [t, s] = await Promise.all([api.tasks.list(), api.tasks.stats()]);
+            setTasks(t);
+            setStats(s);
+        } catch (err) {
+            console.error('Failed to load tasks:', err);
+            setTasks([]);
+        }
+    }, []);
+
+    useEffect(() => { loadTasks(); }, [loadTasks]);
+
     const allTasks = tasks || [];
 
-    // Build project options from ALL projects (not just task-referenced ones)
+    // Build project options from ALL projects
     const projectOptions: SelectOption[] = useMemo(() => {
         const allPaths = new Set<string>();
-        // Add projects from project scanner
-        for (const p of (projectData?.projects || [])) {
-            allPaths.add(p.path);
-        }
-        // Also add any task-referenced projects not in scanner
-        for (const t of allTasks) {
-            allPaths.add((t as any).projectPath);
-        }
+        for (const p of (projectData?.projects || [])) allPaths.add(p.path);
+        for (const t of allTasks) allPaths.add(t.projectPath);
         return [...allPaths].sort().map(p => {
             const segments = p.split('/');
             return {
@@ -79,7 +82,7 @@ export default function TasksPage() {
 
     const handleCreate = async () => {
         if (!newTitle.trim() || !newProject.trim()) return;
-        await createTask({
+        await api.tasks.create({
             title: newTitle.trim(),
             projectPath: newProject.trim(),
             priority: newPriority,
@@ -91,10 +94,17 @@ export default function TasksPage() {
         setNewProject('');
         setNewDescription('');
         setShowCreate(false);
+        await loadTasks();
     };
 
-    const handleStatusChange = async (id: any, status: string) => {
-        await updateTask({ id, status });
+    const handleStatusChange = async (id: string, status: string) => {
+        await api.tasks.update(id, { status });
+        await loadTasks();
+    };
+
+    const handleDelete = async (id: string) => {
+        await api.tasks.delete(id);
+        await loadTasks();
     };
 
     const renderKanban = () => (
@@ -112,7 +122,7 @@ export default function TasksPage() {
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                             {colTasks.map((task: any) => (
-                                <div key={task._id} style={{
+                                <div key={task.id} style={{
                                     background: 'var(--bg-primary)', borderRadius: 8, padding: 12,
                                     border: '1px solid var(--border)', transition: 'transform 0.15s',
                                 }}>
@@ -134,7 +144,7 @@ export default function TasksPage() {
                                         {STATUS_COLS.filter(s => s.key !== task.status).map(s => (
                                             <button
                                                 key={s.key}
-                                                onClick={() => handleStatusChange(task._id, s.key)}
+                                                onClick={() => handleStatusChange(task.id, s.key)}
                                                 style={{
                                                     padding: '3px 8px', fontSize: 10, borderRadius: 4,
                                                     background: 'var(--bg-secondary)', border: '1px solid var(--border)',
@@ -146,7 +156,7 @@ export default function TasksPage() {
                                             </button>
                                         ))}
                                         <button
-                                            onClick={() => deleteTask({ id: task._id })}
+                                            onClick={() => handleDelete(task.id)}
                                             style={{
                                                 padding: '3px 6px', fontSize: 10, borderRadius: 4,
                                                 background: 'rgba(248,113,113,0.1)', border: 'none',
@@ -175,10 +185,10 @@ export default function TasksPage() {
                 </div>
             ) : (
                 filtered.map((task: any) => (
-                    <div key={task._id} className="task-item" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px', borderBottom: '1px solid var(--border)' }}>
+                    <div key={task.id} className="task-item" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px', borderBottom: '1px solid var(--border)' }}>
                         <div
                             className={`task-checkbox ${task.status === 'done' ? 'done' : ''}`}
-                            onClick={() => handleStatusChange(task._id, task.status === 'done' ? 'todo' : task.status === 'todo' ? 'in_progress' : 'done')}
+                            onClick={() => handleStatusChange(task.id, task.status === 'done' ? 'todo' : task.status === 'todo' ? 'in_progress' : 'done')}
                             style={{
                                 width: 20, height: 20, borderRadius: 4, cursor: 'pointer',
                                 border: `2px solid ${task.status === 'done' ? '#34d399' : 'var(--border)'}`,
@@ -208,7 +218,7 @@ export default function TasksPage() {
                         </span>
                         <span style={{ fontSize: 11, color: 'var(--text-tertiary)', fontFamily: 'monospace', width: 24, textAlign: 'center' }}>{task.effort}</span>
                         <button
-                            onClick={() => deleteTask({ id: task._id })}
+                            onClick={() => handleDelete(task.id)}
                             style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', fontSize: 12 }}
                         >✕</button>
                     </div>
@@ -223,7 +233,7 @@ export default function TasksPage() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <div>
                         <h1 className="page-title">📋 Tasks</h1>
-                        <p className="page-description">Cross-project task management</p>
+                        <p className="page-description">Cross-project task management · Minions-backed</p>
                     </div>
                     <button className="btn btn-primary" onClick={() => setShowCreate(!showCreate)} style={{ flexShrink: 0 }}>
                         + New Task
@@ -334,7 +344,7 @@ export default function TasksPage() {
                 <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--text-tertiary)' }}>{filtered.length} tasks</span>
             </div>
 
-            {!tasks ? (
+            {tasks === null ? (
                 <div className="loading"><div className="loading-spinner" /> Loading tasks...</div>
             ) : view === 'kanban' ? renderKanban() : renderList()}
         </div>

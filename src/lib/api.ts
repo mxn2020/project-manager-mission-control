@@ -28,6 +28,35 @@ export const api = {
         get: (path: string) => request<{ project: Record<string, unknown>; raw_yaml: string }>(`/api/projects/${encodeURIComponent(path)}`),
         update: (path: string, yaml: string) => request('/api/projects/' + encodeURIComponent(path), { method: 'PUT', body: JSON.stringify({ yaml }) }),
     },
+    tasks: {
+        list: (filters?: { status?: string; priority?: string; project?: string }) => {
+            const params = new URLSearchParams();
+            if (filters?.status) params.set('status', filters.status);
+            if (filters?.priority) params.set('priority', filters.priority);
+            if (filters?.project) params.set('project', filters.project);
+            const qs = params.toString();
+            return request<any[]>(`/api/tasks${qs ? '?' + qs : ''}`);
+        },
+        stats: () => request<{ total: number; byStatus: Record<string, number>; byPriority: Record<string, number>; byProject: Record<string, number> }>('/api/tasks/stats'),
+        create: (data: Record<string, unknown>) => request<any>('/api/tasks', { method: 'POST', body: JSON.stringify(data) }),
+        update: (id: string, data: Record<string, unknown>) => request<any>(`/api/tasks/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+        delete: (id: string) => request<{ success: boolean }>(`/api/tasks/${id}`, { method: 'DELETE' }),
+    },
+    content: {
+        list: (filters?: { status?: string; project?: string }) => {
+            const params = new URLSearchParams();
+            if (filters?.status) params.set('status', filters.status);
+            if (filters?.project) params.set('project', filters.project);
+            const qs = params.toString();
+            return request<any[]>(`/api/content${qs ? '?' + qs : ''}`);
+        },
+        stats: () => request<{ totalPlans: number; totalItems: number; byStatus: Record<string, number>; byPlatform: Record<string, number> }>('/api/content/stats'),
+        create: (data: Record<string, unknown>) => request<any>('/api/content', { method: 'POST', body: JSON.stringify(data) }),
+        update: (id: string, data: Record<string, unknown>) => request<any>(`/api/content/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+        delete: (id: string) => request<{ success: boolean }>(`/api/content/${id}`, { method: 'DELETE' }),
+        addItem: (planId: string, data: Record<string, unknown>) => request<any>(`/api/content/${planId}/items`, { method: 'POST', body: JSON.stringify(data) }),
+        updateItem: (planId: string, itemId: string, data: Record<string, unknown>) => request<any>(`/api/content/${planId}/items/${itemId}`, { method: 'PUT', body: JSON.stringify(data) }),
+    },
     scan: () => request<import('./types').StatusData>('/api/scan', { method: 'POST' }),
     health: () => request<{ status: string }>('/api/health'),
 };

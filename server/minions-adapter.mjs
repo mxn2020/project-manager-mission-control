@@ -2,12 +2,12 @@
  * Minions Adapter for Mission Control Express Server.
  * 
  * Provides CRUD operations using the Minions SDK with YamlFileStorageAdapter.
- * MinionType definitions are inlined from the bundle SDKs.
+ * Uses directoryMode: true for multi-file per UUID support.
  * 
  * Usage:
- *   import { initMinions, mc } from './minions-adapter.mjs';
+ *   import { initMinions, createMinion, listByType } from './minions-adapter.mjs';
  *   await initMinions('/path/to/.minions');
- *   const projects = await mc.listMinions({ type: 'bundle-portfolio-project' });
+ *   const task = await createMinion('mc-task', { title: 'My Task', ... });
  */
 
 import { Minions, TypeRegistry } from 'minions-sdk';
@@ -74,9 +74,12 @@ const executionTypes = [
         description: 'Granular unit of work',
         icon: '✅',
         schema: [
-            { name: 'projectId', type: 'string', label: 'projectId' },
-            { name: 'targetDate', type: 'date', label: 'targetDate' },
+            { name: 'projectPath', type: 'string', label: 'projectPath' },
+            { name: 'taskType', type: 'select', label: 'taskType', options: ['feature', 'bug', 'chore', 'research', 'infra'] },
+            { name: 'effort', type: 'select', label: 'effort', options: ['XS', 'S', 'M', 'L', 'XL'] },
+            { name: 'dueDate', type: 'date', label: 'dueDate' },
             { name: 'isTop3Today', type: 'boolean', label: 'isTop3Today' },
+            { name: 'githubIssueUrl', type: 'string', label: 'githubIssueUrl' },
         ],
     },
     {
@@ -94,6 +97,21 @@ const executionTypes = [
 
 // Content Bundle
 const contentTypes = [
+    {
+        id: 'bundle-content-contentPlan',
+        name: 'ContentPlan',
+        slug: 'contentPlan',
+        description: 'A release-based content plan with items',
+        icon: '📋',
+        schema: [
+            { name: 'projectPath', type: 'string', label: 'projectPath' },
+            { name: 'releaseTag', type: 'string', label: 'releaseTag' },
+            { name: 'releaseTitle', type: 'string', label: 'releaseTitle' },
+            { name: 'releaseNotes', type: 'textarea', label: 'releaseNotes' },
+            { name: 'releaseDate', type: 'date', label: 'releaseDate' },
+            { name: 'items', type: 'textarea', label: 'items' }, // JSON array of content items
+        ],
+    },
     {
         id: 'bundle-content-contentBrief',
         name: 'ContentBrief',
@@ -234,10 +252,13 @@ let registry = null;
 
 /**
  * Initialize the Minions client with YamlFileStorageAdapter.
+ * Uses directoryMode for multi-file per UUID support.
  * @param {string} rootDir - Path to the .minions data directory
  */
 export async function initMinions(rootDir) {
-    const storage = await YamlFileStorageAdapter.create(rootDir);
+    const storage = await YamlFileStorageAdapter.create(rootDir, {
+        directoryMode: true,
+    });
 
     registry = new TypeRegistry();
     for (const t of ALL_TYPES) {
@@ -251,7 +272,7 @@ export async function initMinions(rootDir) {
         mc.registry.register(t);
     }
 
-    console.log(`📦 Minions initialized: ${ALL_TYPES.length} types, root=${rootDir}`);
+    console.log(`📦 Minions initialized: ${ALL_TYPES.length} types, root=${rootDir}, directoryMode=true`);
     return mc;
 }
 
@@ -265,6 +286,14 @@ export function getMinions() {
 }
 
 /**
+ * Check if Minions is ready.
+ * @returns {boolean}
+ */
+export function isMinionsReady() {
+    return mc !== null;
+}
+
+/**
  * Get the TypeRegistry.
  * @returns {TypeRegistry}
  */
@@ -273,11 +302,11 @@ export function getRegistry() {
     return registry;
 }
 
-// ─── Convenience Helpers ────────────────────────────────────────────────────
+// ─── CRUD Helpers ───────────────────────────────────────────────────────────
 
 /**
  * List all minions of a given type slug.
- * @param {string} typeSlug - e.g. 'project', 'task', 'expense'
+ * @param {string} typeSlug - e.g. 'mc-task', 'contentPlan', 'expense'
  */
 export async function listByType(typeSlug) {
     const client = getMinions();
@@ -288,6 +317,75 @@ export async function listByType(typeSlug) {
 }
 
 /**
+ * Create a new minion of the given type.
+ * @param {string} typeSlug - e.g. 'mc-task'
+ * @param {object} data - { title, description, status, priority, tags, ...fields }
+ * @returns {object} flat minion object
+ */
+export async function createMinion(typeSlug, data) {
+    const client = getMinions();
+    const type = getRegistry().getBySlug(typeSlug);
+    if (!type) throw new Error(`Unknown type: ${typeSlug}`);
+
+    const { title, description, status, priority, tags, ...fields } = data;
+    const minion = await client.createMinion({
+        type: type.id,
+        title: title || 'Untitled',
+        description: description || '',
+        status: status || 'active',
+        priority: priority || 'medium',
+        tags: Array.isArray(tags) ? tags : [],
+        fields,
+    });
+
+    return minionToFlat(minion);
+}
+
+/**
+ * Get a single minion by ID.
+ * @param {string} id - Minion UUID
+ * @returns {object|null} flat minion object
+ */
+export async function getMinion(id) {
+    const client = getMinions();
+    try {
+        const minion = await client.getMinion(id);
+        return minion ? minionToFlat(minion) : null;
+    } catch { return null; }
+}
+
+/**
+ * Update a minion by ID.
+ * @param {string} id - Minion UUID
+ * @param {object} updates - Partial update data
+ * @returns {object} updated flat minion
+ */
+export async function updateMinion(id, updates) {
+    const client = getMinions();
+    const { title, description, status, priority, tags, ...fields } = updates;
+
+    const patch = {};
+    if (title !== undefined) patch.title = title;
+    if (description !== undefined) patch.description = description;
+    if (status !== undefined) patch.status = status;
+    if (priority !== undefined) patch.priority = priority;
+    if (tags !== undefined) patch.tags = tags;
+    if (Object.keys(fields).length > 0) patch.fields = fields;
+
+    const minion = await client.updateMinion(id, patch);
+    return minionToFlat(minion);
+}
+
+/**
+ * Delete a minion by ID.
+ * @param {string} id - Minion UUID
+ */
+export async function deleteMinion(id) {
+    const client = getMinions();
+    await client.deleteMinion(id);
+}
+
+/**
  * Convert a Minion to a flat object for API responses (merges fields + meta).
  * @param {import('minions-sdk').Minion} minion
  */
@@ -295,6 +393,7 @@ export function minionToFlat(minion) {
     return {
         id: minion.id,
         name: minion.title,
+        title: minion.title,
         description: minion.description || '',
         status: minion.status || 'active',
         priority: minion.priority || 'medium',
