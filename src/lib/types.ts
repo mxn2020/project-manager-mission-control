@@ -85,6 +85,7 @@ export const WORKSPACES: Workspace[] = [
     { id: 'content', label: 'Content', icon: '📢', path: '/content' },
     { id: 'costs', label: 'Costs', icon: '💰', path: '/costs' },
     { id: 'analytics', label: 'Analytics', icon: '📊', path: '/analytics' },
+    { id: 'dependencies', label: 'Deps', icon: '🔗', path: '/dependencies' },
     { id: 'admin', label: 'Admin', icon: '🔧', path: '/admin' },
     { id: 'roadmap', label: 'Roadmap', icon: '🗺️', path: '/roadmap' },
     { id: 'integrations', label: 'Integrations', icon: '🔗', path: '/integrations' },

@@ -820,6 +820,149 @@ app.put('/api/content/:id/items/:itemId', async (req, res) => {
     }
 });
 
+// ─── Dependency Graph API ───────────────────────────────────────────────────
+
+app.get('/api/dependencies', async (req, res) => {
+    try {
+        const projects = cachedStatusData?.projects || [];
+        const depGraph = { nodes: [], links: [], packages: {} };
+
+        for (const project of projects) {
+            const projectDir = path.join(ROOT, project.path);
+            const pkgPath = path.join(projectDir, 'package.json');
+
+            try {
+                if (!fs.existsSync(pkgPath)) continue;
+                const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
+                const deps = { ...pkg.dependencies, ...pkg.devDependencies };
+                const depNames = Object.keys(deps);
+
+                depGraph.nodes.push({
+                    id: project.path,
+                    name: project.name,
+                    tier: project.tier,
+                    lane: project.lane,
+                    depCount: depNames.length,
+                    deps: Object.entries(deps).map(([name, version]) => ({ name, version })),
+                });
+
+                for (const [depName, version] of Object.entries(deps)) {
+                    if (!depGraph.packages[depName]) {
+                        depGraph.packages[depName] = { name: depName, usedBy: [], versions: new Set() };
+                    }
+                    depGraph.packages[depName].usedBy.push(project.path);
+                    depGraph.packages[depName].versions.add(version);
+                }
+            } catch { /* skip unreadable */ }
+        }
+
+        // Convert Set to Array for JSON
+        for (const pkg of Object.values(depGraph.packages)) {
+            pkg.versions = [...pkg.versions];
+        }
+
+        // Build links: projects sharing the same dependencies
+        const sharedDeps = Object.entries(depGraph.packages)
+            .filter(([, pkg]) => pkg.usedBy.length > 1)
+            .sort(([, a], [, b]) => b.usedBy.length - a.usedBy.length);
+
+        for (const [depName, pkg] of sharedDeps) {
+            for (let i = 0; i < pkg.usedBy.length; i++) {
+                for (let j = i + 1; j < pkg.usedBy.length; j++) {
+                    depGraph.links.push({
+                        source: pkg.usedBy[i],
+                        target: pkg.usedBy[j],
+                        dep: depName,
+                    });
+                }
+            }
+        }
+
+        // Summary stats
+        const summary = {
+            totalProjects: depGraph.nodes.length,
+            totalPackages: Object.keys(depGraph.packages).length,
+            sharedPackages: sharedDeps.length,
+            topShared: sharedDeps.slice(0, 20).map(([name, pkg]) => ({
+                name,
+                count: pkg.usedBy.length,
+                versions: pkg.versions,
+            })),
+            avgDeps: depGraph.nodes.length > 0
+                ? Math.round(depGraph.nodes.reduce((s, n) => s + n.depCount, 0) / depGraph.nodes.length)
+                : 0,
+        };
+
+        res.json({ ...depGraph, summary });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ─── Automation API ─────────────────────────────────────────────────────────
+
+let lastAutomationRun = null;
+
+app.post('/api/automation/run', async (req, res) => {
+    try {
+        const results = { startedAt: new Date().toISOString(), steps: [] };
+
+        // Step 1: Re-scan projects
+        try {
+            const data = await scanProjects();
+            results.steps.push({ name: 'scan', status: 'success', projects: data.total_projects });
+        } catch (err) {
+            results.steps.push({ name: 'scan', status: 'error', error: err.message });
+        }
+
+        // Step 2: Stale detection (>30 days no activity)
+        const staleProjects = (cachedStatusData?.projects || [])
+            .filter(p => {
+                if (!p.last_active) return true;
+                const daysSince = (Date.now() - new Date(p.last_active).getTime()) / (1000 * 60 * 60 * 24);
+                return daysSince > 30;
+            })
+            .map(p => ({ path: p.path, name: p.name, lastActive: p.last_active, tier: p.tier }));
+        results.steps.push({ name: 'stale_detection', status: 'success', staleCount: staleProjects.length, staleProjects: staleProjects.slice(0, 20) });
+
+        // Step 3: Git status check (uncommitted changes)
+        const gitStatus = [];
+        for (const p of (cachedStatusData?.projects || []).slice(0, 30)) {
+            const projectDir = path.join(ROOT, p.path);
+            try {
+                if (!fs.existsSync(path.join(projectDir, '.git'))) continue;
+                const status = execSync('git status --porcelain 2>/dev/null', { cwd: projectDir, encoding: 'utf-8', timeout: 5000 }).trim();
+                if (status) {
+                    gitStatus.push({ path: p.path, name: p.name, changes: status.split('\n').length });
+                }
+            } catch { /* not a git repo or error */ }
+        }
+        results.steps.push({ name: 'git_status', status: 'success', dirtyCount: gitStatus.length, dirtyProjects: gitStatus });
+
+        // Step 4: Health overview
+        const healthBuckets = { excellent: 0, good: 0, fair: 0, poor: 0, unknown: 0 };
+        for (const p of (cachedStatusData?.projects || [])) {
+            const h = p.health_score || 0;
+            if (h >= 80) healthBuckets.excellent++;
+            else if (h >= 60) healthBuckets.good++;
+            else if (h >= 40) healthBuckets.fair++;
+            else if (h > 0) healthBuckets.poor++;
+            else healthBuckets.unknown++;
+        }
+        results.steps.push({ name: 'health_overview', status: 'success', buckets: healthBuckets });
+
+        results.completedAt = new Date().toISOString();
+        lastAutomationRun = results;
+        res.json(results);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.get('/api/automation/status', (req, res) => {
+    res.json(lastAutomationRun || { message: 'No automation run yet' });
+});
+
 // ─── AI Config Endpoint ─────────────────────────────────────────────────────
 
 async function convexQueryDirect(path, args = {}) {

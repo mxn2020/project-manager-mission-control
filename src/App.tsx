@@ -21,6 +21,7 @@ import AdminPage from './pages/AdminPage';
 import RoadmapPage from './pages/RoadmapPage';
 import IntegrationsPage from './pages/IntegrationsPage';
 import FilesPage from './pages/FilesPage';
+import DependencyGraphPage from './pages/DependencyGraphPage';
 import LoginPage from './pages/LoginPage';
 
 function AppShell() {
@@ -62,6 +63,7 @@ function AppShell() {
     if (p.startsWith('/roadmap')) return WORKSPACES.find(ws => ws.id === 'roadmap')!;
     if (p.startsWith('/integrations')) return WORKSPACES.find(ws => ws.id === 'integrations')!;
     if (p.startsWith('/files')) return WORKSPACES.find(ws => ws.id === 'files')!;
+    if (p.startsWith('/dependencies')) return WORKSPACES.find(ws => ws.id === 'dependencies')!;
     return WORKSPACES[0];
   };
   const activeWs = getActiveWorkspace();
@@ -163,6 +165,7 @@ function AppShell() {
             <Route path="/admin/logs" element={<AILogsPage />} />
             <Route path="/roadmap" element={<RoadmapPage />} />
             <Route path="/integrations" element={<IntegrationsPage />} />
+            <Route path="/dependencies" element={<DependencyGraphPage />} />
             <Route path="/files" element={<FilesPage />} />
           </Routes>
         </div>
