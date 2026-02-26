@@ -371,7 +371,7 @@ export async function listByType(typeSlug) {
     const client = getMinions();
     const type = getRegistry().getBySlug(typeSlug);
     if (!type) throw new Error(`Unknown type: ${typeSlug}`);
-    const all = await client.listMinions({ type: type.id });
+    const all = await client.listMinions({ minionTypeId: type.id });
     return all;
 }
 
@@ -457,6 +457,8 @@ export async function deleteMinion(id) {
 export function minionToFlat(minion) {
     return {
         id: minion.id,
+        type: minion.minionTypeId,
+        minionTypeId: minion.minionTypeId,
         name: minion.title,
         title: minion.title,
         description: minion.description || '',

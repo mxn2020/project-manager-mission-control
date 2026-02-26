@@ -95,6 +95,15 @@ function authMiddleware(req, res, next) {
         .catch(() => res.status(401).json({ error: 'Auth validation failed' }));
 }
 
+// ─── Version endpoint (no auth required) ───────────────────────────────────
+
+const __dirname = path.dirname(new URL(import.meta.url).pathname);
+const PKG = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf-8'));
+
+app.get('/api/version', (req, res) => {
+    res.json({ version: PKG.version, name: PKG.name });
+});
+
 app.use('/api', authMiddleware);
 
 // ─── Legacy YAML Parser/Scanner (fallback) ──────────────────────────────────

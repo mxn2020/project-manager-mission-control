@@ -2,6 +2,12 @@
 
 All notable changes to Mission Control are documented here.
 
+## [1.0.2] — 2026-02-26
+
+### 🐛 Bug Fixes
+- **Ideas page showing all projects** — `listByType()` passed `{ type: type.id }` to `listMinions()`, but the SDK's `StorageFilter` expects `{ minionTypeId: type.id }`. The incorrect field name made the filter a no-op, returning all 245 minions instead of only the requested type.
+- **Missing type in API responses** — `minionToFlat()` now includes `type` and `minionTypeId` fields so the frontend can identify each minion's type.
+
 ## [1.0.1] — 2026-02-26
 
 ### 🐛 Bug Fixes
@@ -50,5 +56,6 @@ All notable changes to Mission Control are documented here.
 - Hybrid project source: legacy PROJECT.yaml scanner + Minions adapter
 - VPS deployment via rsync + PM2
 
+[1.0.2]: https://github.com/mxn2020/project-manager-mission-control/releases/tag/v1.0.2
 [1.0.1]: https://github.com/mxn2020/project-manager-mission-control/releases/tag/v1.0.1
 [1.0.0]: https://github.com/mxn2020/project-manager-mission-control/releases/tag/v1.0.0

@@ -1,3 +1,4 @@
+declare const __APP_VERSION__: string;
 import { BrowserRouter, Routes, Route, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '../convex/_generated/api';
@@ -219,7 +220,7 @@ function AppShell() {
         onMouseLeave={e => (e.currentTarget.style.opacity = '0.7', e.currentTarget.style.color = 'rgba(255,255,255,0.35)')}
         title="View releases on GitHub"
       >
-        v1.0.0
+        v{__APP_VERSION__}
       </a>
     </div>
   );
