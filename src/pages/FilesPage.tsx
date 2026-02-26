@@ -1,0 +1,247 @@
+import { useState, useEffect } from 'react';
+import { getAuthHeaders, API_BASE } from '../lib/api';
+import { useProjects } from '../hooks/useProjects';
+
+interface FileEntry {
+    name: string;
+    path: string;
+    type: 'file' | 'directory';
+    size?: number;
+    children?: FileEntry[];
+}
+
+export default function FilesPage() {
+    const { data } = useProjects();
+    const projects = data?.projects || [];
+    const [selectedProject, setSelectedProject] = useState<string>('');
+    const [currentPath, setCurrentPath] = useState<string[]>([]);
+    const [entries, setEntries] = useState<FileEntry[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [fileContent, setFileContent] = useState<{ name: string; content: string } | null>(null);
+    const [error, setError] = useState<string | null>(null);
+
+    const fetchDir = async (projectPath: string, subPath: string = '') => {
+        setLoading(true);
+        setError(null);
+        setFileContent(null);
+        try {
+            const fullPath = subPath ? `${projectPath}/${subPath}` : projectPath;
+            const res = await fetch(`${API_BASE}/api/files/${encodeURIComponent(fullPath)}`, {
+                headers: getAuthHeaders(),
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            setEntries(data.entries || []);
+        } catch (err: any) {
+            setError(err.message);
+            setEntries([]);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const fetchFile = async (filePath: string) => {
+        setLoading(true);
+        try {
+            const res = await fetch(`${API_BASE}/api/files/${encodeURIComponent(filePath)}?content=true`, {
+                headers: getAuthHeaders(),
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            setFileContent({ name: filePath.split('/').pop() || '', content: data.content || '' });
+        } catch (err: any) {
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        if (selectedProject) {
+            const sub = currentPath.join('/');
+            fetchDir(selectedProject, sub);
+        }
+    }, [selectedProject, currentPath.join('/')]);
+
+    const navigateToDir = (dirName: string) => {
+        setCurrentPath(prev => [...prev, dirName]);
+    };
+
+    const navigateUp = () => {
+        setCurrentPath(prev => prev.slice(0, -1));
+        setFileContent(null);
+    };
+
+    const navigateToRoot = () => {
+        setCurrentPath([]);
+        setFileContent(null);
+    };
+
+    const formatSize = (bytes?: number) => {
+        if (!bytes) return '';
+        if (bytes < 1024) return `${bytes}B`;
+        if (bytes < 1048576) return `${(bytes / 1024).toFixed(1)}KB`;
+        return `${(bytes / 1048576).toFixed(1)}MB`;
+    };
+
+    const getFileIcon = (name: string, type: string) => {
+        if (type === 'directory') return '📁';
+        const ext = name.split('.').pop()?.toLowerCase();
+        const icons: Record<string, string> = {
+            ts: '🔷', tsx: '🔷', js: '🟡', jsx: '🟡', json: '📋',
+            md: '📝', yaml: '📄', yml: '📄', css: '🎨', html: '🌐',
+            py: '🐍', sh: '⚡', env: '🔒', lock: '🔑', svg: '🖼️',
+            png: '🖼️', jpg: '🖼️', gif: '🖼️', mp4: '🎬',
+        };
+        return icons[ext || ''] || '📄';
+    };
+
+    return (
+        <div>
+            <div className="page-header">
+                <h1 className="page-title">📂 File Explorer</h1>
+                <p className="page-description">Browse project files and directories</p>
+            </div>
+
+            {/* Project Selector */}
+            <div style={{ marginBottom: 16 }}>
+                <select
+                    value={selectedProject}
+                    onChange={e => { setSelectedProject(e.target.value); setCurrentPath([]); setFileContent(null); }}
+                    style={{
+                        padding: '8px 16px', borderRadius: 8, border: '1px solid var(--border)',
+                        background: 'var(--bg-secondary)', color: 'inherit', fontSize: 13, minWidth: 300,
+                    }}
+                >
+                    <option value="">Select a project...</option>
+                    {projects.map((p: any) => (
+                        <option key={p.path || p.name} value={p.path || p.name}>
+                            {p.name} — {p.lane}/{p.tier}
+                        </option>
+                    ))}
+                </select>
+            </div>
+
+            {/* Breadcrumb */}
+            {selectedProject && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 12, fontSize: 12 }}>
+                    <span onClick={navigateToRoot} style={{ cursor: 'pointer', color: 'var(--accent)' }}>
+                        📁 {selectedProject.split('/').pop()}
+                    </span>
+                    {currentPath.map((seg, i) => (
+                        <span key={i}>
+                            <span style={{ color: 'var(--text-tertiary)', margin: '0 2px' }}>/</span>
+                            <span
+                                onClick={() => setCurrentPath(currentPath.slice(0, i + 1))}
+                                style={{ cursor: 'pointer', color: i === currentPath.length - 1 ? 'inherit' : 'var(--accent)' }}
+                            >
+                                {seg}
+                            </span>
+                        </span>
+                    ))}
+                </div>
+            )}
+
+            {/* Error */}
+            {error && (
+                <div style={{ padding: 12, background: 'rgba(248,113,113,0.1)', borderRadius: 8, color: '#f87171', fontSize: 13, marginBottom: 12 }}>
+                    ❌ {error}
+                    <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 4 }}>
+                        The /api/files endpoint may not be configured yet. File browsing requires the Express server.
+                    </div>
+                </div>
+            )}
+
+            <div style={{ display: 'grid', gridTemplateColumns: fileContent ? '1fr 1fr' : '1fr', gap: 16 }}>
+                {/* Directory listing */}
+                {selectedProject && (
+                    <div>
+                        {loading && !fileContent ? (
+                            <div className="loading"><div className="loading-spinner" /> Loading...</div>
+                        ) : (
+                            <div style={{ background: 'var(--bg-secondary)', borderRadius: 10, border: '1px solid var(--border)', overflow: 'hidden' }}>
+                                {currentPath.length > 0 && (
+                                    <div
+                                        onClick={navigateUp}
+                                        style={{
+                                            padding: '8px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
+                                            borderBottom: '1px solid var(--border)', fontSize: 13,
+                                        }}
+                                    >
+                                        <span>⬆️</span>
+                                        <span style={{ color: 'var(--text-secondary)' }}>..</span>
+                                    </div>
+                                )}
+                                {entries.length === 0 && !loading ? (
+                                    <div style={{ padding: 20, textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 13 }}>
+                                        {error ? 'Could not load files' : 'Empty directory'}
+                                    </div>
+                                ) : (
+                                    [...entries]
+                                        .sort((a, b) => {
+                                            if (a.type !== b.type) return a.type === 'directory' ? -1 : 1;
+                                            return a.name.localeCompare(b.name);
+                                        })
+                                        .map(entry => (
+                                            <div
+                                                key={entry.name}
+                                                onClick={() => {
+                                                    if (entry.type === 'directory') {
+                                                        navigateToDir(entry.name);
+                                                    } else {
+                                                        const fullPath = [selectedProject, ...currentPath, entry.name].join('/');
+                                                        fetchFile(fullPath);
+                                                    }
+                                                }}
+                                                style={{
+                                                    padding: '8px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10,
+                                                    borderBottom: '1px solid var(--border)', fontSize: 13,
+                                                    transition: 'background 0.1s',
+                                                }}
+                                                onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-primary)')}
+                                                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                                            >
+                                                <span>{getFileIcon(entry.name, entry.type)}</span>
+                                                <span style={{ flex: 1, fontWeight: entry.type === 'directory' ? 500 : 400 }}>{entry.name}</span>
+                                                {entry.size && <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{formatSize(entry.size)}</span>}
+                                            </div>
+                                        ))
+                                )}
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* File Content Viewer */}
+                {fileContent && (
+                    <div style={{ background: 'var(--bg-secondary)', borderRadius: 10, border: '1px solid var(--border)', overflow: 'hidden' }}>
+                        <div style={{
+                            padding: '8px 14px', borderBottom: '1px solid var(--border)',
+                            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                        }}>
+                            <span style={{ fontWeight: 600, fontSize: 13 }}>{fileContent.name}</span>
+                            <button
+                                onClick={() => setFileContent(null)}
+                                style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer' }}
+                            >✕</button>
+                        </div>
+                        <pre style={{
+                            padding: 14, margin: 0, fontSize: 11, lineHeight: 1.5,
+                            overflow: 'auto', maxHeight: 600, fontFamily: 'monospace',
+                            whiteSpace: 'pre-wrap', color: 'var(--text-secondary)',
+                        }}>
+                            {fileContent.content}
+                        </pre>
+                    </div>
+                )}
+            </div>
+
+            {!selectedProject && (
+                <div className="empty-state">
+                    <div className="empty-state-icon">📂</div>
+                    <div className="empty-state-text">Select a project to browse its files</div>
+                </div>
+            )}
+        </div>
+    );
+}

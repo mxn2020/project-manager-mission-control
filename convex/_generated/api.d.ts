@@ -12,6 +12,9 @@ import type * as aiConfig from "../aiConfig.js";
 import type * as aiLogs from "../aiLogs.js";
 import type * as auth from "../auth.js";
 import type * as chatSessions from "../chatSessions.js";
+import type * as content from "../content.js";
+import type * as costs from "../costs.js";
+import type * as tasks from "../tasks.js";
 
 import type {
   ApiFromModules,
@@ -24,6 +27,9 @@ declare const fullApi: ApiFromModules<{
   aiLogs: typeof aiLogs;
   auth: typeof auth;
   chatSessions: typeof chatSessions;
+  content: typeof content;
+  costs: typeof costs;
+  tasks: typeof tasks;
 }>;
 
 /**

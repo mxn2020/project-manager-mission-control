@@ -80,7 +80,14 @@ export interface Workspace {
 export const WORKSPACES: Workspace[] = [
     { id: 'dashboard', label: 'Dashboard', icon: '📊', path: '/' },
     { id: 'minions', label: 'Minions', icon: '📦', path: '/minions' },
-    { id: 'ai', label: 'AI Assistant', icon: '🤖', path: '/ai' },
-    { id: 'projects', label: 'Projects', icon: '📋', path: '/projects' },
+    { id: 'ai', label: 'AI', icon: '🤖', path: '/ai' },
+    { id: 'tasks', label: 'Tasks', icon: '📋', path: '/tasks' },
     { id: 'content', label: 'Content', icon: '📢', path: '/content' },
+    { id: 'costs', label: 'Costs', icon: '💰', path: '/costs' },
+    { id: 'analytics', label: 'Analytics', icon: '📊', path: '/analytics' },
+    { id: 'admin', label: 'Admin', icon: '🔧', path: '/admin' },
+    { id: 'roadmap', label: 'Roadmap', icon: '🗺️', path: '/roadmap' },
+    { id: 'integrations', label: 'Integrations', icon: '🔗', path: '/integrations' },
+    { id: 'files', label: 'Files', icon: '📂', path: '/files' },
 ];
+

@@ -1,76 +1,239 @@
 import { useState } from 'react';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '../../convex/_generated/api';
 
-interface ContentPlan {
-    id: string;
-    projectPath: string;
-    projectName: string;
-    releaseTag: string;
-    status: 'unprocessed' | 'planned' | 'published' | 'skipped';
-    releaseDate: string;
-}
-
-const SAMPLE_PLANS: ContentPlan[] = [
-    { id: '1', projectPath: 'minions-ecosystem/minions', projectName: 'minions-sdk', releaseTag: 'v0.2.3', status: 'unprocessed', releaseDate: '2026-02-25' },
-    { id: '2', projectPath: 'mega-claw', projectName: 'mega-claw', releaseTag: 'v0.1.0', status: 'unprocessed', releaseDate: '2026-02-24' },
-    { id: '3', projectPath: 'ai_claw_oss_projects/prompt-forge', projectName: 'prompt-forge', releaseTag: 'v0.1.0', status: 'planned', releaseDate: '2026-02-20' },
+const STATUS_FLOW = [
+    { key: 'draft', label: 'Draft', icon: '📝', color: '#a78bfa' },
+    { key: 'planned', label: 'Planned', icon: '📅', color: '#60a5fa' },
+    { key: 'in_progress', label: 'In Progress', icon: '⚡', color: '#fbbf24' },
+    { key: 'published', label: 'Published', icon: '✅', color: '#34d399' },
+    { key: 'skipped', label: 'Skipped', icon: '⏭️', color: '#6b7280' },
 ];
 
+const PLATFORMS = ['twitter', 'reddit', 'youtube', 'linkedin', 'devto', 'github'];
+
 export default function ContentPage() {
-    const [plans, setPlans] = useState(SAMPLE_PLANS);
+    const plans = useQuery(api.content.listPlans, {});
+    const stats = useQuery(api.content.getContentStats);
+    const createPlan = useMutation(api.content.createPlan);
+    const updatePlan = useMutation(api.content.updatePlan);
+    const deletePlan = useMutation(api.content.deletePlan);
+    const addItem = useMutation(api.content.addItem);
+    const updateItem = useMutation(api.content.updateItem);
+
     const [filter, setFilter] = useState('all');
+    const [showCreate, setShowCreate] = useState(false);
+    const [expandedPlan, setExpandedPlan] = useState<string | null>(null);
+    const [newItemContent, setNewItemContent] = useState('');
+    const [newItemPlatform, setNewItemPlatform] = useState('twitter');
 
-    const filtered = plans.filter(p => filter === 'all' || p.status === filter);
+    // Create form
+    const [newProject, setNewProject] = useState('');
+    const [newTag, setNewTag] = useState('');
+    const [newTitle, setNewTitle] = useState('');
+    const [newNotes, setNewNotes] = useState('');
 
-    const updateStatus = (id: string, status: ContentPlan['status']) => {
-        setPlans(prev => prev.map(p => p.id === id ? { ...p, status } : p));
+    const allPlans = plans || [];
+    const filtered = allPlans.filter((p: any) => filter === 'all' || p.status === filter);
+
+    const handleCreate = async () => {
+        if (!newProject.trim() || !newTag.trim()) return;
+        const id = await createPlan({
+            projectPath: newProject.trim(),
+            releaseTag: newTag.trim(),
+            releaseTitle: newTitle.trim() || undefined,
+            releaseNotes: newNotes.trim() || undefined,
+        });
+        setShowCreate(false);
+        setNewProject('');
+        setNewTag('');
+        setNewTitle('');
+        setNewNotes('');
+        setExpandedPlan(id);
     };
 
-    const statusIcons: Record<string, string> = { unprocessed: '⬜', planned: '📝', published: '✅', skipped: '⏭️' };
+    // Load plan detail with items
+    const expandedDetail = useQuery(
+        api.content.getPlan,
+        expandedPlan ? { id: expandedPlan as any } : 'skip'
+    );
+
+    const handleAddItem = async () => {
+        if (!expandedPlan || !newItemContent.trim()) return;
+        await addItem({
+            planId: expandedPlan as any,
+            platform: newItemPlatform,
+            content: newItemContent.trim(),
+        });
+        setNewItemContent('');
+    };
+
+    const platformIcons: Record<string, string> = {
+        twitter: '🐦', reddit: '🔴', youtube: '▶️', linkedin: '💼', devto: '📰', github: '🐙'
+    };
 
     return (
         <div>
             <div className="page-header">
-                <h1 className="page-title">Content Planner</h1>
-                <p className="page-description">Manage social media content for project releases (sync integration pending)</p>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div>
+                        <h1 className="page-title">📢 Content Planner</h1>
+                        <p className="page-description">Manage release announcements across platforms</p>
+                    </div>
+                    <button className="btn btn-primary" onClick={() => setShowCreate(!showCreate)}>+ New Plan</button>
+                </div>
             </div>
+
+            {/* Stats */}
+            {stats && (
+                <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
+                    <div className="stat-card" style={{ padding: '8px 16px' }}>
+                        <span style={{ fontWeight: 600 }}>{stats.totalPlans}</span>
+                        <span style={{ color: 'var(--text-tertiary)', fontSize: 11, marginLeft: 6 }}>Plans</span>
+                    </div>
+                    <div className="stat-card" style={{ padding: '8px 16px' }}>
+                        <span style={{ fontWeight: 600 }}>{stats.totalItems}</span>
+                        <span style={{ color: 'var(--text-tertiary)', fontSize: 11, marginLeft: 6 }}>Content Items</span>
+                    </div>
+                    {Object.entries(stats.byPlatform).map(([platform, count]) => (
+                        <div key={platform} className="stat-card" style={{ padding: '8px 16px' }}>
+                            <span>{platformIcons[platform] || '📄'}</span>
+                            <span style={{ fontWeight: 600, marginLeft: 4 }}>{count as number}</span>
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            {/* Create Form */}
+            {showCreate && (
+                <div style={{ background: 'var(--bg-secondary)', borderRadius: 12, padding: 20, marginBottom: 16, border: '1px solid var(--border)' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+                        <input placeholder="Project path *" value={newProject} onChange={e => setNewProject(e.target.value)}
+                            style={{ padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'inherit', fontSize: 13 }} />
+                        <input placeholder="Release tag * (e.g. v1.0.0)" value={newTag} onChange={e => setNewTag(e.target.value)}
+                            style={{ padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'inherit', fontSize: 13 }} />
+                    </div>
+                    <input placeholder="Release title (optional)" value={newTitle} onChange={e => setNewTitle(e.target.value)}
+                        style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'inherit', fontSize: 13, marginBottom: 12 }} />
+                    <textarea placeholder="Release notes (optional)" value={newNotes} onChange={e => setNewNotes(e.target.value)}
+                        style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'inherit', fontSize: 13, minHeight: 60, resize: 'vertical', marginBottom: 12 }} />
+                    <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                        <button className="btn btn-secondary" onClick={() => setShowCreate(false)}>Cancel</button>
+                        <button className="btn btn-primary" onClick={handleCreate} disabled={!newProject.trim() || !newTag.trim()}>Create Plan</button>
+                    </div>
+                </div>
+            )}
+
+            {/* Filter Bar */}
             <div className="filter-bar">
-                {['all', 'unprocessed', 'planned', 'published', 'skipped'].map(f => (
+                {[{ key: 'all', label: `All (${allPlans.length})` }, ...STATUS_FLOW].map(f => (
                     <button
-                        key={f}
-                        className={`btn ${filter === f ? 'btn-primary' : 'btn-secondary'}`}
-                        onClick={() => setFilter(f)}
-                        style={{ textTransform: 'capitalize' }}
+                        key={f.key}
+                        className={`btn ${filter === f.key ? 'btn-primary' : 'btn-secondary'}`}
+                        onClick={() => setFilter(f.key)}
+                        style={{ fontSize: 12 }}
                     >
-                        {f === 'all' ? `All (${plans.length})` : `${statusIcons[f] || ''} ${f} (${plans.filter(p => p.status === f).length})`}
+                        {'icon' in f ? `${f.icon} ` : ''}{f.label}
                     </button>
                 ))}
             </div>
-            <div className="content-inbox">
-                {filtered.length === 0 ? (
-                    <div className="empty-state"><div className="empty-state-icon">🎉</div><div className="empty-state-text">No items in this category</div></div>
+
+            {/* Plans List */}
+            <div style={{ marginTop: 16 }}>
+                {!plans ? (
+                    <div className="loading"><div className="loading-spinner" /> Loading plans...</div>
+                ) : filtered.length === 0 ? (
+                    <div className="empty-state">
+                        <div className="empty-state-icon">📢</div>
+                        <div className="empty-state-text">No content plans yet</div>
+                    </div>
                 ) : (
-                    filtered.map(plan => (
-                        <div key={plan.id} className="content-item">
-                            <div className={`content-status ${plan.status}`}>{statusIcons[plan.status]}</div>
-                            <div className="content-details">
-                                <div className="content-release-tag">{plan.projectName} — {plan.releaseTag}</div>
-                                <div className="content-project-name">{plan.projectPath} · {plan.releaseDate}</div>
+                    filtered.map((plan: any) => (
+                        <div key={plan._id} style={{
+                            background: 'var(--bg-secondary)', borderRadius: 10, marginBottom: 8,
+                            border: expandedPlan === plan._id ? '1px solid var(--accent)' : '1px solid var(--border)',
+                        }}>
+                            <div
+                                style={{ padding: '14px 16px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12 }}
+                                onClick={() => setExpandedPlan(expandedPlan === plan._id ? null : plan._id)}
+                            >
+                                <span style={{ fontSize: 18 }}>{STATUS_FLOW.find(s => s.key === plan.status)?.icon || '📝'}</span>
+                                <div style={{ flex: 1 }}>
+                                    <div style={{ fontWeight: 600, fontSize: 14 }}>{plan.releaseTitle || `${plan.projectPath} ${plan.releaseTag}`}</div>
+                                    <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>
+                                        {plan.projectPath} · {plan.releaseTag} · {new Date(plan.updatedAt).toLocaleDateString()}
+                                    </div>
+                                </div>
+                                <select
+                                    value={plan.status}
+                                    onChange={e => { e.stopPropagation(); updatePlan({ id: plan._id, status: e.target.value }); }}
+                                    onClick={e => e.stopPropagation()}
+                                    style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'inherit', fontSize: 11 }}
+                                >
+                                    {STATUS_FLOW.map(s => <option key={s.key} value={s.key}>{s.icon} {s.label}</option>)}
+                                </select>
+                                <button
+                                    onClick={e => { e.stopPropagation(); deletePlan({ id: plan._id }); }}
+                                    style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer' }}
+                                >✕</button>
                             </div>
-                            <div className="content-actions">
-                                {plan.status === 'unprocessed' && (
-                                    <>
-                                        <button className="btn btn-primary" style={{ padding: '5px 12px', fontSize: 12 }} onClick={() => updateStatus(plan.id, 'planned')}>📝 Plan</button>
-                                        <button className="btn btn-secondary" style={{ padding: '5px 12px', fontSize: 12 }} onClick={() => updateStatus(plan.id, 'skipped')}>Skip</button>
-                                    </>
-                                )}
-                                {plan.status === 'planned' && (
-                                    <button className="btn btn-primary" style={{ padding: '5px 12px', fontSize: 12 }} onClick={() => updateStatus(plan.id, 'published')}>✅ Published</button>
-                                )}
-                                {plan.status === 'published' && <span style={{ fontSize: 12, color: 'var(--success)' }}>✓ Done</span>}
-                                {plan.status === 'skipped' && (
-                                    <button className="btn btn-secondary" style={{ padding: '5px 12px', fontSize: 12 }} onClick={() => updateStatus(plan.id, 'unprocessed')}>Undo</button>
-                                )}
-                            </div>
+
+                            {/* Expanded Detail */}
+                            {expandedPlan === plan._id && expandedDetail && (
+                                <div style={{ padding: '0 16px 16px', borderTop: '1px solid var(--border)' }}>
+                                    {expandedDetail.releaseNotes && (
+                                        <div style={{ padding: '12px 0', color: 'var(--text-secondary)', fontSize: 13, whiteSpace: 'pre-wrap' }}>
+                                            {expandedDetail.releaseNotes}
+                                        </div>
+                                    )}
+
+                                    {/* Content Items */}
+                                    <div style={{ marginTop: 12 }}>
+                                        <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', marginBottom: 8 }}>
+                                            Content Items ({expandedDetail.items?.length || 0})
+                                        </div>
+                                        {(expandedDetail.items || []).map((item: any) => (
+                                            <div key={item._id} style={{
+                                                display: 'flex', gap: 8, alignItems: 'flex-start', padding: '8px 12px',
+                                                background: 'var(--bg-primary)', borderRadius: 8, marginBottom: 6, border: '1px solid var(--border)',
+                                            }}>
+                                                <span style={{ fontSize: 16 }}>{platformIcons[item.platform] || '📄'}</span>
+                                                <div style={{ flex: 1 }}>
+                                                    <div style={{ fontSize: 12, whiteSpace: 'pre-wrap' }}>{item.content}</div>
+                                                    <div style={{ fontSize: 10, color: 'var(--text-tertiary)', marginTop: 4 }}>
+                                                        {item.platform} · {item.status}
+                                                    </div>
+                                                </div>
+                                                <select
+                                                    value={item.status}
+                                                    onChange={e => updateItem({ id: item._id, status: e.target.value })}
+                                                    style={{ padding: '2px 6px', borderRadius: 4, border: '1px solid var(--border)', background: 'var(--bg-secondary)', color: 'inherit', fontSize: 10 }}
+                                                >
+                                                    <option value="draft">Draft</option>
+                                                    <option value="scheduled">Scheduled</option>
+                                                    <option value="posted">Posted</option>
+                                                </select>
+                                            </div>
+                                        ))}
+
+                                        {/* Add Item Form */}
+                                        <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                                            <select value={newItemPlatform} onChange={e => setNewItemPlatform(e.target.value)}
+                                                style={{ padding: '6px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'inherit', fontSize: 12 }}>
+                                                {PLATFORMS.map(p => <option key={p} value={p}>{platformIcons[p]} {p}</option>)}
+                                            </select>
+                                            <input
+                                                placeholder="Content draft..."
+                                                value={newItemContent}
+                                                onChange={e => setNewItemContent(e.target.value)}
+                                                onKeyDown={e => e.key === 'Enter' && handleAddItem()}
+                                                style={{ flex: 1, padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'inherit', fontSize: 12 }}
+                                            />
+                                            <button className="btn btn-primary" onClick={handleAddItem} disabled={!newItemContent.trim()} style={{ fontSize: 12, padding: '6px 12px' }}>Add</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     ))
                 )}

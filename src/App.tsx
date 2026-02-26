@@ -11,9 +11,16 @@ import KanbanPage from './pages/KanbanPage';
 import FocusPage from './pages/FocusPage';
 import ProjectPage from './pages/ProjectPage';
 import AIPage from './pages/AIPage';
+import AILogsPage from './pages/AILogsPage';
 import TasksPage from './pages/TasksPage';
 import ContentPage from './pages/ContentPage';
 import MinionsPage from './pages/MinionsPage';
+import CostPage from './pages/CostPage';
+import AnalyticsPage from './pages/AnalyticsPage';
+import AdminPage from './pages/AdminPage';
+import RoadmapPage from './pages/RoadmapPage';
+import IntegrationsPage from './pages/IntegrationsPage';
+import FilesPage from './pages/FilesPage';
 import LoginPage from './pages/LoginPage';
 
 function AppShell() {
@@ -46,8 +53,14 @@ function AppShell() {
     const p = location.pathname;
     if (p.startsWith('/minions')) return WORKSPACES.find(ws => ws.id === 'minions')!;
     if (p.startsWith('/ai')) return WORKSPACES.find(ws => ws.id === 'ai')!;
-    if (p.startsWith('/projects')) return WORKSPACES.find(ws => ws.id === 'projects')!;
+    if (p.startsWith('/tasks')) return WORKSPACES.find(ws => ws.id === 'tasks')!;
     if (p.startsWith('/content')) return WORKSPACES.find(ws => ws.id === 'content')!;
+    if (p.startsWith('/costs')) return WORKSPACES.find(ws => ws.id === 'costs')!;
+    if (p.startsWith('/analytics')) return WORKSPACES.find(ws => ws.id === 'analytics')!;
+    if (p.startsWith('/admin')) return WORKSPACES.find(ws => ws.id === 'admin')!;
+    if (p.startsWith('/roadmap')) return WORKSPACES.find(ws => ws.id === 'roadmap')!;
+    if (p.startsWith('/integrations')) return WORKSPACES.find(ws => ws.id === 'integrations')!;
+    if (p.startsWith('/files')) return WORKSPACES.find(ws => ws.id === 'files')!;
     return WORKSPACES[0];
   };
   const activeWs = getActiveWorkspace();
@@ -106,30 +119,13 @@ function AppShell() {
         {/* AI Sidebar */}
         {activeWs.id === 'ai' && <AISidebar userId={auth.user?.id} />}
 
-        {/* Projects & Tasks Sidebar */}
-        {activeWs.id === 'projects' && (
+        {/* Admin Sidebar */}
+        {activeWs.id === 'admin' && (
           <aside className="sidebar">
             <div className="sidebar-section">
-              <div className="sidebar-section-title">Tasks</div>
-              <NavLink to="/projects" end className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}><span className="nav-icon">✅</span> All Tasks</NavLink>
-              <NavLink to="/projects/my-tasks" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}><span className="nav-icon">👤</span> My Tasks</NavLink>
-              <NavLink to="/projects/board" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}><span className="nav-icon">📌</span> Board</NavLink>
-            </div>
-            <div className="sidebar-section">
-              <div className="sidebar-section-title">Organize</div>
-              <NavLink to="/projects/by-project" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}><span className="nav-icon">📁</span> By Project</NavLink>
-              <NavLink to="/projects/by-lane" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}><span className="nav-icon">🛤️</span> By Lane</NavLink>
-              <NavLink to="/projects/dependencies" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}><span className="nav-icon">🔗</span> Dependencies</NavLink>
-            </div>
-          </aside>
-        )}
-
-        {/* Content Sidebar */}
-        {activeWs.id === 'content' && (
-          <aside className="sidebar">
-            <div className="sidebar-section">
-              <div className="sidebar-section-title">Views</div>
-              <NavLink to="/content" end className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}><span className="nav-icon">📥</span> Release Inbox</NavLink>
+              <div className="sidebar-section-title">Settings</div>
+              <NavLink to="/admin" end className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}><span className="nav-icon">🔌</span> Providers</NavLink>
+              <NavLink to="/admin/logs" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}><span className="nav-icon">📝</span> AI Logs</NavLink>
             </div>
           </aside>
         )}
@@ -154,11 +150,19 @@ function AppShell() {
             <Route path="/kanban" element={data ? <KanbanPage data={data} /> : null} />
             <Route path="/focus" element={data ? <FocusPage data={data} /> : null} />
             <Route path="/project/:path" element={<ProjectPage />} />
+
             {/* Independent routes — work without project API */}
             <Route path="/ai" element={<AIPage />} />
-            <Route path="/projects" element={<TasksPage />} />
+            <Route path="/tasks" element={<TasksPage />} />
             <Route path="/content" element={<ContentPage />} />
             <Route path="/minions" element={<MinionsPage />} />
+            <Route path="/costs" element={<CostPage />} />
+            <Route path="/analytics" element={<AnalyticsPage />} />
+            <Route path="/admin" element={<AdminPage />} />
+            <Route path="/admin/logs" element={<AILogsPage />} />
+            <Route path="/roadmap" element={<RoadmapPage />} />
+            <Route path="/integrations" element={<IntegrationsPage />} />
+            <Route path="/files" element={<FilesPage />} />
           </Routes>
         </div>
       </div>

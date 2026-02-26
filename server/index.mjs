@@ -405,6 +405,61 @@ app.post('/api/scan', async (req, res) => {
     }
 });
 
+// ─── AI Config Endpoint ─────────────────────────────────────────────────────
+
+async function convexQueryDirect(path, args = {}) {
+    const res = await fetch(`${CONVEX_URL}/api/query`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path, args, format: 'json' }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.value;
+}
+
+// GET /api/ai/config — get active AI configuration for user
+app.get('/api/ai/config', async (req, res) => {
+    try {
+        const userId = req.user?.id || undefined;
+        const config = await convexQueryDirect('aiConfig:getActiveConfig', { userId });
+        if (!config) {
+            return res.json({
+                model: process.env.AI_MODEL || 'meta/llama-3.1-70b-instruct',
+                provider: { name: 'NVIDIA NIM', slug: 'nvidia' },
+                temperature: 0.7,
+                maxTokens: 2048,
+                toolsEnabled: true,
+                configured: false,
+            });
+        }
+        res.json({ ...config, configured: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// GET /api/ai/logs — list AI logs with pagination
+app.get('/api/ai/logs', async (req, res) => {
+    try {
+        const limit = parseInt(req.query.limit) || 50;
+        const logs = await convexQueryDirect('aiLogs:listLogs', { limit });
+        res.json(logs || []);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// GET /api/ai/logs/stats — aggregated AI usage stats
+app.get('/api/ai/logs/stats', async (req, res) => {
+    try {
+        const stats = await convexQueryDirect('aiLogs:getStats', {});
+        res.json(stats || { totalCalls: 0, totalTokens: 0, totalCostCents: 0, errorCount: 0 });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // ─── AI Chat Endpoint ───────────────────────────────────────────────────────
 
 // POST /api/ai/chat — AI chat with Minions tool-calling
@@ -528,12 +583,105 @@ app.get('/api/health', (req, res) => {
         status: 'ok',
         root: ROOT,
         minionsReady,
-        timestamp: new Date().toISOString(),
         uptime: process.uptime(),
     });
 });
 
-// ─── Start ──────────────────────────────────────────────────────────────────
+// ─── File Browser Endpoint ──────────────────────────────────────────────────
+
+import { execSync } from 'node:child_process';
+
+// GET /api/files/:path — list directory or get file content
+app.get('/api/files/:filePath', async (req, res) => {
+    try {
+        const filePath = decodeURIComponent(req.params.filePath);
+        const absPath = path.resolve(ROOT, filePath);
+
+        // Security: prevent directory traversal
+        if (!absPath.startsWith(path.resolve(ROOT))) {
+            return res.status(403).json({ error: 'Access denied' });
+        }
+
+        if (!fs.existsSync(absPath)) {
+            return res.status(404).json({ error: 'Path not found' });
+        }
+
+        const stat = fs.statSync(absPath);
+
+        if (stat.isDirectory()) {
+            const items = fs.readdirSync(absPath)
+                .filter(name => !name.startsWith('.') && name !== 'node_modules' && name !== '__pycache__' && name !== 'dist')
+                .map(name => {
+                    const itemPath = path.join(absPath, name);
+                    try {
+                        const itemStat = fs.statSync(itemPath);
+                        return {
+                            name,
+                            path: path.relative(ROOT, itemPath),
+                            type: itemStat.isDirectory() ? 'directory' : 'file',
+                            size: itemStat.isFile() ? itemStat.size : undefined,
+                        };
+                    } catch {
+                        return { name, path: name, type: 'file' };
+                    }
+                })
+                .sort((a, b) => {
+                    if (a.type !== b.type) return a.type === 'directory' ? -1 : 1;
+                    return a.name.localeCompare(b.name);
+                });
+            return res.json({ entries: items });
+        }
+
+        // File content
+        if (req.query.content === 'true') {
+            if (stat.size > 500000) {
+                return res.json({ content: '(File too large to display)' });
+            }
+            const content = fs.readFileSync(absPath, 'utf-8');
+            return res.json({ content });
+        }
+
+        res.json({ name: path.basename(absPath), size: stat.size, type: 'file' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ─── Integrations: Git Status ───────────────────────────────────────────────
+
+app.get('/api/integrations/git-status', async (req, res) => {
+    try {
+        const statuses = {};
+        const yamls = findProjectYamls(ROOT);
+
+        for (const { dir } of yamls.slice(0, 50)) {
+            try {
+                const gitDir = path.join(dir, '.git');
+                if (!fs.existsSync(gitDir)) continue;
+
+                const projectPath = path.relative(ROOT, dir);
+                const branch = execSync('git rev-parse --abbrev-ref HEAD', { cwd: dir, timeout: 3000 }).toString().trim();
+                const status = execSync('git status --porcelain', { cwd: dir, timeout: 3000 }).toString().trim();
+                const lastCommit = execSync('git log -1 --format=%s', { cwd: dir, timeout: 3000 }).toString().trim();
+                const lastDate = execSync('git log -1 --format=%aI', { cwd: dir, timeout: 3000 }).toString().trim();
+
+                statuses[projectPath] = {
+                    branch,
+                    hasChanges: status.length > 0,
+                    changedFiles: status ? status.split('\n').length : 0,
+                    lastCommit,
+                    lastCommitDate: lastDate,
+                };
+            } catch { /* skip projects with git errors */ }
+        }
+
+        res.json(statuses);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ─── Start Server ──────────────────────────────────────────────────────────────────
 
 app.listen(PORT, async () => {
     console.log(`🚀 Mission Control API running on http://localhost:${PORT}`);
