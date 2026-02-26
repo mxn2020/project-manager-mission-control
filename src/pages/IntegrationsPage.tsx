@@ -11,6 +11,14 @@ interface GitStatus {
     lastCommitDate: string;
 }
 
+interface CloneStatus {
+    status: 'not_cloned' | 'cloning' | 'cloned' | 'error';
+    repo?: string;
+    error?: string;
+    startedAt?: string;
+    completedAt?: string;
+}
+
 function hasValue(v: any): boolean {
     return v && v !== 'null' && v !== 'undefined' && v !== '';
 }
@@ -19,7 +27,9 @@ export default function IntegrationsPage() {
     const { data } = useProjects();
     const projects = data?.projects || [];
     const [gitStatuses, setGitStatuses] = useState<Record<string, GitStatus>>({});
+    const [cloneStatuses, setCloneStatuses] = useState<Record<string, CloneStatus>>({});
     const [loading, setLoading] = useState(false);
+    const [cloning, setCloning] = useState<Set<string>>(new Set());
     const [filterLane, setFilterLane] = useState('');
 
     // Correct filtering using hasValue helper
@@ -54,9 +64,60 @@ export default function IntegrationsPage() {
         }
     };
 
+    const fetchCloneStatuses = async () => {
+        try {
+            const res = await fetch(`${API_BASE}/api/clone-status`, { headers: getAuthHeaders() });
+            if (res.ok) setCloneStatuses(await res.json());
+        } catch { /* ignore */ }
+    };
+
     useEffect(() => {
-        if (projects.length > 0) fetchGitStatus();
+        if (projects.length > 0) {
+            fetchGitStatus();
+            fetchCloneStatuses();
+        }
     }, [projects.length]);
+
+    const handleClone = async (projectPath: string, repo?: string) => {
+        setCloning(prev => new Set(prev).add(projectPath));
+        try {
+            const res = await fetch(`${API_BASE}/api/projects/${encodeURIComponent(projectPath)}/clone`, {
+                method: 'POST',
+                headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+                body: JSON.stringify({ repo }),
+            });
+            const data = await res.json();
+            setCloneStatuses(prev => ({ ...prev, [projectPath]: { status: data.status as any, repo } }));
+            // Poll for completion
+            setTimeout(() => fetchCloneStatuses(), 3000);
+            setTimeout(() => fetchCloneStatuses(), 8000);
+            setTimeout(() => fetchCloneStatuses(), 15000);
+        } catch (err) {
+            console.error('Clone failed:', err);
+        } finally {
+            setCloning(prev => { const s = new Set(prev); s.delete(projectPath); return s; });
+        }
+    };
+
+    const getCloneStatusBadge = (projectPath: string) => {
+        const status = cloneStatuses[projectPath];
+        if (!status || status.status === 'not_cloned') return null;
+        const styles: Record<string, { bg: string; color: string; label: string }> = {
+            cloned: { bg: '#34d39920', color: '#34d399', label: '✓ cloned' },
+            cloning: { bg: '#60a5fa20', color: '#60a5fa', label: '⏳ cloning' },
+            error: { bg: '#f8717120', color: '#f87171', label: '✗ error' },
+        };
+        const s = styles[status.status] || styles.error;
+        return (
+            <span title={status.error || ''} style={{
+                padding: '1px 6px', borderRadius: 4, fontSize: 10, background: s.bg, color: s.color,
+            }}>
+                {s.label}
+            </span>
+        );
+    };
+
+    const clonedCount = Object.values(cloneStatuses).filter(s => s.status === 'cloned').length;
 
     return (
         <div>
@@ -74,7 +135,7 @@ export default function IntegrationsPage() {
                             placeholder="All Lanes"
                             width="160px"
                         />
-                        <button className="btn btn-secondary" onClick={fetchGitStatus} disabled={loading} style={{ fontSize: 12 }}>
+                        <button className="btn btn-secondary" onClick={() => { fetchGitStatus(); fetchCloneStatuses(); }} disabled={loading} style={{ fontSize: 12 }}>
                             {loading ? '⏳' : '🔄'} Refresh
                         </button>
                     </div>
@@ -82,7 +143,7 @@ export default function IntegrationsPage() {
             </div>
 
             {/* Summary Stats */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12, marginBottom: 24 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 24 }}>
                 <div className="stat-card">
                     <div className="stat-value">{projects.length}</div>
                     <div className="stat-label">Total Projects</div>
@@ -94,6 +155,10 @@ export default function IntegrationsPage() {
                 <div className="stat-card">
                     <div className="stat-value" style={{ color: '#60a5fa' }}>{deployed.length}</div>
                     <div className="stat-label">Deployed</div>
+                </div>
+                <div className="stat-card">
+                    <div className="stat-value" style={{ color: '#818cf8' }}>{clonedCount}</div>
+                    <div className="stat-label">Cloned Locally</div>
                 </div>
                 <div className="stat-card">
                     <div className="stat-value" style={{ color: '#fbbf24' }}>{withoutRepo.length}</div>
@@ -122,6 +187,7 @@ export default function IntegrationsPage() {
                                         {p.deploy_url}
                                     </a>
                                 </div>
+                                {getCloneStatusBadge(p.path)}
                                 <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{p.tier}</span>
                             </div>
                         ))}
@@ -139,6 +205,9 @@ export default function IntegrationsPage() {
                     <div style={{ display: 'grid', gap: 6 }}>
                         {filteredWithRepo.map((p: any) => {
                             const git = gitStatuses[p.path];
+                            const cs = cloneStatuses[p.path];
+                            const isCloned = cs?.status === 'cloned';
+                            const isCloning = cs?.status === 'cloning' || cloning.has(p.path);
                             return (
                                 <div key={p.path || p.name} style={{
                                     display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px',
@@ -168,6 +237,34 @@ export default function IntegrationsPage() {
                                                 </span>
                                             )}
                                         </>
+                                    )}
+                                    {getCloneStatusBadge(p.path)}
+                                    {!isCloned && (
+                                        <button
+                                            onClick={() => handleClone(p.path, p.repo)}
+                                            disabled={isCloning}
+                                            style={{
+                                                padding: '3px 10px', borderRadius: 6, fontSize: 10, fontWeight: 600,
+                                                background: isCloning ? '#60a5fa20' : '#818cf820',
+                                                color: isCloning ? '#60a5fa' : '#818cf8',
+                                                border: '1px solid transparent', cursor: isCloning ? 'wait' : 'pointer',
+                                            }}
+                                        >
+                                            {isCloning ? '⏳ Cloning...' : '📥 Clone'}
+                                        </button>
+                                    )}
+                                    {isCloned && !git && (
+                                        <button
+                                            onClick={() => handleClone(p.path, p.repo)}
+                                            disabled={isCloning}
+                                            style={{
+                                                padding: '3px 10px', borderRadius: 6, fontSize: 10, fontWeight: 600,
+                                                background: '#34d39915', color: '#34d399',
+                                                border: '1px solid transparent', cursor: 'pointer',
+                                            }}
+                                        >
+                                            🔄 Pull
+                                        </button>
                                     )}
                                     <span style={{
                                         padding: '2px 6px', borderRadius: 4, fontSize: 10,
@@ -199,6 +296,7 @@ export default function IntegrationsPage() {
                             }}>
                                 <span style={{ opacity: 0.5 }}>📦</span>
                                 <span style={{ flex: 1 }}>{p.name}</span>
+                                {getCloneStatusBadge(p.path)}
                                 <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{p.tier}</span>
                             </div>
                         ))}

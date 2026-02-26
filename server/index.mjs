@@ -394,6 +394,77 @@ app.put('/api/projects/:projectPath', async (req, res) => {
     }
 });
 
+// POST /api/projects — create a new project
+app.post('/api/projects', async (req, res) => {
+    try {
+        const { name, lane, tier, priority, description, stack, oss, repo, deploy_url } = req.body;
+        if (!name || !lane) return res.status(400).json({ error: 'Name and lane are required' });
+
+        // Determine path: lane/name (lowercase, hyphenated)
+        const safeName = name.toLowerCase().replace(/[^a-z0-9-_]/g, '-').replace(/-+/g, '-');
+        const projectPath = `${lane}/${safeName}`;
+        const absDir = path.resolve(ROOT, projectPath);
+
+        // Check for duplicates
+        if (fs.existsSync(absDir) && fs.existsSync(path.join(absDir, 'PROJECT.yaml'))) {
+            return res.status(409).json({ error: `Project already exists at ${projectPath}` });
+        }
+
+        // Create directory
+        fs.mkdirSync(absDir, { recursive: true });
+
+        // Generate PROJECT.yaml
+        const yamlContent = toYaml({
+            name,
+            description: description || '',
+            tier: tier || 'idea',
+            lane,
+            priority: priority || 'medium',
+            oss: oss || false,
+            stack: stack || [],
+            repo: repo || null,
+            deploy_url: deploy_url || null,
+            tags: [],
+            notes: '',
+        });
+
+        fs.writeFileSync(path.join(absDir, 'PROJECT.yaml'), yamlContent, 'utf-8');
+
+        // Sync to Minions if ready
+        if (minionsReady) {
+            try {
+                const mc = getMinions();
+                const reg = getRegistry();
+                const type = reg.get('project');
+                if (type) {
+                    const wrapper = mc.create(type.typeSlug, {
+                        name, description: description || '', tier: tier || 'idea', lane,
+                        priority: priority || 'medium', oss: oss || false,
+                        stack: (stack || []).join(', '), repo: repo || null,
+                        deploy_url: deploy_url || null, tags: '', notes: '',
+                        path: projectPath, yaml_path: `${projectPath}/PROJECT.yaml`,
+                        last_active: new Date().toISOString().split('T')[0],
+                        health_score: 0,
+                    });
+                    await mc.save(wrapper.data);
+                }
+            } catch { /* best effort */ }
+        }
+
+        // Re-scan in background
+        setTimeout(() => {
+            try {
+                const statusData = legacyScan();
+                fs.writeFileSync(path.join(ROOT, 'status.json'), JSON.stringify(statusData, null, 2));
+            } catch { }
+        }, 100);
+
+        res.status(201).json({ success: true, path: projectPath });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // POST /api/scan — trigger full re-scan
 app.post('/api/scan', async (req, res) => {
     try {
@@ -587,9 +658,147 @@ app.get('/api/health', (req, res) => {
     });
 });
 
-// ─── File Browser Endpoint ──────────────────────────────────────────────────
+// ─── Clone Status Tracking ──────────────────────────────────────────────────
 
-// import { execSync } from 'node:child_process'; / already imported
+const CLONE_STATUS_FILE = path.join(ROOT, '.clone-status.json');
+const cloneStatuses = new Map(); // path → { status, repo, error?, startedAt?, completedAt? }
+
+// Load persisted clone statuses on startup
+try {
+    if (fs.existsSync(CLONE_STATUS_FILE)) {
+        const saved = JSON.parse(fs.readFileSync(CLONE_STATUS_FILE, 'utf-8'));
+        for (const [k, v] of Object.entries(saved)) cloneStatuses.set(k, v);
+    }
+} catch { /* ignore corrupt file */ }
+
+function saveCloneStatuses() {
+    try {
+        const obj = Object.fromEntries(cloneStatuses);
+        fs.writeFileSync(CLONE_STATUS_FILE, JSON.stringify(obj, null, 2));
+    } catch { /* best effort */ }
+}
+
+// Auto-detect already-cloned projects (have .git directory)
+function detectClonedProjects() {
+    try {
+        const yamls = findProjectYamls(ROOT);
+        for (const { dir } of yamls) {
+            const relPath = path.relative(ROOT, dir);
+            const gitDir = path.join(dir, '.git');
+            if (fs.existsSync(gitDir) && !cloneStatuses.has(relPath)) {
+                cloneStatuses.set(relPath, { status: 'cloned', repo: null, completedAt: new Date().toISOString() });
+            }
+        }
+        saveCloneStatuses();
+    } catch { /* ignore */ }
+}
+
+// GET /api/clone-status — get all clone statuses
+app.get('/api/clone-status', (req, res) => {
+    res.json(Object.fromEntries(cloneStatuses));
+});
+
+// GET /api/clone-status/:path — get clone status for one project
+app.get('/api/clone-status/:projectPath', (req, res) => {
+    const projectPath = decodeURIComponent(req.params.projectPath);
+    const status = cloneStatuses.get(projectPath);
+    if (status) return res.json(status);
+    // Check if dir exists on disk
+    const absPath = path.resolve(ROOT, projectPath);
+    if (fs.existsSync(absPath) && fs.existsSync(path.join(absPath, '.git'))) {
+        const s = { status: 'cloned', repo: null, completedAt: new Date().toISOString() };
+        cloneStatuses.set(projectPath, s);
+        saveCloneStatuses();
+        return res.json(s);
+    }
+    res.json({ status: 'not_cloned' });
+});
+
+// POST /api/projects/:path/clone — clone a repo into the project folder
+app.post('/api/projects/:projectPath/clone', async (req, res) => {
+    try {
+        const projectPath = decodeURIComponent(req.params.projectPath);
+        const targetDir = path.resolve(ROOT, projectPath);
+
+        // Security check
+        if (!targetDir.startsWith(path.resolve(ROOT))) {
+            return res.status(403).json({ error: 'Access denied' });
+        }
+
+        // Find repo URL — check request body first, then scan project YAML
+        let repoUrl = req.body?.repo;
+        if (!repoUrl) {
+            // Try to find from project data
+            try {
+                if (minionsReady) {
+                    const minions = await listByType('project');
+                    const match = minions.find(m => m.fields?.path === projectPath);
+                    if (match?.fields?.repo && match.fields.repo !== 'null') {
+                        repoUrl = match.fields.repo;
+                    }
+                }
+                if (!repoUrl) {
+                    // Fallback: check PROJECT.yaml
+                    const yamlPath = path.join(targetDir, 'PROJECT.yaml');
+                    if (fs.existsSync(yamlPath)) {
+                        const data = parseYaml(fs.readFileSync(yamlPath, 'utf-8'));
+                        if (data.repo && data.repo !== 'null') repoUrl = data.repo;
+                    }
+                }
+            } catch { /* ignore lookup errors */ }
+        }
+
+        if (!repoUrl) {
+            return res.status(400).json({ error: 'No repository URL found. Provide "repo" in request body or set it in PROJECT.yaml.' });
+        }
+
+        // Check if already cloned
+        if (fs.existsSync(path.join(targetDir, '.git'))) {
+            // Already cloned — do a pull instead
+            cloneStatuses.set(projectPath, { status: 'cloning', repo: repoUrl, startedAt: new Date().toISOString() });
+            saveCloneStatuses();
+            res.json({ status: 'pulling', message: 'Repository exists, pulling latest changes...' });
+
+            // Pull async
+            try {
+                execSync('git pull --ff-only', { cwd: targetDir, timeout: 30000, stdio: 'pipe' });
+                cloneStatuses.set(projectPath, { status: 'cloned', repo: repoUrl, completedAt: new Date().toISOString() });
+            } catch (err) {
+                cloneStatuses.set(projectPath, { status: 'error', repo: repoUrl, error: err.message, completedAt: new Date().toISOString() });
+            }
+            saveCloneStatuses();
+            return;
+        }
+
+        // Set status to cloning
+        cloneStatuses.set(projectPath, { status: 'cloning', repo: repoUrl, startedAt: new Date().toISOString() });
+        saveCloneStatuses();
+
+        // Respond immediately, clone async
+        res.json({ status: 'cloning', message: `Cloning ${repoUrl} into ${projectPath}...` });
+
+        // Ensure parent dir exists
+        const parentDir = path.dirname(targetDir);
+        if (!fs.existsSync(parentDir)) {
+            fs.mkdirSync(parentDir, { recursive: true });
+        }
+
+        // Clone in background
+        try {
+            const dirName = path.basename(targetDir);
+            execSync(`git clone ${repoUrl} ${dirName}`, { cwd: parentDir, timeout: 120000, stdio: 'pipe' });
+            cloneStatuses.set(projectPath, { status: 'cloned', repo: repoUrl, completedAt: new Date().toISOString() });
+        } catch (err) {
+            cloneStatuses.set(projectPath, { status: 'error', repo: repoUrl, error: err.stderr?.toString() || err.message, completedAt: new Date().toISOString() });
+        }
+        saveCloneStatuses();
+
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ─── File Browser Endpoint ──────────────────────────────────────────────────
 
 // GET /api/files/:path — list directory or get file content
 app.get('/api/files/:filePath', async (req, res) => {
@@ -603,7 +812,12 @@ app.get('/api/files/:filePath', async (req, res) => {
         }
 
         if (!fs.existsSync(absPath)) {
-            return res.status(404).json({ error: 'Path not found' });
+            // Check if project exists in registry but isn't cloned
+            const cloneStatus = cloneStatuses.get(filePath);
+            if (cloneStatus?.status === 'cloning') {
+                return res.status(202).json({ error: 'Clone in progress', status: 'cloning' });
+            }
+            return res.status(404).json({ error: 'Path not found. This project may need to be cloned first.', status: 'not_cloned' });
         }
 
         const stat = fs.statSync(absPath);
@@ -702,4 +916,8 @@ app.listen(PORT, async () => {
         console.log(`   📋 Minions: not migrated yet (no .minions directory)`);
         console.log(`      Run: node scripts/migrate-to-minions.mjs ${ROOT}`);
     }
+
+    // Detect already-cloned projects
+    detectClonedProjects();
+    console.log(`   🔗 Clone status: ${cloneStatuses.size} projects tracked`);
 });

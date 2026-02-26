@@ -1,13 +1,15 @@
 import { useState, useMemo } from 'react';
 import { useProjects } from '../hooks/useProjects';
 import SearchableSelect from '../components/SearchableSelect';
+import CreateProjectModal from '../components/CreateProjectModal';
 import { TIER_CONFIG, TIER_ORDER, type Tier } from '../lib/types';
 
 type RoadmapView = 'pipeline' | 'list' | 'compact';
 
 export default function RoadmapPage() {
-    const { data } = useProjects();
+    const { data, refresh } = useProjects();
     const projects = data?.projects || [];
+    const [showCreate, setShowCreate] = useState(false);
     const [filterLane, setFilterLane] = useState('');
     const [filterPriority, setFilterPriority] = useState('');
     const [filterCategory, setFilterCategory] = useState('');
@@ -236,7 +238,10 @@ export default function RoadmapPage() {
                         <h1 className="page-title">🗺️ Roadmap</h1>
                         <p className="page-description">Project lifecycle progression — from Idea to Shipped</p>
                     </div>
-                    <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{filtered.length} projects</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{filtered.length} projects</span>
+                        <button className="btn btn-primary" onClick={() => setShowCreate(true)} style={{ fontSize: 12 }}>+ New Project</button>
+                    </div>
                 </div>
             </div>
 
@@ -258,6 +263,14 @@ export default function RoadmapPage() {
             {!data ? (
                 <div className="loading"><div className="loading-spinner" /> Loading roadmap...</div>
             ) : view === 'pipeline' ? renderPipeline() : view === 'list' ? renderList() : renderCompact()}
+
+            {showCreate && (
+                <CreateProjectModal
+                    onClose={() => setShowCreate(false)}
+                    onCreated={() => { refresh(); }}
+                    lanes={[...new Set(projects.map((p: any) => p.lane))]}
+                />
+            )}
         </div>
     );
 }
