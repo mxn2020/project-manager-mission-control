@@ -372,7 +372,8 @@ export async function listByType(typeSlug) {
     const type = getRegistry().getBySlug(typeSlug);
     if (!type) throw new Error(`Unknown type: ${typeSlug}`);
     const all = await client.listMinions({ minionTypeId: type.id });
-    return all;
+    // SDK filter is unreliable — post-filter by minionTypeId
+    return all.filter(m => m.minionTypeId === type.id);
 }
 
 /**
