@@ -7,10 +7,22 @@ export default function AILogsPage() {
     const stats = useQuery(api.aiLogs.getStats);
     const [expandedId, setExpandedId] = useState<string | null>(null);
     const [filter, setFilter] = useState<'all' | 'success' | 'error'>('all');
+    const [search, setSearch] = useState('');
 
-    const filtered = (logs || []).filter(
-        (l: any) => filter === 'all' || l.status === filter
-    );
+    const models = [...new Set((logs || []).map((l: any) => l.model.split('/').pop()))].sort();
+
+    const filtered = (logs || []).filter((l: any) => {
+        if (filter !== 'all' && l.status !== filter) return false;
+        if (search) {
+            const q = search.toLowerCase();
+            const inModel = l.model.toLowerCase().includes(q);
+            const inPrompt = l.promptMessages?.toLowerCase().includes(q);
+            const inResponse = l.responseContent?.toLowerCase().includes(q);
+            const inError = l.errorMessage?.toLowerCase().includes(q);
+            if (!inModel && !inPrompt && !inResponse && !inError) return false;
+        }
+        return true;
+    });
 
     const formatTime = (ts: number) => {
         const d = new Date(ts);
@@ -55,7 +67,7 @@ export default function AILogsPage() {
             )}
 
             {/* Filters */}
-            <div className="filter-bar">
+            <div className="filter-bar" style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                 {(['all', 'success', 'error'] as const).map(f => (
                     <button
                         key={f}
@@ -66,6 +78,16 @@ export default function AILogsPage() {
                         {f === 'all' ? `All (${logs?.length || 0})` : `${f === 'error' ? '❌' : '✅'} ${f}`}
                     </button>
                 ))}
+                <input
+                    value={search}
+                    onChange={e => setSearch(e.target.value)}
+                    placeholder="🔍 Search logs..."
+                    style={{
+                        padding: '6px 12px', borderRadius: 6, border: '1px solid var(--border)',
+                        background: 'var(--bg-secondary)', color: 'inherit', fontSize: 12, flex: 1, minWidth: 150,
+                    }}
+                />
+                <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{filtered.length} results</span>
             </div>
 
             {/* Logs Table */}

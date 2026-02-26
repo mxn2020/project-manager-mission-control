@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, NavLink, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '../convex/_generated/api';
 import { useProjects } from './hooks/useProjects';
@@ -25,6 +25,7 @@ import LoginPage from './pages/LoginPage';
 
 function AppShell() {
   const location = useLocation();
+  const navigate = useNavigate();
   const auth = useAuth();
   const { data, loading, error, runScan } = useProjects();
 
@@ -144,7 +145,7 @@ function AppShell() {
                   Start the API: <code style={{ background: 'var(--bg-secondary)', padding: '2px 8px', borderRadius: 4 }}>node server/index.mjs</code>
                 </p>
               </div>
-            ) : data ? <OverviewPage data={data} /> : null} />
+            ) : data ? <OverviewPage data={data} onNavigate={(p) => navigate(p)} /> : null} />
             <Route path="/grid" element={data ? <GridPage data={data} /> : null} />
             <Route path="/table" element={data ? <TablePage data={data} /> : null} />
             <Route path="/kanban" element={data ? <KanbanPage data={data} /> : null} />
