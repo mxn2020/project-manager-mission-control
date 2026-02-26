@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useQuery, useMutation } from 'convex/react';
+import { useSearchParams } from 'react-router-dom';
 import { api } from '../../convex/_generated/api';
 import { getAuthHeaders, API_BASE } from '../lib/api';
 import { useAuth } from '../hooks/useAuth';
@@ -40,9 +41,12 @@ I can query, create, and update your project data. Try asking me:
 export default function AIPage() {
     const { user } = useAuth();
     const userId = user?.id;
+    const [searchParams, setSearchParams] = useSearchParams();
 
-    // ─── Session State ───────────────────────────────────────────────
-    const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+    // ─── Session from URL ────────────────────────────────────────────
+    const sessionIdFromUrl = searchParams.get('session');
+
+    // ─── Local State ─────────────────────────────────────────────────
     const [messages, setMessages] = useState<Message[]>([WELCOME_MSG]);
     const [input, setInput] = useState('');
     const [sending, setSending] = useState(false);
@@ -54,18 +58,22 @@ export default function AIPage() {
     // ─── Convex Queries ──────────────────────────────────────────────
     const sessionMessages = useQuery(
         api.chatSessions.getMessages,
-        activeSessionId ? { sessionId: activeSessionId as any } : 'skip'
+        sessionIdFromUrl ? { sessionId: sessionIdFromUrl as any } : 'skip'
     );
     const settings = useQuery(api.aiConfig.getSettings, userId ? { userId: userId as any } : 'skip');
     const models = useQuery(api.aiConfig.listModels);
 
     // ─── Convex Mutations ────────────────────────────────────────────
     const createSession = useMutation(api.chatSessions.createSession);
-    const deleteSession = useMutation(api.chatSessions.deleteSession);
     const updateSettings = useMutation(api.aiConfig.updateSettings);
 
     // ─── Load session messages from Convex ────────────────────────────
     useEffect(() => {
+        if (!sessionIdFromUrl) {
+            setMessages([WELCOME_MSG]);
+            setLastMeta(null);
+            return;
+        }
         if (sessionMessages && sessionMessages.length > 0) {
             const loaded: Message[] = sessionMessages.map((m: any) => ({
                 id: m._id,
@@ -76,50 +84,26 @@ export default function AIPage() {
                 tokens: m.tokenCount,
             }));
             setMessages(loaded);
-        } else if (activeSessionId && sessionMessages && sessionMessages.length === 0) {
+        } else if (sessionIdFromUrl && sessionMessages && sessionMessages.length === 0) {
             setMessages([WELCOME_MSG]);
         }
-    }, [sessionMessages, activeSessionId]);
+    }, [sessionMessages, sessionIdFromUrl]);
 
     // ─── Auto-scroll ─────────────────────────────────────────────────
     useEffect(() => {
         scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
     }, [messages, sending]);
 
-    // ─── Create new session ──────────────────────────────────────────
-    const handleNewChat = useCallback(async () => {
-        if (!userId) return;
-        const id = await createSession({ userId: userId as any });
-        setActiveSessionId(id);
-        setMessages([WELCOME_MSG]);
-        setLastMeta(null);
-    }, [userId, createSession]);
-
-    // ─── Switch session ──────────────────────────────────────────────
-    const handleSelectSession = useCallback((sessionId: string) => {
-        setActiveSessionId(sessionId);
-        setLastMeta(null);
-    }, []);
-
-    // ─── Delete session ──────────────────────────────────────────────
-    const handleDeleteSession = useCallback(async (sessionId: string) => {
-        await deleteSession({ id: sessionId as any });
-        if (activeSessionId === sessionId) {
-            setActiveSessionId(null);
-            setMessages([WELCOME_MSG]);
-        }
-    }, [deleteSession, activeSessionId]);
-
     // ─── Send message ────────────────────────────────────────────────
-    const handleSend = async () => {
+    const handleSend = useCallback(async () => {
         const text = input.trim();
         if (!text || sending) return;
 
         // Auto-create session if none active
-        let sessionId = activeSessionId;
+        let sessionId = sessionIdFromUrl;
         if (!sessionId && userId) {
             sessionId = await createSession({ userId: userId as any });
-            setActiveSessionId(sessionId);
+            setSearchParams({ session: sessionId }, { replace: true });
         }
 
         const userMsg: Message = {
@@ -129,12 +113,13 @@ export default function AIPage() {
             timestamp: Date.now(),
         };
 
-        setMessages(prev => [...prev.filter(m => m.id !== 'welcome'), userMsg]);
+        const currentMessages = messages.filter(m => m.id !== 'welcome');
+        setMessages([...currentMessages, userMsg]);
         setInput('');
         setSending(true);
 
         try {
-            const history = [...messages.filter(m => m.id !== 'welcome'), userMsg]
+            const history = [...currentMessages, userMsg]
                 .slice(-(settings?.historyLength || 10))
                 .map(m => ({ role: m.role, content: m.content }));
 
@@ -178,7 +163,7 @@ export default function AIPage() {
         } finally {
             setSending(false);
         }
-    };
+    }, [input, sending, sessionIdFromUrl, userId, messages, settings, createSession, setSearchParams]);
 
     // ─── Format message content (basic markdown) ─────────────────────
     const formatContent = (text: string) => {
@@ -235,10 +220,7 @@ export default function AIPage() {
                 <div className="chat-settings-group">
                     <label>Temperature: {currentSettings.temperature}</label>
                     <input
-                        type="range"
-                        min="0"
-                        max="2"
-                        step="0.1"
+                        type="range" min="0" max="2" step="0.1"
                         value={currentSettings.temperature}
                         onChange={e => updateSettings({
                             userId: userId as any,
@@ -250,10 +232,7 @@ export default function AIPage() {
                 <div className="chat-settings-group">
                     <label>Max Tokens: {currentSettings.maxResponseTokens}</label>
                     <input
-                        type="range"
-                        min="256"
-                        max="8192"
-                        step="256"
+                        type="range" min="256" max="8192" step="256"
                         value={currentSettings.maxResponseTokens}
                         onChange={e => updateSettings({
                             userId: userId as any,
@@ -263,12 +242,9 @@ export default function AIPage() {
                 </div>
 
                 <div className="chat-settings-group">
-                    <label>History Length: {currentSettings.historyLength} messages</label>
+                    <label>History: {currentSettings.historyLength} messages</label>
                     <input
-                        type="range"
-                        min="2"
-                        max="30"
-                        step="2"
+                        type="range" min="2" max="30" step="2"
                         value={currentSettings.historyLength}
                         onChange={e => updateSettings({
                             userId: userId as any,
@@ -298,7 +274,7 @@ export default function AIPage() {
                             <span>Model:</span><span>{lastMeta.model}</span>
                             <span>Tokens:</span><span>{lastMeta.tokens?.total || '—'}</span>
                             <span>Cost:</span><span>{lastMeta.costCents ? `$${(lastMeta.costCents / 100).toFixed(4)}` : 'Free'}</span>
-                            <span>Duration:</span><span>{lastMeta.durationMs ? `${(lastMeta.durationMs / 1000).toFixed(1)}s` : '—'}</span>
+                            <span>Time:</span><span>{lastMeta.durationMs ? `${(lastMeta.durationMs / 1000).toFixed(1)}s` : '—'}</span>
                             {lastMeta.toolCalls && lastMeta.toolCalls.length > 0 && (
                                 <><span>Tools:</span><span>{lastMeta.toolCalls.join(', ')}</span></>
                             )}

@@ -136,30 +136,30 @@ function AppShell() {
 
         {/* ─── Content ─────────────────────────────────────── */}
         <div className="content">
-          {loading && !data ? (
-            <div className="loading"><div className="loading-spinner" /> Loading Mission Control...</div>
-          ) : error && !data ? (
-            <div className="error-message">
-              <h3>Failed to connect</h3>
-              <p>{error}</p>
-              <p style={{ marginTop: 12, color: 'var(--text-secondary)' }}>
-                Start the API: <code style={{ background: 'var(--bg-secondary)', padding: '2px 8px', borderRadius: 4 }}>node server/index.mjs</code>
-              </p>
-            </div>
-          ) : (
-            <Routes>
-              <Route path="/" element={data ? <OverviewPage data={data} /> : null} />
-              <Route path="/grid" element={data ? <GridPage data={data} /> : null} />
-              <Route path="/table" element={data ? <TablePage data={data} /> : null} />
-              <Route path="/kanban" element={data ? <KanbanPage data={data} /> : null} />
-              <Route path="/focus" element={data ? <FocusPage data={data} /> : null} />
-              <Route path="/project/:path" element={<ProjectPage />} />
-              <Route path="/ai" element={<AIPage />} />
-              <Route path="/projects" element={<TasksPage />} />
-              <Route path="/content" element={<ContentPage />} />
-              <Route path="/minions" element={<MinionsPage />} />
-            </Routes>
-          )}
+          <Routes>
+            {/* Dashboard routes — need project data */}
+            <Route path="/" element={loading && !data ? (
+              <div className="loading"><div className="loading-spinner" /> Loading Mission Control...</div>
+            ) : error && !data ? (
+              <div className="error-message">
+                <h3>Failed to connect</h3>
+                <p>{error}</p>
+                <p style={{ marginTop: 12, color: 'var(--text-secondary)' }}>
+                  Start the API: <code style={{ background: 'var(--bg-secondary)', padding: '2px 8px', borderRadius: 4 }}>node server/index.mjs</code>
+                </p>
+              </div>
+            ) : data ? <OverviewPage data={data} /> : null} />
+            <Route path="/grid" element={data ? <GridPage data={data} /> : null} />
+            <Route path="/table" element={data ? <TablePage data={data} /> : null} />
+            <Route path="/kanban" element={data ? <KanbanPage data={data} /> : null} />
+            <Route path="/focus" element={data ? <FocusPage data={data} /> : null} />
+            <Route path="/project/:path" element={<ProjectPage />} />
+            {/* Independent routes — work without project API */}
+            <Route path="/ai" element={<AIPage />} />
+            <Route path="/projects" element={<TasksPage />} />
+            <Route path="/content" element={<ContentPage />} />
+            <Route path="/minions" element={<MinionsPage />} />
+          </Routes>
         </div>
       </div>
     </div>
@@ -169,6 +169,21 @@ function AppShell() {
 function AISidebar({ userId }: { userId?: string }) {
   const sessions = useQuery(api.chatSessions.listSessions, userId ? { userId: userId as any } : 'skip');
   const createSession = useMutation(api.chatSessions.createSession);
+  const deleteSess = useMutation(api.chatSessions.deleteSession);
+
+  // Read session from URL
+  const params = new URLSearchParams(window.location.search);
+  const activeSession = params.get('session');
+
+  const navigate = (sessionId?: string) => {
+    if (sessionId) {
+      window.history.pushState({}, '', `/ai?session=${sessionId}`);
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    } else {
+      window.history.pushState({}, '', '/ai');
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    }
+  };
 
   const timeAgo = (ts: number) => {
     const d = Date.now() - ts;
@@ -183,11 +198,12 @@ function AISidebar({ userId }: { userId?: string }) {
       <div className="sidebar-section">
         <div className="sidebar-section-title">Sessions</div>
         <button
-          className="nav-link"
+          className={`nav-link ${!activeSession ? 'active' : ''}`}
           style={{ cursor: 'pointer', width: '100%', textAlign: 'left', border: 'none', background: 'none', color: 'inherit', font: 'inherit', padding: '6px 8px' }}
           onClick={async () => {
             if (!userId) return;
-            await createSession({ userId: userId as any });
+            const id = await createSession({ userId: userId as any });
+            navigate(id);
           }}
         >
           <span className="nav-icon">➕</span> New Chat
@@ -197,11 +213,27 @@ function AISidebar({ userId }: { userId?: string }) {
         <div className="sidebar-section">
           <div className="sidebar-section-title">Recent</div>
           {sessions.slice(0, 20).map((s: any) => (
-            <div key={s._id} className="nav-link" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, padding: '5px 8px' }}>
+            <div
+              key={s._id}
+              className={`nav-link ${activeSession === s._id ? 'active' : ''}`}
+              style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, padding: '5px 8px', cursor: 'pointer' }}
+              onClick={() => navigate(s._id)}
+            >
               <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }} title={s.title}>
                 💬 {s.title}
               </span>
-              <span style={{ color: 'var(--text-tertiary)', fontSize: 10, flexShrink: 0, marginLeft: 4 }}>{timeAgo(s.updatedAt)}</span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0, marginLeft: 4 }}>
+                <span style={{ color: 'var(--text-tertiary)', fontSize: 10 }}>{timeAgo(s.updatedAt)}</span>
+                <button
+                  style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', fontSize: 10, padding: '0 2px' }}
+                  title="Delete session"
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    await deleteSess({ id: s._id as any });
+                    if (activeSession === s._id) navigate();
+                  }}
+                >✕</button>
+              </span>
             </div>
           ))}
         </div>

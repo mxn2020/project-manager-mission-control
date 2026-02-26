@@ -224,7 +224,7 @@ export const getActiveConfig = query({
         if (args.userId) {
             const settings = await ctx.db
                 .query("aiSettings")
-                .withIndex("by_user", (q) => q.eq("userId", args.userId))
+                .withIndex("by_user", (q) => q.eq("userId", args.userId!))
                 .first();
             if (settings?.defaultModelId) {
                 modelDoc = await ctx.db.get(settings.defaultModelId);
