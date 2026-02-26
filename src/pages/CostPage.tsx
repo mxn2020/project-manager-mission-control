@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
+import { useProjects } from '../hooks/useProjects';
+import SearchableSelect, { type SelectOption } from '../components/SearchableSelect';
 
 const CATEGORIES = ['hosting', 'domain', 'api', 'database', 'monitoring', 'ai', 'cdn', 'email', 'other'];
 const CATEGORY_ICONS: Record<string, string> = {
@@ -13,6 +15,7 @@ const CATEGORY_COLORS: Record<string, string> = {
 };
 
 export default function CostPage() {
+    const { data: projectData } = useProjects();
     const costs = useQuery(api.costs.listCosts, {});
     const summary = useQuery(api.costs.getCostSummary);
     const createCost = useMutation(api.costs.createCost);
@@ -29,7 +32,18 @@ export default function CostPage() {
     const [newNotes, setNewNotes] = useState('');
 
     const allCosts = costs || [];
-    const projects = [...new Set(allCosts.map((c: any) => c.projectPath))].sort();
+
+    const projectOptions: SelectOption[] = useMemo(() => {
+        const allPaths = new Set<string>();
+        for (const p of (projectData?.projects || [])) allPaths.add(p.path);
+        for (const c of allCosts) allPaths.add((c as any).projectPath);
+        return [...allPaths].sort().map(path => {
+            const segments = path.split('/');
+            return { value: path, label: segments[segments.length - 1] || path, sublabel: segments.slice(0, -1).join('/'), group: segments[0], icon: '📁' };
+        });
+    }, [projectData, allCosts]);
+
+    const categoryOptions: SelectOption[] = CATEGORIES.map(c => ({ value: c, label: c, icon: CATEGORY_ICONS[c] || '📦' }));
 
     const handleCreate = async () => {
         if (!newProject.trim() || !newName.trim() || !newCost) return;
@@ -120,16 +134,12 @@ export default function CostPage() {
                             style={{ padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'inherit', fontSize: 13 }} />
                         <input placeholder="Monthly cost * ($)" type="number" step="0.01" value={newCost} onChange={e => setNewCost(e.target.value)}
                             style={{ padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'inherit', fontSize: 13 }} />
-                        <input placeholder="Project path *" value={newProject} onChange={e => setNewProject(e.target.value)}
-                            list="cost-projects"
-                            style={{ padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'inherit', fontSize: 13 }} />
-                        <datalist id="cost-projects">{projects.map(p => <option key={p} value={p} />)}</datalist>
+                        <SearchableSelect options={projectOptions} value={newProject} onChange={setNewProject} placeholder="Select project *" grouped allowCreate onCreateNew={(v) => setNewProject(v)} />
                     </div>
                     <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                        <select value={newCategory} onChange={e => setNewCategory(e.target.value)}
-                            style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'inherit', fontSize: 12 }}>
-                            {CATEGORIES.map(c => <option key={c} value={c}>{CATEGORY_ICONS[c]} {c}</option>)}
-                        </select>
+                        <div style={{ width: 160 }}>
+                            <SearchableSelect options={categoryOptions} value={newCategory} onChange={setNewCategory} placeholder="Category" clearable={false} />
+                        </div>
                         <input placeholder="Notes (optional)" value={newNotes} onChange={e => setNewNotes(e.target.value)}
                             style={{ flex: 1, padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'inherit', fontSize: 12 }} />
                         <button className="btn btn-secondary" onClick={() => setShowCreate(false)}>Cancel</button>

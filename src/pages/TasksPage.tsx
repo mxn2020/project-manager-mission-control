@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
+import { useProjects } from '../hooks/useProjects';
+import SearchableSelect, { type SelectOption } from '../components/SearchableSelect';
 
 const STATUS_COLS = [
     { key: 'todo', label: 'To Do', icon: '📋', color: '#60a5fa' },
@@ -22,11 +24,12 @@ export default function TasksPage() {
     const createTask = useMutation(api.tasks.createTask);
     const updateTask = useMutation(api.tasks.updateTask);
     const deleteTask = useMutation(api.tasks.deleteTask);
+    const { data: projectData } = useProjects();
 
     const [view, setView] = useState<'kanban' | 'list'>('kanban');
     const [showCreate, setShowCreate] = useState(false);
-    const [filterPriority, setFilterPriority] = useState('all');
-    const [filterProject, setFilterProject] = useState('all');
+    const [filterPriority, setFilterPriority] = useState('');
+    const [filterProject, setFilterProject] = useState('');
 
     // Create form state
     const [newTitle, setNewTitle] = useState('');
@@ -37,11 +40,40 @@ export default function TasksPage() {
     const [newType, setNewType] = useState('feature');
 
     const allTasks = tasks || [];
-    const projects = [...new Set(allTasks.map((t: any) => t.projectPath))].sort();
+
+    // Build project options from ALL projects (not just task-referenced ones)
+    const projectOptions: SelectOption[] = useMemo(() => {
+        const allPaths = new Set<string>();
+        // Add projects from project scanner
+        for (const p of (projectData?.projects || [])) {
+            allPaths.add(p.path);
+        }
+        // Also add any task-referenced projects not in scanner
+        for (const t of allTasks) {
+            allPaths.add((t as any).projectPath);
+        }
+        return [...allPaths].sort().map(p => {
+            const segments = p.split('/');
+            return {
+                value: p,
+                label: segments[segments.length - 1] || p,
+                sublabel: segments.length > 1 ? segments.slice(0, -1).join('/') : undefined,
+                group: segments[0] || 'root',
+                icon: '📁',
+            };
+        });
+    }, [projectData, allTasks]);
+
+    // Priority options for filter
+    const priorityOptions: SelectOption[] = [
+        { value: 'high', label: 'High', icon: '🔴' },
+        { value: 'medium', label: 'Medium', icon: '🟡' },
+        { value: 'low', label: 'Low', icon: '🔵' },
+    ];
 
     const filtered = allTasks.filter((t: any) => {
-        if (filterPriority !== 'all' && t.priority !== filterPriority) return false;
-        if (filterProject !== 'all' && t.projectPath !== filterProject) return false;
+        if (filterPriority && t.priority !== filterPriority) return false;
+        if (filterProject && t.projectPath !== filterProject) return false;
         return true;
     });
 
@@ -225,16 +257,15 @@ export default function TasksPage() {
                             onChange={e => setNewTitle(e.target.value)}
                             style={{ padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'inherit', fontSize: 13 }}
                         />
-                        <input
-                            placeholder="Project path *"
+                        <SearchableSelect
+                            options={projectOptions}
                             value={newProject}
-                            onChange={e => setNewProject(e.target.value)}
-                            list="projects-datalist"
-                            style={{ padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'inherit', fontSize: 13 }}
+                            onChange={setNewProject}
+                            placeholder="Select project *"
+                            grouped
+                            allowCreate
+                            onCreateNew={(v) => setNewProject(v)}
                         />
-                        <datalist id="projects-datalist">
-                            {projects.map(p => <option key={p} value={p} />)}
-                        </datalist>
                     </div>
                     <textarea
                         placeholder="Description (optional)"
@@ -243,23 +274,35 @@ export default function TasksPage() {
                         style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'inherit', fontSize: 13, minHeight: 60, resize: 'vertical', marginBottom: 12 }}
                     />
                     <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                        <select value={newPriority} onChange={e => setNewPriority(e.target.value)}
-                            style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'inherit', fontSize: 12 }}>
-                            <option value="high">🔴 High</option>
-                            <option value="medium">🟡 Medium</option>
-                            <option value="low">🔵 Low</option>
-                        </select>
-                        <select value={newEffort} onChange={e => setNewEffort(e.target.value)}
-                            style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'inherit', fontSize: 12 }}>
-                            {EFFORT_OPTIONS.map(e => <option key={e} value={e}>{e}</option>)}
-                        </select>
-                        <select value={newType} onChange={e => setNewType(e.target.value)}
-                            style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'inherit', fontSize: 12 }}>
-                            <option value="feature">Feature</option>
-                            <option value="bug">Bug</option>
-                            <option value="chore">Chore</option>
-                            <option value="docs">Docs</option>
-                        </select>
+                        <SearchableSelect
+                            options={priorityOptions}
+                            value={newPriority}
+                            onChange={setNewPriority}
+                            placeholder="Priority"
+                            clearable={false}
+                            width="130px"
+                        />
+                        <SearchableSelect
+                            options={EFFORT_OPTIONS.map(e => ({ value: e, label: e }))}
+                            value={newEffort}
+                            onChange={setNewEffort}
+                            placeholder="Effort"
+                            clearable={false}
+                            width="80px"
+                        />
+                        <SearchableSelect
+                            options={[
+                                { value: 'feature', label: 'Feature', icon: '✨' },
+                                { value: 'bug', label: 'Bug', icon: '🐛' },
+                                { value: 'chore', label: 'Chore', icon: '🔧' },
+                                { value: 'docs', label: 'Docs', icon: '📝' },
+                            ]}
+                            value={newType}
+                            onChange={setNewType}
+                            placeholder="Type"
+                            clearable={false}
+                            width="120px"
+                        />
                         <div style={{ flex: 1 }} />
                         <button className="btn btn-secondary" onClick={() => setShowCreate(false)} style={{ fontSize: 12 }}>Cancel</button>
                         <button className="btn btn-primary" onClick={handleCreate} disabled={!newTitle.trim() || !newProject.trim()} style={{ fontSize: 12 }}>Create</button>
@@ -273,18 +316,21 @@ export default function TasksPage() {
                     <button className={view === 'kanban' ? 'btn btn-primary' : 'btn btn-secondary'} onClick={() => setView('kanban')} style={{ borderRadius: 0, fontSize: 12 }}>⊞ Kanban</button>
                     <button className={view === 'list' ? 'btn btn-primary' : 'btn btn-secondary'} onClick={() => setView('list')} style={{ borderRadius: 0, fontSize: 12 }}>☰ List</button>
                 </div>
-                <select value={filterPriority} onChange={e => setFilterPriority(e.target.value)}
-                    style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-secondary)', color: 'inherit', fontSize: 12 }}>
-                    <option value="all">All Priorities</option>
-                    <option value="high">🔴 High</option>
-                    <option value="medium">🟡 Medium</option>
-                    <option value="low">🔵 Low</option>
-                </select>
-                <select value={filterProject} onChange={e => setFilterProject(e.target.value)}
-                    style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-secondary)', color: 'inherit', fontSize: 12 }}>
-                    <option value="all">All Projects</option>
-                    {projects.map(p => <option key={p} value={p}>{p}</option>)}
-                </select>
+                <SearchableSelect
+                    options={priorityOptions}
+                    value={filterPriority}
+                    onChange={setFilterPriority}
+                    placeholder="All Priorities"
+                    width="150px"
+                />
+                <SearchableSelect
+                    options={projectOptions}
+                    value={filterProject}
+                    onChange={setFilterProject}
+                    placeholder="All Projects"
+                    grouped
+                    width="200px"
+                />
                 <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--text-tertiary)' }}>{filtered.length} tasks</span>
             </div>
 

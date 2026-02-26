@@ -589,7 +589,7 @@ app.get('/api/health', (req, res) => {
 
 // ─── File Browser Endpoint ──────────────────────────────────────────────────
 
-import { execSync } from 'node:child_process';
+// import { execSync } from 'node:child_process'; / already imported
 
 // GET /api/files/:path — list directory or get file content
 app.get('/api/files/:filePath', async (req, res) => {

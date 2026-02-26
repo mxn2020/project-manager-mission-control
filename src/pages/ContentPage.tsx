@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
+import { useProjects } from '../hooks/useProjects';
+import SearchableSelect, { type SelectOption } from '../components/SearchableSelect';
 
 const STATUS_FLOW = [
     { key: 'draft', label: 'Draft', icon: '📝', color: '#a78bfa' },
@@ -13,6 +15,7 @@ const STATUS_FLOW = [
 const PLATFORMS = ['twitter', 'reddit', 'youtube', 'linkedin', 'devto', 'github'];
 
 export default function ContentPage() {
+    const { data: projectData } = useProjects();
     const plans = useQuery(api.content.listPlans, {});
     const stats = useQuery(api.content.getContentStats);
     const createPlan = useMutation(api.content.createPlan);
@@ -35,6 +38,22 @@ export default function ContentPage() {
 
     const allPlans = plans || [];
     const filtered = allPlans.filter((p: any) => filter === 'all' || p.status === filter);
+
+    const projectOptions: SelectOption[] = useMemo(() => {
+        const allPaths = new Set<string>();
+        for (const p of (projectData?.projects || [])) allPaths.add(p.path);
+        for (const p of allPlans) allPaths.add((p as any).projectPath);
+        return [...allPaths].sort().map(path => {
+            const segments = path.split('/');
+            return { value: path, label: segments[segments.length - 1] || path, sublabel: segments.slice(0, -1).join('/'), group: segments[0], icon: '📁' };
+        });
+    }, [projectData, allPlans]);
+
+    const platformIcons: Record<string, string> = {
+        twitter: '🐦', reddit: '🔴', youtube: '▶️', linkedin: '💼', devto: '📰', github: '🐙'
+    };
+
+    const platformOptions: SelectOption[] = PLATFORMS.map(p => ({ value: p, label: p, icon: platformIcons[p] || '📄' }));
 
     const handleCreate = async () => {
         if (!newProject.trim() || !newTag.trim()) return;
@@ -68,9 +87,6 @@ export default function ContentPage() {
         setNewItemContent('');
     };
 
-    const platformIcons: Record<string, string> = {
-        twitter: '🐦', reddit: '🔴', youtube: '▶️', linkedin: '💼', devto: '📰', github: '🐙'
-    };
 
     return (
         <div>
@@ -108,8 +124,7 @@ export default function ContentPage() {
             {showCreate && (
                 <div style={{ background: 'var(--bg-secondary)', borderRadius: 12, padding: 20, marginBottom: 16, border: '1px solid var(--border)' }}>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-                        <input placeholder="Project path *" value={newProject} onChange={e => setNewProject(e.target.value)}
-                            style={{ padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'inherit', fontSize: 13 }} />
+                        <SearchableSelect options={projectOptions} value={newProject} onChange={setNewProject} placeholder="Select project *" grouped allowCreate onCreateNew={(v) => setNewProject(v)} />
                         <input placeholder="Release tag * (e.g. v1.0.0)" value={newTag} onChange={e => setNewTag(e.target.value)}
                             style={{ padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'inherit', fontSize: 13 }} />
                     </div>
@@ -218,10 +233,9 @@ export default function ContentPage() {
 
                                         {/* Add Item Form */}
                                         <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                                            <select value={newItemPlatform} onChange={e => setNewItemPlatform(e.target.value)}
-                                                style={{ padding: '6px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'inherit', fontSize: 12 }}>
-                                                {PLATFORMS.map(p => <option key={p} value={p}>{platformIcons[p]} {p}</option>)}
-                                            </select>
+                                            <div style={{ width: 140 }}>
+                                                <SearchableSelect options={platformOptions} value={newItemPlatform} onChange={setNewItemPlatform} placeholder="Platform" clearable={false} />
+                                            </div>
                                             <input
                                                 placeholder="Content draft..."
                                                 value={newItemContent}

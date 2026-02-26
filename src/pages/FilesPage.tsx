@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { getAuthHeaders, API_BASE } from '../lib/api';
 import { useProjects } from '../hooks/useProjects';
+import SearchableSelect, { type SelectOption } from '../components/SearchableSelect';
 
 interface FileEntry {
     name: string;
@@ -104,22 +105,23 @@ export default function FilesPage() {
             </div>
 
             {/* Project Selector */}
-            <div style={{ marginBottom: 16 }}>
-                <select
+            <div style={{ marginBottom: 16, maxWidth: 400 }}>
+                <SearchableSelect
+                    options={useMemo(() => projects.map((p: any) => {
+                        const segments = (p.path || p.name).split('/');
+                        return {
+                            value: p.path || p.name,
+                            label: p.name,
+                            sublabel: `${p.lane} · ${p.tier}`,
+                            group: segments[0] || 'root',
+                            icon: '📁',
+                        };
+                    }), [projects])}
                     value={selectedProject}
-                    onChange={e => { setSelectedProject(e.target.value); setCurrentPath([]); setFileContent(null); }}
-                    style={{
-                        padding: '8px 16px', borderRadius: 8, border: '1px solid var(--border)',
-                        background: 'var(--bg-secondary)', color: 'inherit', fontSize: 13, minWidth: 300,
-                    }}
-                >
-                    <option value="">Select a project...</option>
-                    {projects.map((p: any) => (
-                        <option key={p.path || p.name} value={p.path || p.name}>
-                            {p.name} — {p.lane}/{p.tier}
-                        </option>
-                    ))}
-                </select>
+                    onChange={(v) => { setSelectedProject(v); setCurrentPath([]); setFileContent(null); setError(null); }}
+                    placeholder="Search and select a project..."
+                    grouped
+                />
             </div>
 
             {/* Breadcrumb */}
@@ -144,10 +146,13 @@ export default function FilesPage() {
 
             {/* Error */}
             {error && (
-                <div style={{ padding: 12, background: 'rgba(248,113,113,0.1)', borderRadius: 8, color: '#f87171', fontSize: 13, marginBottom: 12 }}>
-                    ❌ {error}
-                    <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 4 }}>
-                        The /api/files endpoint may not be configured yet. File browsing requires the Express server.
+                <div style={{ padding: 16, background: 'rgba(251,191,36,0.1)', borderRadius: 8, border: '1px solid rgba(251,191,36,0.3)', marginBottom: 12 }}>
+                    <div style={{ fontWeight: 600, fontSize: 13, color: '#fbbf24', marginBottom: 4 }}>🔒 Files not available</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                        This project needs to be <strong>cloned locally</strong> to browse files. The File Explorer requires the Express server to be running with access to cloned repositories.
+                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 6 }}>
+                        Error: {error}
                     </div>
                 </div>
             )}

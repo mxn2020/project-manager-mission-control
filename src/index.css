@@ -1762,3 +1762,180 @@ a:hover {
   font-size: 13px;
   margin: 0;
 }
+
+/* ─── Searchable Select ──────────────────────────────────────────────────── */
+
+.ss-container {
+  position: relative;
+  display: inline-block;
+  font-size: 13px;
+}
+
+.ss-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.ss-trigger {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 10px;
+  min-height: 34px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.ss-trigger:hover {
+  border-color: var(--accent);
+}
+
+.ss-trigger.ss-open {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.15);
+}
+
+.ss-trigger.ss-disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.ss-value {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.ss-placeholder {
+  color: var(--text-tertiary);
+}
+
+.ss-chevron {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+}
+
+.ss-clear {
+  background: none;
+  border: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  font-size: 11px;
+  padding: 0 2px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.ss-clear:hover {
+  color: var(--text-primary);
+}
+
+.ss-search {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 13px;
+  padding: 0;
+  width: 100%;
+}
+
+.ss-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow-y: auto;
+  z-index: 50;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.ss-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.ss-option:hover,
+.ss-option.ss-highlighted {
+  background: rgba(124, 58, 237, 0.1);
+}
+
+.ss-option.ss-selected {
+  background: rgba(124, 58, 237, 0.15);
+}
+
+.ss-option.ss-selected .ss-opt-label {
+  font-weight: 600;
+}
+
+.ss-icon {
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.ss-opt-label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ss-opt-sub {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+}
+
+.ss-group-header {
+  padding: 6px 12px 3px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-top: 1px solid var(--border);
+  margin-top: 2px;
+}
+
+.ss-group-header:first-child {
+  border-top: none;
+  margin-top: 0;
+}
+
+.ss-empty {
+  padding: 16px;
+  text-align: center;
+  color: var(--text-tertiary);
+  font-size: 12px;
+}
+
+.ss-create {
+  border-top: 1px solid var(--border);
+  color: var(--accent);
+}
+
+.ss-create:hover {
+  background: rgba(124, 58, 237, 0.1);
+}
