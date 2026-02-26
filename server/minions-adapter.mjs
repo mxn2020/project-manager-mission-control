@@ -387,8 +387,7 @@ export async function createMinion(typeSlug, data) {
     if (!type) throw new Error(`Unknown type: ${typeSlug}`);
 
     const { title, description, status, priority, tags, ...fields } = data;
-    const minion = await client.createMinion({
-        type: type.id,
+    const wrapper = await client.create(typeSlug, {
         title: title || 'Untitled',
         description: description || '',
         status: status || 'active',
@@ -396,8 +395,9 @@ export async function createMinion(typeSlug, data) {
         tags: Array.isArray(tags) ? tags : [],
         fields,
     });
+    await client.save(wrapper.data);
 
-    return minionToFlat(minion);
+    return minionToFlat(wrapper.data);
 }
 
 /**
@@ -408,7 +408,7 @@ export async function createMinion(typeSlug, data) {
 export async function getMinion(id) {
     const client = getMinions();
     try {
-        const minion = await client.getMinion(id);
+        const minion = await client.load(id);
         return minion ? minionToFlat(minion) : null;
     } catch { return null; }
 }
@@ -421,6 +421,9 @@ export async function getMinion(id) {
  */
 export async function updateMinion(id, updates) {
     const client = getMinions();
+    const existing = await client.load(id);
+    if (!existing) throw new Error(`Minion not found: ${id}`);
+
     const { title, description, status, priority, tags, ...fields } = updates;
 
     const patch = {};
@@ -431,8 +434,9 @@ export async function updateMinion(id, updates) {
     if (tags !== undefined) patch.tags = tags;
     if (Object.keys(fields).length > 0) patch.fields = fields;
 
-    const minion = await client.updateMinion(id, patch);
-    return minionToFlat(minion);
+    const wrapper = await client.update(existing, patch);
+    await client.save(wrapper.data);
+    return minionToFlat(wrapper.data);
 }
 
 /**
@@ -441,7 +445,9 @@ export async function updateMinion(id, updates) {
  */
 export async function deleteMinion(id) {
     const client = getMinions();
-    await client.deleteMinion(id);
+    const existing = await client.load(id);
+    if (!existing) throw new Error(`Minion not found: ${id}`);
+    await client.remove(existing);
 }
 
 /**

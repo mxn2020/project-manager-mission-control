@@ -2,6 +2,16 @@
 
 All notable changes to Mission Control are documented here.
 
+## [1.0.1] — 2026-02-26
+
+### 🐛 Bug Fixes
+- **Minions Adapter** — Fixed `client.createMinion is not a function` crash in `minions-adapter.mjs`
+  - `createMinion` → `client.create()` + `client.save()`
+  - `getMinion` → `client.load()`
+  - `updateMinion` → `client.load()` + `client.update()` + `client.save()`
+  - `deleteMinion` → `client.load()` + `client.remove()`
+- **Ideas API** — Fixed 500 Internal Server Error on `POST /api/ideas` (caused by above)
+
 ## [1.0.0] — 2026-02-26
 
 ### 🚀 Features
@@ -40,4 +50,5 @@ All notable changes to Mission Control are documented here.
 - Hybrid project source: legacy PROJECT.yaml scanner + Minions adapter
 - VPS deployment via rsync + PM2
 
+[1.0.1]: https://github.com/mxn2020/project-manager-mission-control/releases/tag/v1.0.1
 [1.0.0]: https://github.com/mxn2020/project-manager-mission-control/releases/tag/v1.0.0
