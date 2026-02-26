@@ -22,6 +22,9 @@ import RoadmapPage from './pages/RoadmapPage';
 import IntegrationsPage from './pages/IntegrationsPage';
 import FilesPage from './pages/FilesPage';
 import DependencyGraphPage from './pages/DependencyGraphPage';
+import WorkflowsPage from './pages/WorkflowsPage';
+import IdeasPage from './pages/IdeasPage';
+import WikiPage from './pages/WikiPage';
 import LoginPage from './pages/LoginPage';
 
 function AppShell() {
@@ -64,6 +67,9 @@ function AppShell() {
     if (p.startsWith('/integrations')) return WORKSPACES.find(ws => ws.id === 'integrations')!;
     if (p.startsWith('/files')) return WORKSPACES.find(ws => ws.id === 'files')!;
     if (p.startsWith('/dependencies')) return WORKSPACES.find(ws => ws.id === 'dependencies')!;
+    if (p.startsWith('/workflows')) return WORKSPACES.find(ws => ws.id === 'workflows')!;
+    if (p.startsWith('/ideas')) return WORKSPACES.find(ws => ws.id === 'ideas')!;
+    if (p.startsWith('/wiki')) return WORKSPACES.find(ws => ws.id === 'wiki')!;
     return WORKSPACES[0];
   };
   const activeWs = getActiveWorkspace();
@@ -166,6 +172,9 @@ function AppShell() {
             <Route path="/roadmap" element={<RoadmapPage />} />
             <Route path="/integrations" element={<IntegrationsPage />} />
             <Route path="/dependencies" element={<DependencyGraphPage />} />
+            <Route path="/workflows" element={<WorkflowsPage />} />
+            <Route path="/ideas" element={<IdeasPage />} />
+            <Route path="/wiki" element={<WikiPage />} />
             <Route path="/files" element={<FilesPage />} />
           </Routes>
         </div>

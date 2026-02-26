@@ -820,6 +820,183 @@ app.put('/api/content/:id/items/:itemId', async (req, res) => {
     }
 });
 
+// ─── Workflows API (Minions-backed) ─────────────────────────────────────────
+
+function parseSteps(raw) {
+    if (!raw) return [];
+    if (Array.isArray(raw)) return raw;
+    try { return JSON.parse(raw); } catch { return []; }
+}
+
+app.get('/api/workflows', async (req, res) => {
+    try {
+        if (!minionsReady) return res.status(503).json({ error: 'Minions not initialized' });
+        const all = await listByType('mc-workflow');
+        let workflows = all.map(m => {
+            const flat = minionToFlat(m);
+            flat.steps = parseSteps(flat.steps);
+            return flat;
+        });
+        const { category, project } = req.query;
+        if (category) workflows = workflows.filter(w => w.category === category);
+        if (project) workflows = workflows.filter(w => (w.linkedProjects || []).includes(project));
+        workflows.sort((a, b) => new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime());
+        res.json(workflows);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/workflows', async (req, res) => {
+    try {
+        if (!minionsReady) return res.status(503).json({ error: 'Minions not initialized' });
+        const { title, description, category, steps, linkedProjects, isTemplate, schedule } = req.body;
+        if (!title) return res.status(400).json({ error: 'title required' });
+        const wf = await createMinion('mc-workflow', {
+            title, description: description || '', status: 'active',
+            category: category || 'custom',
+            steps: JSON.stringify(steps || []),
+            linkedProjects: linkedProjects || [],
+            isTemplate: isTemplate || false,
+            schedule: schedule || '',
+            tags: linkedProjects || [],
+        });
+        wf.steps = parseSteps(wf.steps);
+        res.status(201).json(wf);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.put('/api/workflows/:id', async (req, res) => {
+    try {
+        if (!minionsReady) return res.status(503).json({ error: 'Minions not initialized' });
+        const updates = { ...req.body };
+        if (Array.isArray(updates.steps)) updates.steps = JSON.stringify(updates.steps);
+        if (Array.isArray(updates.linkedProjects)) updates.tags = updates.linkedProjects;
+        const wf = await updateMinion(req.params.id, updates);
+        wf.steps = parseSteps(wf.steps);
+        res.json(wf);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.delete('/api/workflows/:id', async (req, res) => {
+    try {
+        if (!minionsReady) return res.status(503).json({ error: 'Minions not initialized' });
+        await deleteMinion(req.params.id);
+        res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ─── Ideas API (Minions-backed) ─────────────────────────────────────────────
+
+app.get('/api/ideas', async (req, res) => {
+    try {
+        if (!minionsReady) return res.status(503).json({ error: 'Minions not initialized' });
+        const all = await listByType('mc-idea');
+        let ideas = all.map(minionToFlat);
+        const { category, search, archived } = req.query;
+        if (category) ideas = ideas.filter(i => i.category === category);
+        if (archived === 'true') ideas = ideas.filter(i => i.archived);
+        else if (archived !== 'all') ideas = ideas.filter(i => !i.archived);
+        if (search) {
+            const q = search.toLowerCase();
+            ideas = ideas.filter(i =>
+                (i.title || '').toLowerCase().includes(q) ||
+                (i.body || '').toLowerCase().includes(q) ||
+                (i.description || '').toLowerCase().includes(q) ||
+                (i.tags || []).some(t => t.toLowerCase().includes(q))
+            );
+        }
+        ideas.sort((a, b) => new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime());
+        res.json(ideas);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/ideas', async (req, res) => {
+    try {
+        if (!minionsReady) return res.status(503).json({ error: 'Minions not initialized' });
+        const { title, body, category, score, tags, linkedProjects } = req.body;
+        if (!title) return res.status(400).json({ error: 'title required' });
+        const idea = await createMinion('mc-idea', {
+            title, description: body || '', status: 'active',
+            body: body || '', category: category || 'other',
+            score: score || 5, archived: false,
+            linkedIdeas: [], linkedProjects: linkedProjects || [],
+            tags: tags || [],
+        });
+        res.status(201).json(idea);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.put('/api/ideas/:id', async (req, res) => {
+    try {
+        if (!minionsReady) return res.status(503).json({ error: 'Minions not initialized' });
+        const idea = await updateMinion(req.params.id, req.body);
+        res.json(idea);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.delete('/api/ideas/:id', async (req, res) => {
+    try {
+        if (!minionsReady) return res.status(503).json({ error: 'Minions not initialized' });
+        await deleteMinion(req.params.id);
+        res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ─── Wiki API (Minions-backed) ──────────────────────────────────────────────
+
+app.get('/api/wiki', async (req, res) => {
+    try {
+        if (!minionsReady) return res.status(503).json({ error: 'Minions not initialized' });
+        const all = await listByType('mc-wiki-article');
+        let articles = all.map(minionToFlat);
+        const { category, scope, search } = req.query;
+        if (category) articles = articles.filter(a => a.category === category);
+        if (scope) articles = articles.filter(a => a.scope === scope);
+        if (search) {
+            const q = search.toLowerCase();
+            articles = articles.filter(a =>
+                (a.title || '').toLowerCase().includes(q) ||
+                (a.body || '').toLowerCase().includes(q) ||
+                (a.tags || []).some(t => t.toLowerCase().includes(q))
+            );
+        }
+        articles.sort((a, b) => new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime());
+        res.json(articles);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/wiki', async (req, res) => {
+    try {
+        if (!minionsReady) return res.status(503).json({ error: 'Minions not initialized' });
+        const { title, body, category, scope, tags, relatedArticles, linkedProjects } = req.body;
+        if (!title) return res.status(400).json({ error: 'title required' });
+        const article = await createMinion('mc-wiki-article', {
+            title, description: (body || '').slice(0, 200),
+            status: 'active', body: body || '',
+            category: category || 'reference', scope: scope || 'general',
+            relatedArticles: relatedArticles || [],
+            linkedProjects: linkedProjects || [],
+            tags: tags || [],
+        });
+        res.status(201).json(article);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.put('/api/wiki/:id', async (req, res) => {
+    try {
+        if (!minionsReady) return res.status(503).json({ error: 'Minions not initialized' });
+        const article = await updateMinion(req.params.id, req.body);
+        res.json(article);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.delete('/api/wiki/:id', async (req, res) => {
+    try {
+        if (!minionsReady) return res.status(503).json({ error: 'Minions not initialized' });
+        await deleteMinion(req.params.id);
+        res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // ─── Dependency Graph API ───────────────────────────────────────────────────
 
 app.get('/api/dependencies', async (req, res) => {

@@ -59,6 +59,44 @@ export const api = {
     },
     scan: () => request<import('./types').StatusData>('/api/scan', { method: 'POST' }),
     health: () => request<{ status: string }>('/api/health'),
+    workflows: {
+        list: (filters?: { category?: string; project?: string }) => {
+            const p = new URLSearchParams();
+            if (filters?.category) p.set('category', filters.category);
+            if (filters?.project) p.set('project', filters.project);
+            const qs = p.toString();
+            return request<any[]>(`/api/workflows${qs ? '?' + qs : ''}`);
+        },
+        create: (data: Record<string, unknown>) => request<any>('/api/workflows', { method: 'POST', body: JSON.stringify(data) }),
+        update: (id: string, data: Record<string, unknown>) => request<any>(`/api/workflows/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+        delete: (id: string) => request<{ success: boolean }>(`/api/workflows/${id}`, { method: 'DELETE' }),
+    },
+    ideas: {
+        list: (filters?: { category?: string; search?: string; archived?: string }) => {
+            const p = new URLSearchParams();
+            if (filters?.category) p.set('category', filters.category);
+            if (filters?.search) p.set('search', filters.search);
+            if (filters?.archived) p.set('archived', filters.archived);
+            const qs = p.toString();
+            return request<any[]>(`/api/ideas${qs ? '?' + qs : ''}`);
+        },
+        create: (data: Record<string, unknown>) => request<any>('/api/ideas', { method: 'POST', body: JSON.stringify(data) }),
+        update: (id: string, data: Record<string, unknown>) => request<any>(`/api/ideas/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+        delete: (id: string) => request<{ success: boolean }>(`/api/ideas/${id}`, { method: 'DELETE' }),
+    },
+    wiki: {
+        list: (filters?: { category?: string; scope?: string; search?: string }) => {
+            const p = new URLSearchParams();
+            if (filters?.category) p.set('category', filters.category);
+            if (filters?.scope) p.set('scope', filters.scope);
+            if (filters?.search) p.set('search', filters.search);
+            const qs = p.toString();
+            return request<any[]>(`/api/wiki${qs ? '?' + qs : ''}`);
+        },
+        create: (data: Record<string, unknown>) => request<any>('/api/wiki', { method: 'POST', body: JSON.stringify(data) }),
+        update: (id: string, data: Record<string, unknown>) => request<any>(`/api/wiki/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+        delete: (id: string) => request<{ success: boolean }>(`/api/wiki/${id}`, { method: 'DELETE' }),
+    },
 };
 
 export { getAuthHeaders, API_BASE };

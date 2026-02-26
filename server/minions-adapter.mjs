@@ -233,6 +233,62 @@ const ideationTypes = [
     },
 ];
 
+// Workflow Bundle
+const workflowTypes = [
+    {
+        id: 'bundle-workflow-workflow',
+        name: 'MCWorkflow',
+        slug: 'mc-workflow',
+        description: 'A reusable workflow with ordered steps',
+        icon: '🔄',
+        schema: [
+            { name: 'category', type: 'select', label: 'category', options: ['project-setup', 'content-loop', 'daily-routine', 'blog-posting', 'content-generation', 'update-cycle', 'custom'] },
+            { name: 'steps', type: 'textarea', label: 'steps' }, // JSON array [{id,title,description,order,done}]
+            { name: 'linkedProjects', type: 'tags', label: 'linkedProjects' },
+            { name: 'isTemplate', type: 'boolean', label: 'isTemplate' },
+            { name: 'schedule', type: 'string', label: 'schedule' }, // cron expression or null
+            { name: 'lastRunAt', type: 'date', label: 'lastRunAt' },
+        ],
+    },
+];
+
+// Ideas / Brainstorming Bundle
+const mcIdeaTypes = [
+    {
+        id: 'bundle-mcidea-idea',
+        name: 'MCIdea',
+        slug: 'mc-idea',
+        description: 'A brainstorming idea with potential score',
+        icon: '💡',
+        schema: [
+            { name: 'body', type: 'textarea', label: 'body' },
+            { name: 'category', type: 'select', label: 'category', options: ['product', 'feature', 'content', 'business', 'research', 'experiment', 'other'] },
+            { name: 'score', type: 'number', label: 'score' }, // 1-10 potential
+            { name: 'linkedIdeas', type: 'tags', label: 'linkedIdeas' },
+            { name: 'linkedProjects', type: 'tags', label: 'linkedProjects' },
+            { name: 'archived', type: 'boolean', label: 'archived' },
+        ],
+    },
+];
+
+// Standards / Wiki Bundle
+const wikiTypes = [
+    {
+        id: 'bundle-wiki-article',
+        name: 'MCWikiArticle',
+        slug: 'mc-wiki-article',
+        description: 'A knowledge base article or standard',
+        icon: '📖',
+        schema: [
+            { name: 'body', type: 'textarea', label: 'body' }, // markdown
+            { name: 'category', type: 'select', label: 'category', options: ['standard', 'pattern', 'knowhow', 'setup-guide', 'coding-pattern', 'reference', 'checklist'] },
+            { name: 'scope', type: 'select', label: 'scope', options: ['frontend', 'backend', 'devops', 'design', 'general'] },
+            { name: 'relatedArticles', type: 'tags', label: 'relatedArticles' },
+            { name: 'linkedProjects', type: 'tags', label: 'linkedProjects' },
+        ],
+    },
+];
+
 // All types combined
 const ALL_TYPES = [
     ...portfolioTypes,
@@ -240,6 +296,9 @@ const ALL_TYPES = [
     ...contentTypes,
     ...financeTypes,
     ...ideationTypes,
+    ...workflowTypes,
+    ...mcIdeaTypes,
+    ...wikiTypes,
 ];
 
 // ─── Initialization ─────────────────────────────────────────────────────────
