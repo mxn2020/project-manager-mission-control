@@ -950,6 +950,64 @@ app.delete('/api/ideas/:id', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// Promote idea → task
+app.post('/api/ideas/:id/promote', async (req, res) => {
+    try {
+        if (!minionsReady) return res.status(503).json({ error: 'Minions not initialized' });
+        const idea = await getMinion(req.params.id);
+        if (!idea) return res.status(404).json({ error: 'Idea not found' });
+        // Create mc-task from idea
+        const task = await createMinion('mc-task', {
+            title: idea.title,
+            description: idea.body || idea.description || '',
+            status: 'todo',
+            priority: (idea.score || 5) >= 8 ? 'high' : (idea.score || 5) >= 5 ? 'medium' : 'low',
+            tags: idea.tags || [],
+            projectPath: (idea.linkedProjects || [])[0] || '',
+            type: 'feature',
+            effort: 'M',
+        });
+        // Archive the idea
+        await updateMinion(req.params.id, { archived: true });
+        res.json({ task, archivedIdea: req.params.id });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Combine multiple ideas into one
+app.post('/api/ideas/combine', async (req, res) => {
+    try {
+        if (!minionsReady) return res.status(503).json({ error: 'Minions not initialized' });
+        const { ids, title } = req.body;
+        if (!Array.isArray(ids) || ids.length < 2) return res.status(400).json({ error: 'Need at least 2 idea IDs' });
+        // Load all ideas
+        const ideas = [];
+        for (const id of ids) {
+            const idea = await getMinion(id);
+            if (idea) ideas.push({ id, ...idea });
+        }
+        if (ideas.length < 2) return res.status(400).json({ error: 'Could not find enough ideas' });
+        // Merge: combine bodies, union tags, take max score
+        const combinedBody = ideas.map(i => `## ${i.title}\n${i.body || i.description || ''}`).join('\n\n---\n\n');
+        const allTags = [...new Set(ideas.flatMap(i => i.tags || []))];
+        const maxScore = Math.max(...ideas.map(i => i.score || 5));
+        const allProjects = [...new Set(ideas.flatMap(i => i.linkedProjects || []))];
+        const allLinked = [...new Set(ideas.flatMap(i => i.linkedIdeas || []))].filter(id => !ids.includes(id));
+        // Create combined idea
+        const combined = await createMinion('mc-idea', {
+            title: title || ideas.map(i => i.title).join(' + '),
+            body: combinedBody,
+            category: ideas[0].category || 'other',
+            score: maxScore,
+            tags: allTags,
+            linkedProjects: allProjects,
+            linkedIdeas: allLinked,
+        });
+        // Archive originals
+        for (const id of ids) await updateMinion(id, { archived: true });
+        res.json({ combined, archivedIds: ids });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // ─── Wiki API (Minions-backed) ──────────────────────────────────────────────
 
 app.get('/api/wiki', async (req, res) => {

@@ -83,6 +83,8 @@ export const api = {
         create: (data: Record<string, unknown>) => request<any>('/api/ideas', { method: 'POST', body: JSON.stringify(data) }),
         update: (id: string, data: Record<string, unknown>) => request<any>(`/api/ideas/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
         delete: (id: string) => request<{ success: boolean }>(`/api/ideas/${id}`, { method: 'DELETE' }),
+        promote: (id: string) => request<any>(`/api/ideas/${id}/promote`, { method: 'POST' }),
+        combine: (ids: string[], title?: string) => request<any>('/api/ideas/combine', { method: 'POST', body: JSON.stringify({ ids, title }) }),
     },
     wiki: {
         list: (filters?: { category?: string; scope?: string; search?: string }) => {
