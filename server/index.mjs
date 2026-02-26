@@ -146,28 +146,78 @@ function toYaml(obj) {
     return lines.join('\n') + '\n';
 }
 
-const SKIP_DIRS = new Set([
-    'node_modules', '.git', '.github', '.vscode', '.claude', '.gemini',
-    'dist', 'build', '.next', '.output', '.netlify', '.vite', '.tanstack',
-    '__pycache__', 'project-dashboard', 'mission-control-app'
-]);
+// ─── Scanner Configuration ──────────────────────────────────────────────────
 
-function findProjectYamls(dir, maxDepth = 8, currentDepth = 0) {
+const CONFIG_FILE = path.join(ROOT, '.mc-config.json');
+const DEFAULT_CONFIG = {
+    yamlFilenames: ['PROJECT.yaml'],
+    maxScanDepth: 8,
+    ignorePatterns: [
+        'node_modules', '.git', '.github', '.vscode', '.claude', '.gemini',
+        'dist', 'build', '.next', '.output', '.netlify', '.vite', '.tanstack',
+        '__pycache__', 'project-dashboard', 'mission-control-app',
+    ],
+    scanSubfolders: false,        // look for YAMLs in subfolder (e.g. .meta/)
+    scanSubfolderName: '.meta',   // subfolder name if scanSubfolders is true
+};
+
+let scannerConfig = { ...DEFAULT_CONFIG };
+
+// Load persisted config
+try {
+    if (fs.existsSync(CONFIG_FILE)) {
+        const saved = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf-8'));
+        scannerConfig = { ...DEFAULT_CONFIG, ...saved };
+    }
+} catch { /* use defaults */ }
+
+function saveScannerConfig() {
+    try { fs.writeFileSync(CONFIG_FILE, JSON.stringify(scannerConfig, null, 2)); } catch { }
+}
+
+const SKIP_DIRS = new Set(scannerConfig.ignorePatterns);
+
+function findProjectYamls(dir, maxDepth = scannerConfig.maxScanDepth, currentDepth = 0) {
     const results = [];
     if (currentDepth > maxDepth) return results;
     let entries;
     try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return results; }
-    const yamlPath = path.join(dir, 'PROJECT.yaml');
-    if (fs.existsSync(yamlPath)) {
-        try {
-            const content = fs.readFileSync(yamlPath, 'utf-8');
-            const data = parseYaml(content);
-            data._path = path.relative(ROOT, dir);
-            data._yamlPath = path.relative(ROOT, yamlPath);
-            data._absolutePath = dir;
-            results.push(data);
-        } catch (err) {
-            console.warn(`⚠️  Failed to parse ${yamlPath}: ${err.message}`);
+
+    // Check for YAML files matching configured filenames
+    for (const yamlName of scannerConfig.yamlFilenames) {
+        // Direct path
+        const yamlPath = path.join(dir, yamlName);
+        if (fs.existsSync(yamlPath)) {
+            try {
+                const content = fs.readFileSync(yamlPath, 'utf-8');
+                const data = parseYaml(content);
+                data._path = path.relative(ROOT, dir);
+                data._yamlPath = path.relative(ROOT, yamlPath);
+                data._absolutePath = dir;
+                data._yamlFile = yamlName;
+                results.push(data);
+            } catch (err) {
+                console.warn(`⚠️  Failed to parse ${yamlPath}: ${err.message}`);
+            }
+            break; // Only one YAML per project dir
+        }
+        // Subfolder path (e.g. .meta/PROJECT.yaml)
+        if (scannerConfig.scanSubfolders && scannerConfig.scanSubfolderName) {
+            const subPath = path.join(dir, scannerConfig.scanSubfolderName, yamlName);
+            if (fs.existsSync(subPath)) {
+                try {
+                    const content = fs.readFileSync(subPath, 'utf-8');
+                    const data = parseYaml(content);
+                    data._path = path.relative(ROOT, dir);
+                    data._yamlPath = path.relative(ROOT, subPath);
+                    data._absolutePath = dir;
+                    data._yamlFile = yamlName;
+                    results.push(data);
+                } catch (err) {
+                    console.warn(`⚠️  Failed to parse ${subPath}: ${err.message}`);
+                }
+                break;
+            }
         }
     }
     for (const entry of entries) {
@@ -474,6 +524,48 @@ app.post('/api/scan', async (req, res) => {
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
+});
+
+// ─── Scanner Config API ─────────────────────────────────────────────────────
+
+// GET /api/config — get current scanner configuration
+app.get('/api/config', (req, res) => {
+    res.json(scannerConfig);
+});
+
+// PUT /api/config — update scanner configuration
+app.put('/api/config', (req, res) => {
+    try {
+        const updates = req.body;
+        // Validate
+        if (updates.yamlFilenames && !Array.isArray(updates.yamlFilenames)) {
+            return res.status(400).json({ error: 'yamlFilenames must be an array' });
+        }
+        if (updates.ignorePatterns && !Array.isArray(updates.ignorePatterns)) {
+            return res.status(400).json({ error: 'ignorePatterns must be an array' });
+        }
+        if (updates.maxScanDepth !== undefined && (typeof updates.maxScanDepth !== 'number' || updates.maxScanDepth < 1 || updates.maxScanDepth > 20)) {
+            return res.status(400).json({ error: 'maxScanDepth must be 1-20' });
+        }
+        // Merge
+        Object.assign(scannerConfig, updates);
+        // Update SKIP_DIRS from new config
+        SKIP_DIRS.clear();
+        for (const p of scannerConfig.ignorePatterns) SKIP_DIRS.add(p);
+        saveScannerConfig();
+        res.json(scannerConfig);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// POST /api/config/reset — reset config to defaults
+app.post('/api/config/reset', (req, res) => {
+    Object.assign(scannerConfig, DEFAULT_CONFIG);
+    SKIP_DIRS.clear();
+    for (const p of DEFAULT_CONFIG.ignorePatterns) SKIP_DIRS.add(p);
+    saveScannerConfig();
+    res.json(scannerConfig);
 });
 
 // ─── AI Config Endpoint ─────────────────────────────────────────────────────

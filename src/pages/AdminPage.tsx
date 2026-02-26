@@ -1,6 +1,15 @@
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { getAuthHeaders, API_BASE } from '../lib/api';
+
+interface ScannerConfig {
+    yamlFilenames: string[];
+    maxScanDepth: number;
+    ignorePatterns: string[];
+    scanSubfolders: boolean;
+    scanSubfolderName: string;
+}
 
 export default function AdminPage() {
     const providers = useQuery(api.aiConfig.listProviders);
@@ -10,7 +19,7 @@ export default function AdminPage() {
     const toggleProvider = useMutation(api.aiConfig.toggleProvider);
     const toggleModel = useMutation(api.aiConfig.toggleModel);
 
-    const [tab, setTab] = useState<'providers' | 'models' | 'system'>('providers');
+    const [tab, setTab] = useState<'providers' | 'models' | 'datasources' | 'system'>('providers');
     const [showAddProvider, setShowAddProvider] = useState(false);
     const [showAddModel, setShowAddModel] = useState(false);
 
@@ -28,6 +37,53 @@ export default function AdminPage() {
     const [mContextWindow, setMContextWindow] = useState('128000');
     const [mCostInput, setMCostInput] = useState('0');
     const [mCostOutput, setMCostOutput] = useState('0');
+
+    // Scanner config
+    const [config, setConfig] = useState<ScannerConfig | null>(null);
+    const [configLoading, setConfigLoading] = useState(false);
+    const [configSaved, setConfigSaved] = useState(false);
+    const [newYamlFile, setNewYamlFile] = useState('');
+    const [newIgnore, setNewIgnore] = useState('');
+
+    useEffect(() => {
+        if (tab === 'datasources' && !config) fetchConfig();
+    }, [tab]);
+
+    const fetchConfig = async () => {
+        setConfigLoading(true);
+        try {
+            const res = await fetch(`${API_BASE}/api/config`, { headers: getAuthHeaders() });
+            if (res.ok) setConfig(await res.json());
+        } catch { } finally { setConfigLoading(false); }
+    };
+
+    const saveConfig = async (updates: Partial<ScannerConfig>) => {
+        try {
+            const res = await fetch(`${API_BASE}/api/config`, {
+                method: 'PUT',
+                headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+                body: JSON.stringify(updates),
+            });
+            if (res.ok) {
+                setConfig(await res.json());
+                setConfigSaved(true);
+                setTimeout(() => setConfigSaved(false), 2000);
+            }
+        } catch { }
+    };
+
+    const resetConfig = async () => {
+        try {
+            const res = await fetch(`${API_BASE}/api/config/reset`, {
+                method: 'POST', headers: getAuthHeaders(),
+            });
+            if (res.ok) {
+                setConfig(await res.json());
+                setConfigSaved(true);
+                setTimeout(() => setConfigSaved(false), 2000);
+            }
+        } catch { }
+    };
 
     const handleAddProvider = async () => {
         if (!pName || !pSlug || !pUrl || !pKey) return;
@@ -53,18 +109,21 @@ export default function AdminPage() {
         setShowAddModel(false);
     };
 
+    const inputStyle = { padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'inherit', fontSize: 13, boxSizing: 'border-box' as const, width: '100%' };
+
     return (
         <div>
             <div className="page-header">
                 <h1 className="page-title">🔧 Admin</h1>
-                <p className="page-description">Manage AI providers, models, and system configuration</p>
+                <p className="page-description">Manage AI providers, models, data sources, and system configuration</p>
             </div>
 
             {/* Tabs */}
             <div className="filter-bar" style={{ marginBottom: 20 }}>
-                {(['providers', 'models', 'system'] as const).map(t => (
+                {(['providers', 'models', 'datasources', 'system'] as const).map(t => (
                     <button key={t} className={`btn ${tab === t ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setTab(t)} style={{ textTransform: 'capitalize' }}>
-                        {t === 'providers' ? '🔌 ' : t === 'models' ? '🤖 ' : '⚙️ '}{t}
+                        {t === 'providers' ? '🔌 ' : t === 'models' ? '🤖 ' : t === 'datasources' ? '📂 ' : '⚙️ '}
+                        {t === 'datasources' ? 'Data Sources' : t}
                     </button>
                 ))}
             </div>
@@ -80,14 +139,10 @@ export default function AdminPage() {
                     {showAddProvider && (
                         <div style={{ background: 'var(--bg-secondary)', borderRadius: 12, padding: 16, marginBottom: 16, border: '1px solid var(--border)' }}>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-                                <input placeholder="Name (e.g. NVIDIA NIM)" value={pName} onChange={e => setPName(e.target.value)}
-                                    style={{ padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'inherit', fontSize: 13 }} />
-                                <input placeholder="Slug (e.g. nvidia)" value={pSlug} onChange={e => setPSlug(e.target.value)}
-                                    style={{ padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'inherit', fontSize: 13 }} />
-                                <input placeholder="Base URL" value={pUrl} onChange={e => setPUrl(e.target.value)}
-                                    style={{ padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'inherit', fontSize: 13 }} />
-                                <input placeholder="API Key Env Var (e.g. NVIDIA_API_KEY)" value={pKey} onChange={e => setPKey(e.target.value)}
-                                    style={{ padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'inherit', fontSize: 13 }} />
+                                <input placeholder="Name (e.g. NVIDIA NIM)" value={pName} onChange={e => setPName(e.target.value)} style={inputStyle} />
+                                <input placeholder="Slug (e.g. nvidia)" value={pSlug} onChange={e => setPSlug(e.target.value)} style={inputStyle} />
+                                <input placeholder="Base URL" value={pUrl} onChange={e => setPUrl(e.target.value)} style={inputStyle} />
+                                <input placeholder="API Key Env Var (e.g. NVIDIA_API_KEY)" value={pKey} onChange={e => setPKey(e.target.value)} style={inputStyle} />
                             </div>
                             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                                 <button className="btn btn-secondary" onClick={() => setShowAddProvider(false)}>Cancel</button>
@@ -102,21 +157,16 @@ export default function AdminPage() {
                                 display: 'flex', alignItems: 'center', gap: 16, padding: '14px 16px',
                                 background: 'var(--bg-secondary)', borderRadius: 8, marginBottom: 8, border: '1px solid var(--border)',
                             }}>
-                                <div style={{
-                                    width: 10, height: 10, borderRadius: '50%',
-                                    background: p.isEnabled ? '#34d399' : '#6b7280',
-                                }} />
+                                <div style={{ width: 10, height: 10, borderRadius: '50%', background: p.isEnabled ? '#34d399' : '#6b7280' }} />
                                 <div style={{ flex: 1 }}>
                                     <div style={{ fontWeight: 600, fontSize: 14 }}>{p.name}</div>
                                     <div style={{ fontSize: 11, color: 'var(--text-tertiary)', fontFamily: 'monospace' }}>{p.baseUrl}</div>
                                 </div>
                                 <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{p.slug}</span>
                                 <span style={{ fontSize: 11, color: 'var(--text-tertiary)', fontFamily: 'monospace' }}>{p.apiKeyEnvVar}</span>
-                                <button
-                                    className={`btn ${p.isEnabled ? 'btn-secondary' : 'btn-primary'}`}
+                                <button className={`btn ${p.isEnabled ? 'btn-secondary' : 'btn-primary'}`}
                                     onClick={() => toggleProvider({ id: p._id, isEnabled: !p.isEnabled })}
-                                    style={{ fontSize: 11, padding: '4px 12px' }}
-                                >
+                                    style={{ fontSize: 11, padding: '4px 12px' }}>
                                     {p.isEnabled ? 'Disable' : 'Enable'}
                                 </button>
                             </div>
@@ -136,21 +186,15 @@ export default function AdminPage() {
                     {showAddModel && (
                         <div style={{ background: 'var(--bg-secondary)', borderRadius: 12, padding: 16, marginBottom: 16, border: '1px solid var(--border)' }}>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-                                <select value={mProviderId} onChange={e => setMProviderId(e.target.value)}
-                                    style={{ padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'inherit', fontSize: 13 }}>
+                                <select value={mProviderId} onChange={e => setMProviderId(e.target.value)} style={inputStyle}>
                                     <option value="">Select Provider</option>
                                     {(providers || []).map((p: any) => <option key={p._id} value={p._id}>{p.name}</option>)}
                                 </select>
-                                <input placeholder="Model ID" value={mModelId} onChange={e => setMModelId(e.target.value)}
-                                    style={{ padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'inherit', fontSize: 13 }} />
-                                <input placeholder="Display Name" value={mDisplayName} onChange={e => setMDisplayName(e.target.value)}
-                                    style={{ padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'inherit', fontSize: 13 }} />
-                                <input placeholder="Max Tokens" type="number" value={mMaxTokens} onChange={e => setMMaxTokens(e.target.value)}
-                                    style={{ padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'inherit', fontSize: 13 }} />
-                                <input placeholder="Context Window" type="number" value={mContextWindow} onChange={e => setMContextWindow(e.target.value)}
-                                    style={{ padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'inherit', fontSize: 13 }} />
-                                <input placeholder="Cost/M Input (cents)" type="number" step="0.01" value={mCostInput} onChange={e => setMCostInput(e.target.value)}
-                                    style={{ padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'inherit', fontSize: 13 }} />
+                                <input placeholder="Model ID" value={mModelId} onChange={e => setMModelId(e.target.value)} style={inputStyle} />
+                                <input placeholder="Display Name" value={mDisplayName} onChange={e => setMDisplayName(e.target.value)} style={inputStyle} />
+                                <input placeholder="Max Tokens" type="number" value={mMaxTokens} onChange={e => setMMaxTokens(e.target.value)} style={inputStyle} />
+                                <input placeholder="Context Window" type="number" value={mContextWindow} onChange={e => setMContextWindow(e.target.value)} style={inputStyle} />
+                                <input placeholder="Cost/M Input (cents)" type="number" step="0.01" value={mCostInput} onChange={e => setMCostInput(e.target.value)} style={inputStyle} />
                             </div>
                             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                                 <button className="btn btn-secondary" onClick={() => setShowAddModel(false)}>Cancel</button>
@@ -165,10 +209,7 @@ export default function AdminPage() {
                                 display: 'flex', alignItems: 'center', gap: 16, padding: '14px 16px',
                                 background: 'var(--bg-secondary)', borderRadius: 8, marginBottom: 8, border: '1px solid var(--border)',
                             }}>
-                                <div style={{
-                                    width: 10, height: 10, borderRadius: '50%',
-                                    background: m.isEnabled ? '#34d399' : '#6b7280',
-                                }} />
+                                <div style={{ width: 10, height: 10, borderRadius: '50%', background: m.isEnabled ? '#34d399' : '#6b7280' }} />
                                 <div style={{ flex: 1 }}>
                                     <div style={{ fontWeight: 600, fontSize: 14 }}>
                                         {m.displayName}
@@ -178,15 +219,126 @@ export default function AdminPage() {
                                 </div>
                                 <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{m.maxTokens} max</span>
                                 <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{m.contextWindow?.toLocaleString()} ctx</span>
-                                <button
-                                    className={`btn ${m.isEnabled ? 'btn-secondary' : 'btn-primary'}`}
+                                <button className={`btn ${m.isEnabled ? 'btn-secondary' : 'btn-primary'}`}
                                     onClick={() => toggleModel({ id: m._id, isEnabled: !m.isEnabled })}
-                                    style={{ fontSize: 11, padding: '4px 12px' }}
-                                >
+                                    style={{ fontSize: 11, padding: '4px 12px' }}>
                                     {m.isEnabled ? 'Disable' : 'Enable'}
                                 </button>
                             </div>
                         ))
+                    )}
+                </div>
+            )}
+
+            {/* Data Sources Tab */}
+            {tab === 'datasources' && (
+                <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                        <h3 style={{ margin: 0, fontSize: 14 }}>📂 Data Sources Configuration</h3>
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                            {configSaved && <span style={{ color: '#34d399', fontSize: 12 }}>✓ Saved</span>}
+                            <button className="btn btn-secondary" onClick={resetConfig} style={{ fontSize: 12 }}>↩ Reset Defaults</button>
+                        </div>
+                    </div>
+
+                    {configLoading || !config ? (
+                        <div className="loading"><div className="loading-spinner" /></div>
+                    ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                            {/* YAML Filenames */}
+                            <div style={{ background: 'var(--bg-secondary)', borderRadius: 12, padding: 16, border: '1px solid var(--border)' }}>
+                                <h4 style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 600 }}>YAML Filenames</h4>
+                                <p style={{ fontSize: 11, color: 'var(--text-tertiary)', margin: '0 0 12px' }}>
+                                    Which YAML files to scan for in each project directory. The scanner checks them in order and uses the first match.
+                                </p>
+                                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
+                                    {config.yamlFilenames.map(f => (
+                                        <span key={f} style={{
+                                            display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: 6,
+                                            background: 'var(--bg-primary)', border: '1px solid var(--border)', fontSize: 12, fontFamily: 'monospace',
+                                        }}>
+                                            {f}
+                                            <button onClick={() => {
+                                                const nf = config.yamlFilenames.filter(x => x !== f);
+                                                if (nf.length > 0) saveConfig({ yamlFilenames: nf });
+                                            }} style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', fontSize: 12, padding: '0 2px' }}>✕</button>
+                                        </span>
+                                    ))}
+                                </div>
+                                <div style={{ display: 'flex', gap: 8 }}>
+                                    <input value={newYamlFile} onChange={e => setNewYamlFile(e.target.value)}
+                                        onKeyDown={e => { if (e.key === 'Enter' && newYamlFile.trim()) { saveConfig({ yamlFilenames: [...config.yamlFilenames, newYamlFile.trim()] }); setNewYamlFile(''); } }}
+                                        placeholder="e.g. GITHUB.yaml" style={{ ...inputStyle, flex: 1 }} />
+                                    <button className="btn btn-primary" style={{ fontSize: 12 }}
+                                        onClick={() => { if (newYamlFile.trim()) { saveConfig({ yamlFilenames: [...config.yamlFilenames, newYamlFile.trim()] }); setNewYamlFile(''); } }}>
+                                        + Add
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Scan Depth */}
+                            <div style={{ background: 'var(--bg-secondary)', borderRadius: 12, padding: 16, border: '1px solid var(--border)' }}>
+                                <h4 style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 600 }}>Scan Depth</h4>
+                                <p style={{ fontSize: 11, color: 'var(--text-tertiary)', margin: '0 0 12px' }}>
+                                    Maximum folder depth to scan for YAML files (1-20).
+                                </p>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                    <input type="range" min="1" max="20" value={config.maxScanDepth}
+                                        onChange={e => saveConfig({ maxScanDepth: parseInt(e.target.value) })}
+                                        style={{ flex: 1 }} />
+                                    <span style={{ fontSize: 14, fontWeight: 600, fontFamily: 'monospace', minWidth: 30 }}>{config.maxScanDepth}</span>
+                                </div>
+                            </div>
+
+                            {/* Subfolder Scanning */}
+                            <div style={{ background: 'var(--bg-secondary)', borderRadius: 12, padding: 16, border: '1px solid var(--border)' }}>
+                                <h4 style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 600 }}>Subfolder Scanning</h4>
+                                <p style={{ fontSize: 11, color: 'var(--text-tertiary)', margin: '0 0 12px' }}>
+                                    Also look for YAML files inside a subfolder (e.g. .meta/PROJECT.yaml).
+                                </p>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 13 }}>
+                                        <input type="checkbox" checked={config.scanSubfolders}
+                                            onChange={e => saveConfig({ scanSubfolders: e.target.checked })} />
+                                        Enable subfolder scanning
+                                    </label>
+                                    {config.scanSubfolders && (
+                                        <input value={config.scanSubfolderName}
+                                            onChange={e => saveConfig({ scanSubfolderName: e.target.value })}
+                                            placeholder=".meta" style={{ ...inputStyle, width: 120 }} />
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Ignore Patterns */}
+                            <div style={{ background: 'var(--bg-secondary)', borderRadius: 12, padding: 16, border: '1px solid var(--border)' }}>
+                                <h4 style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 600 }}>Ignore Patterns</h4>
+                                <p style={{ fontSize: 11, color: 'var(--text-tertiary)', margin: '0 0 12px' }}>
+                                    Directory names to skip during scanning. These directories and their contents will be ignored.
+                                </p>
+                                <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 8 }}>
+                                    {config.ignorePatterns.map(p => (
+                                        <span key={p} style={{
+                                            display: 'flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 4,
+                                            background: 'var(--bg-primary)', border: '1px solid var(--border)', fontSize: 11, fontFamily: 'monospace',
+                                        }}>
+                                            {p}
+                                            <button onClick={() => saveConfig({ ignorePatterns: config.ignorePatterns.filter(x => x !== p) })}
+                                                style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', fontSize: 11, padding: '0 2px' }}>✕</button>
+                                        </span>
+                                    ))}
+                                </div>
+                                <div style={{ display: 'flex', gap: 8 }}>
+                                    <input value={newIgnore} onChange={e => setNewIgnore(e.target.value)}
+                                        onKeyDown={e => { if (e.key === 'Enter' && newIgnore.trim()) { saveConfig({ ignorePatterns: [...config.ignorePatterns, newIgnore.trim()] }); setNewIgnore(''); } }}
+                                        placeholder="e.g. vendor" style={{ ...inputStyle, flex: 1 }} />
+                                    <button className="btn btn-primary" style={{ fontSize: 12 }}
+                                        onClick={() => { if (newIgnore.trim()) { saveConfig({ ignorePatterns: [...config.ignorePatterns, newIgnore.trim()] }); setNewIgnore(''); } }}>
+                                        + Add
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                     )}
                 </div>
             )}
