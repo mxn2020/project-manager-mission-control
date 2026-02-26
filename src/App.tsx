@@ -170,6 +170,27 @@ function AppShell() {
           </Routes>
         </div>
       </div>
+
+      {/* Floating version badge — bottom right */}
+      <a
+        href="https://github.com/mxn2020/project-manager-mission-control/releases"
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{
+          position: 'fixed', bottom: 12, right: 12, zIndex: 1000,
+          padding: '4px 10px', borderRadius: 6,
+          background: 'rgba(30, 30, 40, 0.7)', backdropFilter: 'blur(8px)',
+          border: '1px solid rgba(255,255,255,0.08)',
+          color: 'rgba(255,255,255,0.35)', fontSize: 10, fontFamily: 'monospace',
+          textDecoration: 'none', transition: 'opacity 0.2s',
+          cursor: 'pointer',
+        }}
+        onMouseEnter={e => (e.currentTarget.style.opacity = '1', e.currentTarget.style.color = 'rgba(255,255,255,0.7)')}
+        onMouseLeave={e => (e.currentTarget.style.opacity = '0.7', e.currentTarget.style.color = 'rgba(255,255,255,0.35)')}
+        title="View releases on GitHub"
+      >
+        v1.0.0
+      </a>
     </div>
   );
 }
