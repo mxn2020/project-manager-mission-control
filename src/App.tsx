@@ -80,16 +80,37 @@ function AppShell() {
       <div className="top-bar">
         <div className="top-bar-logo">🚀 Mission Control</div>
         <div className="workspace-tabs">
-          {WORKSPACES.map(ws => (
-            <NavLink
-              key={ws.id}
-              to={ws.path}
-              className={`workspace-tab ${activeWs.id === ws.id ? 'active' : ''}`}
-            >
-              <span className="workspace-tab-icon">{ws.icon}</span>
-              {ws.label}
-            </NavLink>
-          ))}
+          {/* Dashboard — always direct */}
+          <NavLink to="/" className={`workspace-tab ${activeWs.id === 'dashboard' ? 'active' : ''}`}>
+            <span className="workspace-tab-icon">📊</span> Dashboard
+          </NavLink>
+
+          {/* Grouped dropdowns */}
+          {[
+            { label: '📋 Work', ids: ['tasks', 'workflows', 'content', 'ideas'] },
+            { label: '📖 Knowledge', ids: ['wiki', 'roadmap', 'files'] },
+            { label: '📦 Data', ids: ['minions', 'analytics', 'costs', 'dependencies'] },
+            { label: '⚙️ System', ids: ['ai', 'integrations', 'admin'] },
+          ].map(group => {
+            const items = group.ids.map(id => WORKSPACES.find(w => w.id === id)!).filter(Boolean);
+            const isGroupActive = items.some(ws => ws.id === activeWs.id);
+            return (
+              <div key={group.label} className="nav-dropdown-wrapper">
+                <div className={`workspace-tab nav-dropdown-trigger ${isGroupActive ? 'active' : ''}`}>
+                  {group.label}
+                  <span style={{ fontSize: 8, marginLeft: 4, opacity: 0.5 }}>▼</span>
+                </div>
+                <div className="nav-dropdown-menu">
+                  {items.map(ws => (
+                    <NavLink key={ws.id} to={ws.path}
+                      className={`nav-dropdown-item ${activeWs.id === ws.id ? 'active' : ''}`}>
+                      <span>{ws.icon}</span> {ws.label}
+                    </NavLink>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
         </div>
         <div className="top-bar-right">
           <button className="scan-btn-small" onClick={runScan} disabled={loading}>

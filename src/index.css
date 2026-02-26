@@ -125,6 +125,67 @@ a:hover {
   font-size: 15px;
 }
 
+/* ─── Nav Dropdown Menus ─────────────────────────────────────────────── */
+
+.nav-dropdown-wrapper {
+  position: relative;
+  height: 100%;
+  display: flex;
+  align-items: center;
+}
+
+.nav-dropdown-trigger {
+  user-select: none;
+}
+
+.nav-dropdown-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  min-width: 180px;
+  padding: 6px;
+  background: rgba(22, 22, 30, 0.95);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(4px);
+  transition: all 0.15s ease;
+  z-index: 1000;
+}
+
+.nav-dropdown-wrapper:hover .nav-dropdown-menu {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.nav-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-decoration: none;
+  border-radius: 6px;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.nav-dropdown-item:hover {
+  background: var(--bg-glass-hover);
+  color: var(--text-primary);
+}
+
+.nav-dropdown-item.active {
+  background: var(--accent-bg);
+  color: var(--accent);
+}
+
 .top-bar-right {
   display: flex;
   align-items: center;
