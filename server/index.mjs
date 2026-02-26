@@ -999,9 +999,21 @@ app.delete('/api/wiki/:id', async (req, res) => {
 
 // ─── Dependency Graph API ───────────────────────────────────────────────────
 
+// Cached project data for dep graph + automation (refreshes every 60s)
+let cachedStatusData = null;
+let cachedStatusDataAt = 0;
+function getStatusData() {
+    const now = Date.now();
+    if (!cachedStatusData || now - cachedStatusDataAt > 60_000) {
+        cachedStatusData = legacyScan();
+        cachedStatusDataAt = now;
+    }
+    return cachedStatusData;
+}
+
 app.get('/api/dependencies', async (req, res) => {
     try {
-        const projects = cachedStatusData?.projects || [];
+        const projects = getStatusData()?.projects || [];
         const depGraph = { nodes: [], links: [], packages: {} };
 
         for (const project of projects) {
@@ -1093,7 +1105,7 @@ app.post('/api/automation/run', async (req, res) => {
         }
 
         // Step 2: Stale detection (>30 days no activity)
-        const staleProjects = (cachedStatusData?.projects || [])
+        const staleProjects = (getStatusData()?.projects || [])
             .filter(p => {
                 if (!p.last_active) return true;
                 const daysSince = (Date.now() - new Date(p.last_active).getTime()) / (1000 * 60 * 60 * 24);
@@ -1104,7 +1116,7 @@ app.post('/api/automation/run', async (req, res) => {
 
         // Step 3: Git status check (uncommitted changes)
         const gitStatus = [];
-        for (const p of (cachedStatusData?.projects || []).slice(0, 30)) {
+        for (const p of (getStatusData()?.projects || []).slice(0, 30)) {
             const projectDir = path.join(ROOT, p.path);
             try {
                 if (!fs.existsSync(path.join(projectDir, '.git'))) continue;
@@ -1118,7 +1130,7 @@ app.post('/api/automation/run', async (req, res) => {
 
         // Step 4: Health overview
         const healthBuckets = { excellent: 0, good: 0, fair: 0, poor: 0, unknown: 0 };
-        for (const p of (cachedStatusData?.projects || [])) {
+        for (const p of (getStatusData()?.projects || [])) {
             const h = p.health_score || 0;
             if (h >= 80) healthBuckets.excellent++;
             else if (h >= 60) healthBuckets.good++;

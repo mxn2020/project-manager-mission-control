@@ -44,14 +44,14 @@ export default function DependencyGraphPage() {
 
     useEffect(() => {
         fetch(`${API_BASE}/api/dependencies`, { headers: { ...getAuthHeaders() } })
-            .then(r => r.json())
+            .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
             .then(setData)
             .catch(() => { })
             .finally(() => setLoading(false));
 
         // Also load last automation status
         fetch(`${API_BASE}/api/automation/status`, { headers: { ...getAuthHeaders() } })
-            .then(r => r.json())
+            .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
             .then(r => { if (r.startedAt) setAutomationResult(r); })
             .catch(() => { });
     }, []);
