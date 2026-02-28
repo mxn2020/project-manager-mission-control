@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "npx -y concurrently \"npm run dev:server\" \"npm run dev:client\"",
     "dev:client": "vite --port 5190",
-    "dev:server": "node server/index.mjs",
+    "dev:server": "node --env-file=.env.local server/index.mjs",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview"
@@ -20,7 +20,7 @@
     "convex": "^1.32.0",
     "cors": "^2.8.6",
     "express": "^5.2.1",
-    "minions-sdk": "file:../../../../minions-ecosystem/minions/packages/core",
+    "minions-sdk": "^0.2.5",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-router-dom": "^7.13.1"
