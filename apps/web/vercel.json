@@ -5,7 +5,7 @@
             "destination": "http://46.225.232.118:3001/api/:path*"
         },
         {
-            "source": "/((?!assets/).*)",
+            "source": "/((?!assets/|_vercel/|vite.svg|favicon.ico).*)",
             "destination": "/index.html"
         }
     ]
