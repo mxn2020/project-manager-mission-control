@@ -3,10 +3,24 @@
   "compilerOptions": {
     "strict": true,
     "paths": {
-      "@/*": ["./*"],
-      "@mission-control/types": ["../../packages/types/src/index.ts"],
-      "@mission-control/api": ["../../packages/api/src/index.ts"],
-      "@mission-control/hooks": ["../../packages/hooks/src/index.ts"]
+      "@/*": [
+        "./*"
+      ],
+      "@mission-control/types": [
+        "../../packages/types/src/index.ts"
+      ],
+      "@mission-control/api": [
+        "../../packages/api/src/index.ts"
+      ],
+      "@mission-control/hooks": [
+        "../../packages/hooks/src/index.ts"
+      ]
     }
-  }
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    ".expo/types/**/*.ts",
+    "expo-env.d.ts"
+  ]
 }

@@ -21,7 +21,8 @@ import { handleChat } from './ai-chat.mjs';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
-const ROOT = process.env.PROJECT_ROOT || path.resolve(path.dirname(new URL(import.meta.url).pathname), '../..');
+// Navigate up from apps/web/server to the monorepo root
+const ROOT = process.env.PROJECT_ROOT || path.resolve(path.dirname(new URL(import.meta.url).pathname), '../../../..');
 const API_KEY = process.env.MC_API_KEY || '';
 const MINIONS_DIR = path.join(ROOT, '.minions');
 const CONVEX_URL = process.env.CONVEX_URL;
@@ -1639,9 +1640,12 @@ app.get('/api/integrations/git-status', async (req, res) => {
     }
 });
 
+import http from 'http';
+
 // ─── Start Server ──────────────────────────────────────────────────────────────────
 
-app.listen(PORT, async () => {
+const server = http.createServer(app);
+server.listen(PORT, async () => {
     console.log(`🚀 Mission Control API running on http://localhost:${PORT}`);
     console.log(`   Root directory: ${ROOT}`);
     console.log(`   Auth: ${process.env.NODE_ENV === 'production' ? 'enabled' : 'disabled (dev mode)'}`);
