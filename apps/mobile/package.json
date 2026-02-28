@@ -1,0 +1,43 @@
+{
+  "name": "@mission-control/mobile",
+  "version": "1.0.0",
+  "main": "expo-router/entry",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web",
+    "lint": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@expo/vector-icons": "^14.0.4",
+    "@mission-control/api": "workspace:*",
+    "@mission-control/hooks": "workspace:*",
+    "@mission-control/types": "workspace:*",
+    "@react-navigation/bottom-tabs": "^7.2.0",
+    "@react-navigation/native": "^7.0.14",
+    "expo": "~53.0.0",
+    "expo-constants": "~17.0.3",
+    "expo-font": "~13.0.1",
+    "expo-haptics": "~14.0.0",
+    "expo-linking": "~7.0.3",
+    "expo-router": "~4.0.17",
+    "expo-splash-screen": "~0.29.13",
+    "expo-status-bar": "~2.0.0",
+    "expo-system-ui": "~4.0.6",
+    "expo-web-browser": "~14.0.1",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "react-native": "0.76.5",
+    "react-native-gesture-handler": "~2.20.2",
+    "react-native-reanimated": "~3.16.1",
+    "react-native-safe-area-context": "4.12.0",
+    "react-native-screens": "~4.4.0",
+    "react-native-web": "~0.19.13"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.25.2",
+    "@types/react": "~18.3.12",
+    "typescript": "~5.9.3"
+  }
+}

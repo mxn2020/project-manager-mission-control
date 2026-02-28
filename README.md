@@ -1,73 +1,122 @@
-# React + TypeScript + Vite
+# Mission Control — Monorepo
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A project management dashboard built with a Turborepo monorepo structure.
 
-Currently, two official plugins are available:
+## Structure
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```
+.
+├── apps/
+│   ├── web/          # Vite + React web app (full-featured dashboard)
+│   └── mobile/       # Expo React Native mobile app
+├── packages/
+│   ├── types/        # Shared TypeScript types & design tokens
+│   ├── api/          # Shared API client (fetch-based, platform agnostic)
+│   └── hooks/        # Shared React hooks (useProjectsData, useTasksData, useIsMobile)
+├── turbo.json        # Turborepo configuration
+└── package.json      # Workspace root
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Getting Started
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+### Prerequisites
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+- Node.js 18+
+- npm 9+ (with workspaces support)
+
+### Install dependencies
+
+```bash
+npm install
 ```
+
+### Start the web app (development)
+
+```bash
+npm run dev:web
+# or
+cd apps/web && npm run dev
+```
+
+### Start the mobile app
+
+```bash
+cd apps/mobile && npx expo start
+```
+
+## Apps
+
+### Web App (`apps/web`)
+
+Full-featured dashboard with:
+- Project overview, grid, table, kanban, and focus views
+- Task management with kanban/list views
+- AI chat assistant (powered by Convex)
+- Content planner, ideas, wiki, roadmap
+- Analytics, costs, admin settings
+- **Fully responsive** — dialogs on desktop, full-page routes on mobile
+
+#### Mobile-Specific Routes (web)
+
+| Route | Purpose |
+|-------|---------|
+| `/projects/new` | Full-page create project form (mobile) |
+| `/tasks/new` | Full-page create task form (mobile) |
+| `/projects/delete/:path` | Full-page delete confirmation (mobile) |
+
+On desktop, create/delete actions use modal dialogs instead.
+
+### Mobile App (`apps/mobile`)
+
+React Native app built with Expo featuring:
+- Dashboard with project statistics
+- Task list with create/update/delete
+- Projects browser with search & filters
+- AI assistant screen
+
+#### Setup
+
+1. Copy `.env.example` to `.env.local` in `apps/mobile/`
+2. Set `EXPO_PUBLIC_API_URL` to your server URL
+
+## Packages
+
+### `@mission-control/types`
+
+Shared TypeScript types and configuration:
+- `Project`, `Task`, `StatusData` interfaces
+- `TIER_CONFIG`, `PRIORITY_CONFIG` lookup tables
+- `colors` design token constants
+- `WORKSPACES` navigation config
+
+### `@mission-control/api`
+
+Platform-agnostic API client factory:
+
+```ts
+import { createApiClient } from '@mission-control/api';
+
+const api = createApiClient({
+  baseUrl: 'http://localhost:3001',
+  getAuthToken: () => localStorage.getItem('token'),
+});
+
+const projects = await api.projects.list();
+const tasks = await api.tasks.list({ status: 'in_progress' });
+```
+
+### `@mission-control/hooks`
+
+Shared React hooks:
+- `useProjectsData(api)` — load project data with loading/error state
+- `useTasksData(api, filters)` — load filtered tasks
+- `useIsMobile()` — responsive breakpoint detection
+- `useMediaQuery(query)` — generic media query hook
+
+## Build
+
+```bash
+npm run build        # Build all apps
+npm run lint         # Lint all packages
+```
+

@@ -1,0 +1,12 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    "paths": {
+      "@/*": ["./*"],
+      "@mission-control/types": ["../../packages/types/src/index.ts"],
+      "@mission-control/api": ["../../packages/api/src/index.ts"],
+      "@mission-control/hooks": ["../../packages/hooks/src/index.ts"]
+    }
+  }
+}

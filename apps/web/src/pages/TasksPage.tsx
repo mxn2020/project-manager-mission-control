@@ -1,5 +1,7 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useProjects } from '../hooks/useProjects';
+import { useIsMobile } from '../hooks/useMediaQuery';
 import { api } from '../lib/api';
 import SearchableSelect, { type SelectOption } from '../components/SearchableSelect';
 
@@ -21,6 +23,8 @@ export default function TasksPage() {
     const [tasks, setTasks] = useState<any[] | null>(null);
     const [stats, setStats] = useState<any>(null);
     const { data: projectData } = useProjects();
+    const navigate = useNavigate();
+    const isMobile = useIsMobile();
 
     const [view, setView] = useState<'kanban' | 'list'>('kanban');
     const [showCreate, setShowCreate] = useState(false);
@@ -235,7 +239,7 @@ export default function TasksPage() {
                         <h1 className="page-title">📋 Tasks</h1>
                         <p className="page-description">Cross-project task management · Minions-backed</p>
                     </div>
-                    <button className="btn btn-primary" onClick={() => setShowCreate(!showCreate)} style={{ flexShrink: 0 }}>
+                    <button className="btn btn-primary" onClick={() => isMobile ? navigate('/tasks/new') : setShowCreate(!showCreate)} style={{ flexShrink: 0 }}>
                         + New Task
                     </button>
                 </div>

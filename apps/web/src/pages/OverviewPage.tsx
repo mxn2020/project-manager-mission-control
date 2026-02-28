@@ -1,7 +1,9 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import type { StatusData } from '../lib/types';
 import { TIER_ORDER, TIER_CONFIG, PRIORITY_ORDER, PRIORITY_CONFIG, LANE_COLORS, type Tier, type Priority } from '../lib/types';
 import CreateProjectModal from '../components/CreateProjectModal';
+import { useIsMobile } from '../hooks/useMediaQuery';
 
 function BarChart({ title, items, colorMap }: { title: string; items: Record<string, number>; colorMap: Record<string, string> }) {
     const maxVal = Math.max(...Object.values(items), 1);
@@ -56,6 +58,16 @@ function DonutChart({ data, colors, size = 120 }: { data: Record<string, number>
 
 export default function OverviewPage({ data, onNavigate }: { data: StatusData; onNavigate?: (path: string) => void }) {
     const [showCreate, setShowCreate] = useState(false);
+    const navigate = useNavigate();
+    const isMobile = useIsMobile();
+
+    const handleNewProject = () => {
+        if (isMobile) {
+            navigate('/projects/new');
+        } else {
+            setShowCreate(true);
+        }
+    };
 
     const tierColors: Record<string, string> = {};
     TIER_ORDER.forEach(t => { tierColors[t] = TIER_CONFIG[t].color; });
@@ -91,7 +103,7 @@ export default function OverviewPage({ data, onNavigate }: { data: StatusData; o
                         <p className="page-description">Last scanned: {new Date(data.generated_at).toLocaleString()}</p>
                     </div>
                     <div style={{ display: 'flex', gap: 8 }}>
-                        <button className="btn btn-primary" onClick={() => setShowCreate(true)} style={{ fontSize: 12 }}>
+                        <button className="btn btn-primary" onClick={handleNewProject} style={{ fontSize: 12 }}>
                             ✨ New Project
                         </button>
                     </div>
