@@ -2,7 +2,7 @@
     "rewrites": [
         {
             "source": "/api/:path*",
-            "destination": "http://46.225.232.118/api/:path*"
+            "destination": "{{VPS_API_URL}}/api/:path*"
         },
         {
             "source": "/((?!assets/).*)",

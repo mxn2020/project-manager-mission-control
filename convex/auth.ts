@@ -1,14 +1,17 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
+// Convex environment variables (set via `npx convex env set`)
+declare const process: { env: Record<string, string | undefined> };
+
 // ─── Helpers ──────────────────────────────────────────────────────────────
 
-function simpleHash(str: string): string {
-    let hash = 5381;
-    for (let i = 0; i < str.length; i++) {
-        hash = (hash * 33) ^ str.charCodeAt(i);
-    }
-    return (hash >>> 0).toString(16).padStart(8, "0") + str.length.toString(16);
+async function hashPassword(str: string): Promise<string> {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(str);
+    const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
 }
 
 function generateToken(): string {
@@ -43,7 +46,7 @@ export const register = mutation({
             throw new Error("Password must be at least 6 characters.");
         }
 
-        const passwordHash = simpleHash(args.password);
+        const passwordHash = await hashPassword(args.password);
         const userId = await ctx.db.insert("users", {
             email,
             name: args.name.trim(),
@@ -80,7 +83,7 @@ export const login = mutation({
 
         if (!user) throw new Error("Invalid email or password.");
 
-        const passwordHash = simpleHash(args.password);
+        const passwordHash = await hashPassword(args.password);
         if (user.passwordHash !== passwordHash) {
             throw new Error("Invalid email or password.");
         }
@@ -153,10 +156,13 @@ export const needsSetup = query({
 export const agentLogin = mutation({
     args: { agentSecret: v.string() },
     handler: async (ctx, args) => {
-        // Hardcoded check — the secret is validated here.
-        // To change the secret, update this value and redeploy.
-        const AGENT_SECRET = "8c9e975d67f79d4201cafb9915b8f281cf088ab6ab4a20dd";
-        if (args.agentSecret !== AGENT_SECRET) {
+        // Agent secret is read from Convex environment variable.
+        // Set via: npx convex env set AGENT_SECRET <your-secret>
+        const expectedSecret = process.env.AGENT_SECRET;
+        if (!expectedSecret) {
+            throw new Error("AGENT_SECRET environment variable not configured.");
+        }
+        if (args.agentSecret !== expectedSecret) {
             throw new Error("Invalid agent secret.");
         }
 

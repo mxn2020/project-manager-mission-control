@@ -349,10 +349,10 @@ export default function AdminPage() {
                     <h3 style={{ fontSize: 14, marginBottom: 16 }}>System Information</h3>
                     <div style={{ display: 'grid', gap: 8 }}>
                         {[
-                            { label: 'Convex URL', value: 'academic-buzzard-501.eu-west-1.convex.cloud' },
-                            { label: 'VPS Server', value: '46.225.232.118 (Hetzner)' },
-                            { label: 'Frontend', value: 'nabhani.wtf (Vercel)' },
-                            { label: 'API Server', value: 'nabhani.wtf/api (proxied)' },
+                            { label: 'Convex URL', value: import.meta.env.VITE_CONVEX_URL?.replace('https://', '') || '(not configured)' },
+                            { label: 'VPS Server', value: '(configured via environment)' },
+                            { label: 'Frontend', value: window.location.hostname + ' (Vercel)' },
+                            { label: 'API Server', value: window.location.hostname + '/api (proxied)' },
                             { label: 'Auth', value: 'Convex session tokens' },
                             { label: 'AI Provider', value: 'NVIDIA NIM (Llama 3.1 70B)' },
                         ].map(item => (

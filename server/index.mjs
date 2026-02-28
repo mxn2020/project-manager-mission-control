@@ -24,7 +24,8 @@ const PORT = process.env.PORT || 3001;
 const ROOT = process.env.PROJECT_ROOT || path.resolve(path.dirname(new URL(import.meta.url).pathname), '../..');
 const API_KEY = process.env.MC_API_KEY || '';
 const MINIONS_DIR = path.join(ROOT, '.minions');
-const CONVEX_URL = process.env.CONVEX_URL || 'https://academic-buzzard-501.eu-west-1.convex.cloud';
+const CONVEX_URL = process.env.CONVEX_URL;
+if (!CONVEX_URL) console.warn('⚠️  CONVEX_URL not set — Convex token validation will fail');
 
 let minionsReady = false;
 

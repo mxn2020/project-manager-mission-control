@@ -9,7 +9,8 @@
 
 import { getMinions, getRegistry, listByType, minionToFlat, ALL_TYPES } from './minions-adapter.mjs';
 
-const CONVEX_URL = process.env.CONVEX_URL || 'https://academic-buzzard-501.eu-west-1.convex.cloud';
+const CONVEX_URL = process.env.CONVEX_URL;
+if (!CONVEX_URL) console.warn('⚠️  CONVEX_URL not set — AI chat Convex integration will not work');
 
 // Fallback config (used if Convex has no providers/models yet)
 const FALLBACK_CONFIG = {

@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { ConvexProvider, ConvexReactClient } from 'convex/react'
 import './index.css'
 import App from './App'
+import { Analytics } from "@vercel/analytics/react"
 
 const convexUrl = import.meta.env.VITE_CONVEX_URL as string | undefined
 
@@ -47,7 +48,9 @@ if (!convexUrl) {
       <ConvexProvider client={convex}>
         <App />
       </ConvexProvider>
-    </StrictMode>,
+    
+        <Analytics />
+      </StrictMode>,
   )
 }
 
