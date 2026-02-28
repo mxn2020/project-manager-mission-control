@@ -144,7 +144,7 @@ function toYaml(obj) {
         }
         else if (typeof value === 'string') {
             if (value.includes(':') || value.includes('#') || value.includes('"') || value.startsWith(' ') || value === 'true' || value === 'false' || value === 'null') {
-                lines.push(`${key}: "${value.replace(/"/g, '\\"')}"`);
+                lines.push(`${key}: "${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`);
             } else {
                 lines.push(`${key}: ${value}`);
             }

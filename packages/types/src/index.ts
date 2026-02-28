@@ -1,14 +1,15 @@
-// ─── Types ───────────────────────────────────────────────────────────────────
+// ─── Core Domain Types ────────────────────────────────────────────────────────
 
 export type Tier = 'idea' | 'prototype' | 'building' | 'shipped' | 'maintaining' | 'archived';
 export type Priority = 'high' | 'medium' | 'low' | 'parked';
+export type TaskStatus = 'todo' | 'in_progress' | 'done';
 
 export interface Project {
     name: string;
     description: string;
-    tier: string;
+    tier: Tier | string;
     lane: string;
-    priority: string;
+    priority: Priority | string;
     oss: boolean;
     stack: string[];
     repo: string | null;
@@ -31,6 +32,19 @@ export interface StatusData {
         by_stack: Record<string, number>;
     };
     projects: Project[];
+}
+
+export interface Task {
+    id: string;
+    title: string;
+    description?: string;
+    status: TaskStatus;
+    priority: Priority | string;
+    effort: string;
+    projectPath: string;
+    taskType: string;
+    createdAt: number;
+    updatedAt: number;
 }
 
 // ─── Config ──────────────────────────────────────────────────────────────────
@@ -68,6 +82,23 @@ export const LANE_COLORS: Record<string, string> = {
     'uncategorized': '#6b7280',
 };
 
+// ─── Design Tokens ────────────────────────────────────────────────────────────
+
+export const colors = {
+    bgPrimary: '#0a0c14',
+    bgSecondary: '#12141f',
+    accent: '#818cf8',
+    accentHover: '#6366f1',
+    success: '#34d399',
+    warning: '#fbbf24',
+    error: '#f87171',
+    info: '#60a5fa',
+    textPrimary: '#f0f2f7',
+    textSecondary: '#8f95a9',
+    textTertiary: '#5a5f73',
+    border: 'rgba(255, 255, 255, 0.06)',
+} as const;
+
 // ─── Workspaces ──────────────────────────────────────────────────────────────
 
 export interface Workspace {
@@ -94,4 +125,3 @@ export const WORKSPACES: Workspace[] = [
     { id: 'integrations', label: 'Integrations', icon: '🔗', path: '/integrations' },
     { id: 'files', label: 'Files', icon: '📂', path: '/files' },
 ];
-

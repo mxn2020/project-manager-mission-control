@@ -4,7 +4,9 @@ import { useQuery, useMutation } from 'convex/react';
 import { api } from '../convex/_generated/api';
 import { useProjects } from './hooks/useProjects';
 import { useAuth } from './hooks/useAuth';
+import { useIsMobile } from './hooks/useMediaQuery';
 import { WORKSPACES } from './lib/types';
+import MobileNav from './components/MobileNav';
 import OverviewPage from './pages/OverviewPage';
 import GridPage from './pages/GridPage';
 import TablePage from './pages/TablePage';
@@ -27,11 +29,15 @@ import WorkflowsPage from './pages/WorkflowsPage';
 import IdeasPage from './pages/IdeasPage';
 import WikiPage from './pages/WikiPage';
 import LoginPage from './pages/LoginPage';
+import NewTaskPage from './pages/NewTaskPage';
+import NewProjectPage from './pages/NewProjectPage';
+import DeleteProjectPage from './pages/DeleteProjectPage';
 
 function AppShell() {
   const location = useLocation();
   const navigate = useNavigate();
   const auth = useAuth();
+  const isMobile = useIsMobile();
   const { data, loading, error, runScan } = useProjects();
 
   // ─── Auth Loading State ──────────────────────────────────────────────
@@ -114,22 +120,34 @@ function AppShell() {
           })}
         </div>
         <div className="top-bar-right">
-          <button className="scan-btn-small" onClick={runScan} disabled={loading}>
-            {loading ? '⏳ Scanning...' : '🔄 Sync'}
-          </button>
-          <span className="user-badge" title={auth.user?.email || ''}>
-            {auth.user?.name || auth.user?.email || ''}
-          </span>
-          <button className="logout-btn" onClick={auth.logout} title="Sign out">
-            🚪
-          </button>
+          {!isMobile && (
+            <>
+              <button className="scan-btn-small" onClick={runScan} disabled={loading}>
+                {loading ? '⏳ Scanning...' : '🔄 Sync'}
+              </button>
+              <span className="user-badge" title={auth.user?.email || ''}>
+                {auth.user?.name || auth.user?.email || ''}
+              </span>
+              <button className="logout-btn" onClick={auth.logout} title="Sign out">
+                🚪
+              </button>
+            </>
+          )}
+          {isMobile && (
+            <MobileNav
+              onSyncClick={runScan}
+              syncLoading={loading}
+              userName={auth.user?.name || auth.user?.email}
+              onLogout={auth.logout}
+            />
+          )}
         </div>
       </div>
 
       {/* ─── Workspace Area ────────────────────────────────── */}
       <div className="workspace-area">
         {/* Dashboard Sidebar */}
-        {activeWs.id === 'dashboard' && (
+        {!isMobile && activeWs.id === 'dashboard' && (
           <aside className="sidebar">
             <div className="sidebar-section">
               <div className="sidebar-section-title">Views</div>
@@ -148,10 +166,10 @@ function AppShell() {
         )}
 
         {/* AI Sidebar */}
-        {activeWs.id === 'ai' && <AISidebar userId={auth.user?.id} />}
+        {!isMobile && activeWs.id === 'ai' && <AISidebar userId={auth.user?.id} />}
 
         {/* Admin Sidebar */}
-        {activeWs.id === 'admin' && (
+        {!isMobile && activeWs.id === 'admin' && (
           <aside className="sidebar">
             <div className="sidebar-section">
               <div className="sidebar-section-title">Settings</div>
@@ -181,6 +199,11 @@ function AppShell() {
             <Route path="/kanban" element={data ? <KanbanPage data={data} /> : null} />
             <Route path="/focus" element={data ? <FocusPage data={data} /> : null} />
             <Route path="/project/:path" element={<ProjectPage />} />
+
+            {/* Mobile create/delete routes */}
+            <Route path="/projects/new" element={<NewProjectPage />} />
+            <Route path="/projects/delete/*" element={<DeleteProjectPage />} />
+            <Route path="/tasks/new" element={<NewTaskPage />} />
 
             {/* Independent routes — work without project API */}
             <Route path="/ai" element={<AIPage />} />

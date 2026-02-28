@@ -1,0 +1,44 @@
+{
+  "name": "@mission-control/web",
+  "private": true,
+  "version": "1.0.3",
+  "type": "module",
+  "scripts": {
+    "dev": "npx -y concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "dev:client": "vite --port 5190",
+    "dev:server": "node server/index.mjs",
+    "build": "tsc -b && vite build",
+    "lint": "eslint .",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@convex-dev/auth": "^0.0.91",
+    "@mission-control/types": "workspace:*",
+    "@mission-control/api": "workspace:*",
+    "@mission-control/hooks": "workspace:*",
+    "@vercel/analytics": "^1.6.1",
+    "convex": "^1.32.0",
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "minions-sdk": "file:../../../../minions-ecosystem/minions/packages/core",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "react-router-dom": "^7.13.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/node": "^25.3.2",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.4",
+    "eslint": "^10.0.2",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.5.2",
+    "globals": "^17.3.0",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.56.1",
+    "vite": "^7.3.1"
+  }
+}
