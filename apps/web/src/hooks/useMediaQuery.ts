@@ -1,22 +1,3 @@
-import { useState, useEffect } from 'react';
-
-export function useMediaQuery(query: string): boolean {
-    const [matches, setMatches] = useState(() => {
-        if (typeof window === 'undefined') return false;
-        return window.matchMedia(query).matches;
-    });
-
-    useEffect(() => {
-        const mq = window.matchMedia(query);
-        setMatches(mq.matches);
-        const handler = (e: MediaQueryListEvent) => setMatches(e.matches);
-        mq.addEventListener('change', handler);
-        return () => mq.removeEventListener('change', handler);
-    }, [query]);
-
-    return matches;
-}
-
-export function useIsMobile(): boolean {
-    return useMediaQuery('(max-width: 768px)');
-}
+// Re-export shared hooks from @mission-control/hooks for use in the web app.
+// The shared package also has useProjectsData and useTasksData for cross-platform use.
+export { useMediaQuery, useIsMobile } from '@mission-control/hooks';
