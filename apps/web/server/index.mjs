@@ -537,6 +537,71 @@ app.post('/api/scan', async (req, res) => {
     }
 });
 
+// ─── Accounts API ───────────────────────────────────────────────────────────
+
+// GET /api/projects/:path/accounts — read ACCOUNTS.yaml
+app.get('/api/projects/:projectPath/accounts', (req, res) => {
+    try {
+        const projectPath = decodeURIComponent(req.params.projectPath);
+        const accountsPath = path.join(ROOT, projectPath, 'ACCOUNTS.yaml');
+        if (!fs.existsSync(accountsPath)) {
+            return res.json({ accounts: {}, exists: false });
+        }
+        const content = fs.readFileSync(accountsPath, 'utf-8');
+        const accounts = parseYaml(content);
+        res.json({ accounts, exists: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// PUT /api/projects/:path/accounts — write ACCOUNTS.yaml
+app.put('/api/projects/:projectPath/accounts', (req, res) => {
+    try {
+        const projectPath = decodeURIComponent(req.params.projectPath);
+        const projectDir = path.join(ROOT, projectPath);
+        if (!fs.existsSync(projectDir)) {
+            return res.status(404).json({ error: `Project directory not found: ${projectPath}` });
+        }
+        const { accounts } = req.body;
+        if (!accounts || typeof accounts !== 'object') {
+            return res.status(400).json({ error: 'Missing accounts object' });
+        }
+
+        // Read project name for the header comment
+        let projectName = path.basename(projectPath);
+        const projectYaml = path.join(projectDir, 'PROJECT.yaml');
+        if (fs.existsSync(projectYaml)) {
+            try {
+                const content = fs.readFileSync(projectYaml, 'utf-8');
+                const parsed = parseYaml(content);
+                if (parsed.name) projectName = parsed.name;
+            } catch { /* use dir name */ }
+        }
+
+        const lines = [
+            `# Accounts for: ${projectName}`,
+            `# Fill in the account name/email for each service`,
+            ``,
+        ];
+        for (const [service, account] of Object.entries(accounts)) {
+            const val = account || '';
+            if (val.includes(':') || val.includes('#') || val.includes('"')) {
+                lines.push(`${service}: "${val.replace(/"/g, '\\"')}"`);
+            } else {
+                lines.push(`${service}: ${val}`);
+            }
+        }
+        lines.push('');
+
+        const accountsPath = path.join(projectDir, 'ACCOUNTS.yaml');
+        fs.writeFileSync(accountsPath, lines.join('\n'), 'utf-8');
+        res.json({ success: true, accounts });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // ─── Scanner Config API ─────────────────────────────────────────────────────
 
 // GET /api/config — get current scanner configuration

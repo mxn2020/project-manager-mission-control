@@ -27,6 +27,8 @@ export const api = {
         list: () => request<import('./types').StatusData>('/api/projects'),
         get: (path: string) => request<{ project: Record<string, unknown>; raw_yaml: string }>(`/api/projects/${encodeURIComponent(path)}`),
         update: (path: string, yaml: string) => request('/api/projects/' + encodeURIComponent(path), { method: 'PUT', body: JSON.stringify({ yaml }) }),
+        getAccounts: (path: string) => request<{ accounts: Record<string, string>; exists: boolean }>(`/api/projects/${encodeURIComponent(path)}/accounts`),
+        updateAccounts: (path: string, accounts: Record<string, string>) => request<{ success: boolean }>(`/api/projects/${encodeURIComponent(path)}/accounts`, { method: 'PUT', body: JSON.stringify({ accounts }) }),
     },
     tasks: {
         list: (filters?: { status?: string; priority?: string; project?: string }) => {

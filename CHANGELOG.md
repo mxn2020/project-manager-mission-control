@@ -5,6 +5,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and thi
 
 ## [Unreleased]
 
+## [1.0.5] — 2026-03-02
+
+### ✨ Features
+- **ACCOUNTS.yaml tracking** — New per-project service account tracking with scanner script (`scan-accounts.mjs`), server API (`GET/PUT /api/projects/:path/accounts`), and inline editing on the project detail page
+- **Service account scanner** — Auto-detects 40+ services (Convex, Stripe, OpenAI, Vercel, etc.) from .env files and generates ACCOUNTS.yaml templates
+
+### 🐛 Bug Fixes
+- **GitHub Releases not created** — Simplified release workflow: removed unnecessary build/Node.js setup, replaced fragile awk with robust sed-based changelog extraction
+
 ## [1.0.4] — 2026-03-02
 
 ### ✨ Features
@@ -80,7 +89,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and thi
 - Hybrid project source: legacy PROJECT.yaml scanner + Minions adapter
 - VPS deployment via rsync + PM2
 
-[Unreleased]: https://github.com/mxn2020/project-manager-mission-control/compare/v1.0.4...HEAD
+[Unreleased]: https://github.com/mxn2020/project-manager-mission-control/compare/v1.0.5...HEAD
+[1.0.5]: https://github.com/mxn2020/project-manager-mission-control/compare/v1.0.4...v1.0.5
 [1.0.4]: https://github.com/mxn2020/project-manager-mission-control/compare/v1.0.2...v1.0.4
 [1.0.2]: https://github.com/mxn2020/project-manager-mission-control/releases/tag/v1.0.2
 [1.0.1]: https://github.com/mxn2020/project-manager-mission-control/releases/tag/v1.0.1

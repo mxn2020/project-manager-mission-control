@@ -1015,6 +1015,74 @@ a:hover {
   outline: none;
 }
 
+/* ─── Accounts Section ─────────────────────────────────────────────────────── */
+.accounts-grid {
+  padding: 12px 16px;
+}
+
+.account-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.account-row:last-child {
+  border-bottom: none;
+}
+
+.account-service {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 160px;
+  flex-shrink: 0;
+}
+
+.account-icon {
+  font-size: 16px;
+  width: 24px;
+  text-align: center;
+}
+
+.account-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-transform: capitalize;
+}
+
+.account-input {
+  flex: 1;
+  padding: 6px 10px !important;
+  font-size: 12px !important;
+  min-height: unset !important;
+}
+
+.account-remove {
+  background: none;
+  border: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  padding: 4px 6px;
+  font-size: 12px;
+  border-radius: var(--radius-sm);
+  transition: all 0.15s;
+}
+
+.account-remove:hover {
+  color: var(--error);
+  background: rgba(248, 113, 113, 0.1);
+}
+
+.account-add-row {
+  display: flex;
+  gap: 8px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--border);
+}
+
 .save-status {
   font-size: 12px;
   font-weight: 600;
