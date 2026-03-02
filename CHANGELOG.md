@@ -1,6 +1,30 @@
 # Changelog
 
 All notable changes to Mission Control are documented here.
+Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/).
+
+## [Unreleased]
+
+## [1.0.4] — 2026-03-02
+
+### ✨ Features
+- **Tree View** — New hierarchical dashboard view grouping projects by lane → tier with collapsible nodes, search, and lane filtering
+
+### 🐛 Bug Fixes
+- **Login error handling** — Convex error messages like `[CONVEX M(auth:login)] [Request ID: ...]` are now parsed to show clean, user-friendly messages (e.g. "Invalid email or password") with a shake animation
+
+### 🏗️ Infrastructure
+- **CI Workflow** — GitHub Actions pipeline for lint, build, and typecheck on push/PR
+- **Release Workflow** — Tag-triggered (`v*`) auto-creation of GitHub Releases from CHANGELOG
+- **Dependabot** — Weekly dependency update PRs for npm and GitHub Actions
+- **Issue Templates** — Bug report and feature request templates
+- **PR Template** — Structured pull request template with checklist
+- **CONTRIBUTING.md** — Contribution guidelines with setup, workflow, and commit conventions
+- **SECURITY.md** — Responsible vulnerability disclosure policy
+- **CODE_OF_CONDUCT.md** — Contributor Covenant v2.1
+
+### 📖 Documentation
+- **README** — Added CI/license/release badges, VPS rsync deployment guide, single-user auth model docs, versioning & contributing sections
 
 ## [1.0.2] — 2026-02-26
 
@@ -56,6 +80,8 @@ All notable changes to Mission Control are documented here.
 - Hybrid project source: legacy PROJECT.yaml scanner + Minions adapter
 - VPS deployment via rsync + PM2
 
+[Unreleased]: https://github.com/mxn2020/project-manager-mission-control/compare/v1.0.4...HEAD
+[1.0.4]: https://github.com/mxn2020/project-manager-mission-control/compare/v1.0.2...v1.0.4
 [1.0.2]: https://github.com/mxn2020/project-manager-mission-control/releases/tag/v1.0.2
 [1.0.1]: https://github.com/mxn2020/project-manager-mission-control/releases/tag/v1.0.1
 [1.0.0]: https://github.com/mxn2020/project-manager-mission-control/releases/tag/v1.0.0

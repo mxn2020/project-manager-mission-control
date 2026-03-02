@@ -9,6 +9,31 @@ interface LoginPageProps {
     onRegister: AuthActions['register'];
 }
 
+/**
+ * Parse Convex error messages to extract the user-friendly part.
+ * Convex errors look like:
+ *   "[CONVEX M(auth:login)] [Request ID: xxx] Server Error Uncaught Error: Invalid email or password."
+ * We strip the prefix and return just "Invalid email or password."
+ */
+function parseErrorMessage(err: any): string {
+    const raw = err?.message || err?.data?.message || 'Authentication failed';
+
+    // Try to extract message after "Uncaught Error: " or "Server Error: "
+    const uncaughtMatch = raw.match(/Uncaught Error:\s*(.+)/);
+    if (uncaughtMatch) return uncaughtMatch[1].trim();
+
+    const serverMatch = raw.match(/Server Error:\s*(.+)/);
+    if (serverMatch) return serverMatch[1].trim();
+
+    // If it starts with [CONVEX ...], strip everything up to the last ]: or :]
+    if (raw.startsWith('[CONVEX')) {
+        const lastBracket = raw.lastIndexOf('] ');
+        if (lastBracket !== -1) return raw.slice(lastBracket + 2).trim();
+    }
+
+    return raw;
+}
+
 export default function LoginPage({ needsSetup, onLogin, onRegister }: LoginPageProps) {
     const [isSetup, setIsSetup] = useState(needsSetup);
     const [email, setEmail] = useState('');
@@ -28,7 +53,7 @@ export default function LoginPage({ needsSetup, onLogin, onRegister }: LoginPage
                 await onLogin(email, password);
             }
         } catch (err: any) {
-            setError(err.message || 'Authentication failed');
+            setError(parseErrorMessage(err));
         } finally {
             setLoading(false);
         }
@@ -87,7 +112,7 @@ export default function LoginPage({ needsSetup, onLogin, onRegister }: LoginPage
                         />
                     </div>
 
-                    {error && <div className="login-error">{error}</div>}
+                    {error && <div className="login-error" key={error}>⚠️ {error}</div>}
 
                     <button type="submit" className="btn btn-primary login-btn" disabled={loading}>
                         {loading ? '⏳ Please wait...' : isSetup ? '🚀 Create Account' : '🔓 Sign In'}

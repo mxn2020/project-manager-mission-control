@@ -11,6 +11,7 @@ import OverviewPage from './pages/OverviewPage';
 import GridPage from './pages/GridPage';
 import TablePage from './pages/TablePage';
 import KanbanPage from './pages/KanbanPage';
+import TreePage from './pages/TreePage';
 import FocusPage from './pages/FocusPage';
 import ProjectPage from './pages/ProjectPage';
 import AIPage from './pages/AIPage';
@@ -154,6 +155,7 @@ function AppShell() {
               <NavLink to="/" end className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}><span className="nav-icon">📊</span> Overview</NavLink>
               <NavLink to="/grid" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}><span className="nav-icon">🔲</span> Grid</NavLink>
               <NavLink to="/table" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}><span className="nav-icon">📋</span> Table</NavLink>
+              <NavLink to="/tree" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}><span className="nav-icon">🌳</span> Tree</NavLink>
               <NavLink to="/kanban" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}><span className="nav-icon">📌</span> Kanban</NavLink>
               <NavLink to="/focus" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}><span className="nav-icon">🎯</span> Focus</NavLink>
             </div>
@@ -196,6 +198,7 @@ function AppShell() {
             ) : data ? <OverviewPage data={data} onNavigate={(p) => navigate(p)} /> : null} />
             <Route path="/grid" element={data ? <GridPage data={data} /> : null} />
             <Route path="/table" element={data ? <TablePage data={data} /> : null} />
+            <Route path="/tree" element={data ? <TreePage data={data} /> : null} />
             <Route path="/kanban" element={data ? <KanbanPage data={data} /> : null} />
             <Route path="/focus" element={data ? <FocusPage data={data} /> : null} />
             <Route path="/project/:path" element={<ProjectPage />} />

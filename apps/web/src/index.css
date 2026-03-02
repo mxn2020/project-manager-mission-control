@@ -761,6 +761,151 @@ a:hover {
   gap: 3px;
 }
 
+/* ─── Tree View ───────────────────────────────────────────────────────────── */
+.tree-container {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tree-node {
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.tree-node-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.2s;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.tree-node-header:hover {
+  border-color: var(--border-hover);
+  background: var(--bg-glass-hover);
+}
+
+.tree-node-header.expanded {
+  border-radius: var(--radius) var(--radius) 0 0;
+  border-bottom-color: transparent;
+}
+
+.tree-chevron {
+  font-size: 9px;
+  color: var(--text-tertiary);
+  transition: transform 0.25s ease;
+  flex-shrink: 0;
+  width: 14px;
+  text-align: center;
+}
+
+.tree-chevron.expanded {
+  transform: rotate(90deg);
+}
+
+.tree-node-icon {
+  font-size: 15px;
+  flex-shrink: 0;
+}
+
+.tree-node-label {
+  flex: 1;
+  letter-spacing: -0.01em;
+}
+
+.tree-node-count {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-tertiary);
+  background: var(--bg-glass);
+  padding: 2px 8px;
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.tree-node-children {
+  padding: 4px 0 6px 20px;
+  border-left: 1px solid var(--border);
+  margin-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Nested tier nodes — slightly subtler styling */
+.tree-node-children .tree-node-header {
+  background: var(--bg-glass);
+  border-color: var(--border);
+  font-size: 13px;
+  padding: 8px 12px;
+}
+
+.tree-node-children .tree-node-header:hover {
+  background: var(--bg-glass-hover);
+}
+
+.tree-leaf {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.tree-leaf:hover {
+  border-color: var(--border-hover);
+  background: var(--bg-glass-hover);
+  transform: translateX(3px);
+}
+
+.tree-leaf-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
+.tree-leaf-icon {
+  font-size: 13px;
+  flex-shrink: 0;
+  opacity: 0.5;
+}
+
+.tree-leaf-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tree-leaf-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.tree-leaf-stack {
+  display: flex;
+  gap: 3px;
+}
+
 /* ─── Project Detail Page ─────────────────────────────────────────────────── */
 .project-detail {
   max-width: 900px;
@@ -1540,6 +1685,34 @@ a:hover {
   border: 1px solid rgba(248, 113, 113, 0.2);
   border-radius: var(--radius-sm);
   padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  animation: loginShake 0.4s ease-in-out;
+}
+
+@keyframes loginShake {
+
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  20% {
+    transform: translateX(-6px);
+  }
+
+  40% {
+    transform: translateX(6px);
+  }
+
+  60% {
+    transform: translateX(-4px);
+  }
+
+  80% {
+    transform: translateX(4px);
+  }
 }
 
 .login-btn {
@@ -2000,6 +2173,7 @@ a:hover {
 .ss-create:hover {
   background: rgba(124, 58, 237, 0.1);
 }
+
 /* ─────────────────────────────────────────────────────────────────────────────
  * Responsive / Mobile Styles
  * ───────────────────────────────────────────────────────────────────────────── */
@@ -2056,7 +2230,8 @@ a:hover {
 
   .content {
     padding: 16px;
-    padding-bottom: 80px; /* space for bottom nav */
+    padding-bottom: 80px;
+    /* space for bottom nav */
   }
 
   /* ─── Page Headers ────────────────────────────────────────────────────── */
@@ -2110,7 +2285,8 @@ a:hover {
 
   /* ─── Kanban Board ────────────────────────────────────────────────────── */
   .kanban-board {
-    flex-direction: row; /* keep horizontal scroll on mobile */
+    flex-direction: row;
+    /* keep horizontal scroll on mobile */
     min-height: calc(100dvh - 200px);
   }
 
@@ -2395,8 +2571,15 @@ a:hover {
 }
 
 @keyframes dialogIn {
-  from { opacity: 0; transform: scale(0.95) translateY(8px); }
-  to   { opacity: 1; transform: scale(1) translateY(0); }
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
 }
 
 .dialog-header {
@@ -2583,6 +2766,7 @@ a:hover {
 
 /* ─── Responsive form grid overrides ─────────────────────────────────────── */
 @media (max-width: 768px) {
+
   /* Override inline grid layouts in pages */
   [style*="grid-template-columns: 1fr 1fr"],
   [style*="grid-template-columns: repeat(3"] {
@@ -2602,4 +2786,3 @@ a:hover {
     -webkit-overflow-scrolling: touch;
   }
 }
-

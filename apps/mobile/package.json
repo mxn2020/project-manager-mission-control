@@ -15,6 +15,7 @@
     "@mission-control/hooks": "workspace:*",
     "@mission-control/types": "workspace:*",
     "@react-navigation/bottom-tabs": "^7.15.2",
+    "@react-navigation/elements": "^2.9.8",
     "@react-navigation/native": "^7.1.31",
     "expo": "~55.0.4",
     "expo-constants": "~55.0.7",
