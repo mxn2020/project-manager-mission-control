@@ -296,59 +296,279 @@ function legacyScan() {
     };
 }
 
-// ─── Minions-powered Data Access ────────────────────────────────────────────
+// ─── Unified Sync Engine ────────────────────────────────────────────────────
 
-async function minionsGetProjects() {
-    const minions = await listByType('project');
+/**
+ * Read a PROJECT.yaml and return parsed data with path metadata.
+ */
+function readProjectYaml(projectDir) {
+    const yamlPath = path.join(projectDir, 'PROJECT.yaml');
+    if (!fs.existsSync(yamlPath)) return null;
+    try {
+        const raw = fs.readFileSync(yamlPath, 'utf-8');
+        const data = parseYaml(raw);
+        data._path = path.relative(ROOT, projectDir);
+        data._yamlPath = path.relative(ROOT, yamlPath);
+        data._absolutePath = projectDir;
+        return data;
+    } catch { return null; }
+}
+
+/**
+ * Write a UUID id into a PROJECT.yaml file (insert at top if missing).
+ */
+function writeIdToProjectYaml(projectDir, uuid) {
+    const yamlPath = path.join(projectDir, 'PROJECT.yaml');
+    if (!fs.existsSync(yamlPath)) return;
+    let content = fs.readFileSync(yamlPath, 'utf-8');
+
+    // Check if id already exists
+    if (/^id:\s/m.test(content)) {
+        // Update existing id
+        content = content.replace(/^id:\s.*/m, `id: ${uuid}`);
+    } else {
+        // Insert id as first line
+        content = `id: ${uuid}\n${content}`;
+    }
+    fs.writeFileSync(yamlPath, content, 'utf-8');
+}
+
+/**
+ * Enrich a project with disk data — reads PROJECT.yaml and computes health.
+ * Returns the flat project object for API responses.
+ */
+function enrichProjectFromDisk(minionId, projectPath) {
+    const absDir = path.resolve(ROOT, projectPath);
+    const data = readProjectYaml(absDir);
+    if (!data) {
+        return {
+            _minionId: minionId,
+            name: path.basename(projectPath),
+            path: projectPath,
+            syncStatus: 'orphaned',
+            health_score: 0,
+        };
+    }
+
+    const stacks = Array.isArray(data.stack) ? data.stack : [];
+    return {
+        _minionId: minionId,
+        id: data.id || minionId,
+        name: data.name || '',
+        description: data.description || '',
+        tier: data.tier || 'idea',
+        lane: data.lane || 'uncategorized',
+        priority: data.priority || 'medium',
+        oss: data.oss === true || data.oss === 'true',
+        stack: stacks,
+        repo: data.repo || null,
+        deploy_url: data.deploy_url || null,
+        last_active: data.last_active || null,
+        tags: Array.isArray(data.tags) ? data.tags : [],
+        notes: data.notes || '',
+        path: projectPath,
+        yaml_path: path.join(projectPath, 'PROJECT.yaml'),
+        health_score: calculateHealthScore(absDir),
+        syncStatus: 'synced',
+    };
+}
+
+/**
+ * Full project sync: reconcile disk PROJECT.yaml files with Minions index.
+ * Returns { created, updated, orphaned, total, projects }.
+ */
+async function syncProjects() {
+    console.log('🔄 Sync: scanning disk for PROJECT.yaml files...');
+    const diskProjects = findProjectYamls(ROOT);
+    const results = { created: 0, updated: 0, orphaned: 0, total: 0 };
+
+    if (!minionsReady) {
+        // Without Minions, just return the legacy scan data
+        const data = legacyScan();
+        results.total = data.total_projects;
+        return { ...results, ...data };
+    }
+
+    const mc = getMinions();
+    const existingMinions = await listByType('project');
+    const now = new Date().toISOString();
+
+    // Build lookup maps
+    const minionById = new Map();        // Minion UUID → minion object
+    const minionByPath = new Map();      // path → minion object
+    for (const m of existingMinions) {
+        minionById.set(m.id, m);
+        if (m.fields?.path) minionByPath.set(m.fields.path, m);
+    }
+
+    const matchedMinionIds = new Set();
+
+    // Pass 1: Reconcile disk projects against Minions
+    for (const diskProject of diskProjects) {
+        const projectPath = diskProject._path;
+        const absDir = diskProject._absolutePath;
+        const diskId = diskProject.id;  // UUID written in PROJECT.yaml
+
+        let matched = null;
+
+        // Try matching by UUID first (stable link)
+        if (diskId && minionById.has(diskId)) {
+            matched = minionById.get(diskId);
+        }
+        // Fallback: match by path
+        if (!matched && minionByPath.has(projectPath)) {
+            matched = minionByPath.get(projectPath);
+        }
+
+        if (matched) {
+            // Update existing Minion: refresh paths and title
+            matchedMinionIds.add(matched.id);
+            const needsUpdate =
+                matched.fields?.path !== projectPath ||
+                matched.title !== (diskProject.name || matched.title);
+
+            if (needsUpdate) {
+                try {
+                    const updated = await mc.update(matched, {
+                        title: diskProject.name || matched.title,
+                        description: diskProject.description || matched.description || '',
+                        fields: {
+                            path: projectPath,
+                            yamlPath: diskProject._yamlPath,
+                            accountsPath: fs.existsSync(path.join(absDir, 'ACCOUNTS.yaml'))
+                                ? path.join(projectPath, 'ACCOUNTS.yaml') : '',
+                            lastSyncedAt: now,
+                            syncStatus: 'synced',
+                        },
+                    });
+                    await mc.save(updated.data);
+                    results.updated++;
+                } catch (err) {
+                    console.warn(`⚠️  Failed to update minion for ${projectPath}: ${err.message}`);
+                }
+            }
+            // Ensure the UUID is written back into PROJECT.yaml
+            if (!diskId || diskId !== matched.id) {
+                writeIdToProjectYaml(absDir, matched.id);
+            }
+        } else {
+            // Create new Minion entry
+            try {
+                const wrapper = await mc.create('project', {
+                    title: diskProject.name || path.basename(projectPath),
+                    description: diskProject.description || '',
+                    status: 'active',
+                    priority: diskProject.priority || 'medium',
+                    tags: Array.isArray(diskProject.tags) ? diskProject.tags : [],
+                    fields: {
+                        path: projectPath,
+                        yamlPath: diskProject._yamlPath,
+                        accountsPath: fs.existsSync(path.join(absDir, 'ACCOUNTS.yaml'))
+                            ? path.join(projectPath, 'ACCOUNTS.yaml') : '',
+                        lastSyncedAt: now,
+                        syncStatus: 'synced',
+                    },
+                });
+                await mc.save(wrapper.data);
+                matchedMinionIds.add(wrapper.data.id);
+
+                // Write the new UUID back into PROJECT.yaml
+                writeIdToProjectYaml(absDir, wrapper.data.id);
+                results.created++;
+            } catch (err) {
+                console.warn(`⚠️  Failed to create minion for ${projectPath}: ${err.message}`);
+            }
+        }
+    }
+
+    // Pass 2: Mark orphaned Minions (exist in Minions but not on disk)
+    const orphaned = [];
+    for (const m of existingMinions) {
+        if (!matchedMinionIds.has(m.id)) {
+            orphaned.push({
+                id: m.id,
+                title: m.title,
+                path: m.fields?.path || '(unknown)',
+            });
+            try {
+                const updated = await mc.update(m, {
+                    fields: { ...m.fields, syncStatus: 'orphaned', lastSyncedAt: now },
+                });
+                await mc.save(updated.data);
+            } catch { /* best effort */ }
+            results.orphaned++;
+        }
+    }
+
+    results.total = diskProjects.length;
+
+    // Build the full enriched project list for the response
+    const allMinions = await listByType('project');
+    const enrichedProjects = [];
     const byTier = {}, byLane = {}, byPriority = {}, byStack = {};
 
-    const projects = minions.map(m => {
-        const f = m.fields;
-        const tier = f.tier || 'idea';
-        const lane = f.lane || 'uncategorized';
-        const prio = f.priority || m.priority || 'medium';
+    for (const m of allMinions) {
+        const projectPath = m.fields?.path || '';
+        const project = enrichProjectFromDisk(m.id, projectPath);
+        enrichedProjects.push(project);
+
+        const tier = project.tier || 'idea';
+        const lane = project.lane || 'uncategorized';
+        const prio = project.priority || 'medium';
         byTier[tier] = (byTier[tier] || 0) + 1;
         byLane[lane] = (byLane[lane] || 0) + 1;
         byPriority[prio] = (byPriority[prio] || 0) + 1;
-        const stacks = Array.isArray(f.stack) ? f.stack : [];
+        const stacks = Array.isArray(project.stack) ? project.stack : [];
         for (const s of stacks) byStack[s] = (byStack[s] || 0) + 1;
+    }
 
-        return {
-            name: m.title || f.name || '',
-            description: m.description || '',
-            tier, lane, priority: prio,
-            oss: f.oss === true,
-            stack: stacks,
-            repo: f.repoUrl || null,
-            deploy_url: f.deployUrl || null,
-            last_active: f.lastActive || null,
-            tags: m.tags || [],
-            notes: f.notes || '',
-            path: f.path || '',
-            yaml_path: f.yamlPath || '',
-            health_score: f.healthScore || 0,
-            _minionId: m.id,
-        };
-    });
+    console.log(`✅ Sync complete: ${results.created} created, ${results.updated} updated, ${results.orphaned} orphaned, ${results.total} on disk`);
 
     return {
-        generated_at: new Date().toISOString(),
-        total_projects: projects.length,
+        generated_at: now,
+        total_projects: enrichedProjects.length,
         summary: { by_tier: byTier, by_lane: byLane, by_priority: byPriority, by_stack: byStack },
-        projects,
-        source: 'minions',
+        projects: enrichedProjects,
+        sync: results,
+        orphaned,
+        source: 'unified',
     };
 }
 
 // ─── API Routes ─────────────────────────────────────────────────────────────
 
-// GET /api/projects — list all projects
+// GET /api/projects — list all projects (Minions index enriched from disk)
 app.get('/api/projects', async (req, res) => {
     try {
         if (minionsReady) {
-            const data = await minionsGetProjects();
-            return res.json(data);
+            const minions = await listByType('project');
+            const enrichedProjects = [];
+            const byTier = {}, byLane = {}, byPriority = {}, byStack = {};
+
+            for (const m of minions) {
+                const projectPath = m.fields?.path || '';
+                const project = enrichProjectFromDisk(m.id, projectPath);
+                enrichedProjects.push(project);
+
+                const tier = project.tier || 'idea';
+                const lane = project.lane || 'uncategorized';
+                const prio = project.priority || 'medium';
+                byTier[tier] = (byTier[tier] || 0) + 1;
+                byLane[lane] = (byLane[lane] || 0) + 1;
+                byPriority[prio] = (byPriority[prio] || 0) + 1;
+                const stacks = Array.isArray(project.stack) ? project.stack : [];
+                for (const s of stacks) byStack[s] = (byStack[s] || 0) + 1;
+            }
+
+            return res.json({
+                generated_at: new Date().toISOString(),
+                total_projects: enrichedProjects.length,
+                summary: { by_tier: byTier, by_lane: byLane, by_priority: byPriority, by_stack: byStack },
+                projects: enrichedProjects,
+                source: 'minions',
+            });
         }
+
         // Fallback to legacy scan
         const statusPath = path.join(ROOT, 'status.json');
         if (!fs.existsSync(statusPath)) {
@@ -362,41 +582,35 @@ app.get('/api/projects', async (req, res) => {
     }
 });
 
-// GET /api/projects/:path — get single project
+// GET /api/projects/:path — get single project (reads from disk)
 app.get('/api/projects/:projectPath', async (req, res) => {
     try {
         const projectPath = decodeURIComponent(req.params.projectPath);
+        const absDir = path.resolve(ROOT, projectPath);
+        const yamlPath = path.join(absDir, 'PROJECT.yaml');
 
-        if (minionsReady) {
-            // Search by path in Minions
-            const minions = await listByType('project');
-            const match = minions.find(m => m.fields?.path === projectPath);
-            if (match) {
-                const flat = minionToFlat(match);
-                // Also read raw YAML for the editor
-                const yamlPath = path.join(ROOT, projectPath, 'PROJECT.yaml');
-                const rawYaml = fs.existsSync(yamlPath) ? fs.readFileSync(yamlPath, 'utf-8') : '';
-                return res.json({ project: flat, raw_yaml: rawYaml, source: 'minions' });
-            }
-        }
-
-        // Fallback to direct YAML read
-        const yamlPath = path.join(ROOT, projectPath, 'PROJECT.yaml');
         if (!fs.existsSync(yamlPath)) {
             return res.status(404).json({ error: `PROJECT.yaml not found at ${projectPath}` });
         }
+
         const raw = fs.readFileSync(yamlPath, 'utf-8');
         const parsed = parseYaml(raw);
         parsed.path = projectPath;
         parsed.yaml_path = path.join(projectPath, 'PROJECT.yaml');
-        parsed.health_score = calculateHealthScore(path.join(ROOT, projectPath));
+        parsed.health_score = calculateHealthScore(absDir);
+
+        // Get Minion ID if available
+        if (minionsReady && parsed.id) {
+            parsed._minionId = parsed.id;
+        }
+
         res.json({ project: parsed, raw_yaml: raw });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
 });
 
-// PUT /api/projects/:path — update project YAML (and sync to Minions)
+// PUT /api/projects/:path — update PROJECT.yaml (and sync title to Minions)
 app.put('/api/projects/:projectPath', async (req, res) => {
     try {
         const projectPath = decodeURIComponent(req.params.projectPath);
@@ -410,44 +624,31 @@ app.put('/api/projects/:projectPath', async (req, res) => {
         // Write the YAML file
         fs.writeFileSync(yamlPath, yaml, 'utf-8');
 
-        // Sync to Minions if ready
+        // Sync title/description to Minions if ready
         if (minionsReady) {
-            const mc = getMinions();
-            const data = parseYaml(yaml);
-            const minions = await listByType('project');
-            const match = minions.find(m => m.fields?.path === projectPath);
-            if (match) {
-                // Update existing minion
-                const updated = await mc.update(match, {
-                    title: data.name || match.title,
-                    description: data.notes || data.description || '',
-                    priority: data.priority || 'medium',
-                    tags: Array.isArray(data.tags) ? data.tags : [],
-                    fields: {
-                        ...match.fields,
-                        name: data.name || match.title,
-                        tier: data.tier || 'idea',
-                        lane: data.lane || 'uncategorized',
-                        priority: data.priority || 'medium',
-                        stack: data.stack || [],
-                        oss: data.oss === true,
-                        repoUrl: data.repo_url || '',
-                        deployUrl: data.deploy_url || '',
-                        lastActive: data.last_active || '',
-                        notes: data.notes || '',
-                    },
-                });
-                await mc.save(updated.data);
-            }
-        }
-
-        // Re-scan in background (legacy)
-        setTimeout(() => {
             try {
-                const statusData = legacyScan();
-                fs.writeFileSync(path.join(ROOT, 'status.json'), JSON.stringify(statusData, null, 2));
-            } catch { }
-        }, 100);
+                const data = parseYaml(yaml);
+                const mc = getMinions();
+                const minions = await listByType('project');
+                const match = minions.find(m =>
+                    m.fields?.path === projectPath ||
+                    (data.id && m.id === data.id)
+                );
+                if (match) {
+                    const updated = await mc.update(match, {
+                        title: data.name || match.title,
+                        description: data.description || match.description || '',
+                        fields: {
+                            ...match.fields,
+                            path: projectPath,
+                            lastSyncedAt: new Date().toISOString(),
+                            syncStatus: 'synced',
+                        },
+                    });
+                    await mc.save(updated.data);
+                }
+            } catch { /* best effort */ }
+        }
 
         res.json({ success: true });
     } catch (err) {
@@ -461,21 +662,43 @@ app.post('/api/projects', async (req, res) => {
         const { name, lane, tier, priority, description, stack, oss, repo, deploy_url } = req.body;
         if (!name || !lane) return res.status(400).json({ error: 'Name and lane are required' });
 
-        // Determine path: lane/name (lowercase, hyphenated)
         const safeName = name.toLowerCase().replace(/[^a-z0-9-_]/g, '-').replace(/-+/g, '-');
         const projectPath = `${lane}/${safeName}`;
         const absDir = path.resolve(ROOT, projectPath);
 
-        // Check for duplicates
         if (fs.existsSync(absDir) && fs.existsSync(path.join(absDir, 'PROJECT.yaml'))) {
             return res.status(409).json({ error: `Project already exists at ${projectPath}` });
         }
 
-        // Create directory
         fs.mkdirSync(absDir, { recursive: true });
 
-        // Generate PROJECT.yaml
-        const yamlContent = toYaml({
+        // Create Minion entry first to get the UUID
+        let minionId = null;
+        if (minionsReady) {
+            try {
+                const mc = getMinions();
+                const wrapper = await mc.create('project', {
+                    title: name,
+                    description: description || '',
+                    status: 'active',
+                    priority: priority || 'medium',
+                    tags: [],
+                    fields: {
+                        path: projectPath,
+                        yamlPath: path.join(projectPath, 'PROJECT.yaml'),
+                        accountsPath: '',
+                        lastSyncedAt: new Date().toISOString(),
+                        syncStatus: 'synced',
+                    },
+                });
+                await mc.save(wrapper.data);
+                minionId = wrapper.data.id;
+            } catch { /* continue without Minion */ }
+        }
+
+        // Generate PROJECT.yaml with id field
+        const yamlData = {
+            ...(minionId ? { id: minionId } : {}),
             name,
             description: description || '',
             tier: tier || 'idea',
@@ -485,51 +708,24 @@ app.post('/api/projects', async (req, res) => {
             stack: stack || [],
             repo: repo || null,
             deploy_url: deploy_url || null,
+            last_active: new Date().toISOString().split('T')[0],
             tags: [],
             notes: '',
-        });
+        };
 
-        fs.writeFileSync(path.join(absDir, 'PROJECT.yaml'), yamlContent, 'utf-8');
+        fs.writeFileSync(path.join(absDir, 'PROJECT.yaml'), toYaml(yamlData), 'utf-8');
 
-        // Sync to Minions if ready
-        if (minionsReady) {
-            try {
-                const mc = getMinions();
-                const reg = getRegistry();
-                const type = reg.get('project');
-                if (type) {
-                    const wrapper = mc.create(type.typeSlug, {
-                        name, description: description || '', tier: tier || 'idea', lane,
-                        priority: priority || 'medium', oss: oss || false,
-                        stack: (stack || []).join(', '), repo: repo || null,
-                        deploy_url: deploy_url || null, tags: '', notes: '',
-                        path: projectPath, yaml_path: `${projectPath}/PROJECT.yaml`,
-                        last_active: new Date().toISOString().split('T')[0],
-                        health_score: 0,
-                    });
-                    await mc.save(wrapper.data);
-                }
-            } catch { /* best effort */ }
-        }
-
-        // Re-scan in background
-        setTimeout(() => {
-            try {
-                const statusData = legacyScan();
-                fs.writeFileSync(path.join(ROOT, 'status.json'), JSON.stringify(statusData, null, 2));
-            } catch { }
-        }, 100);
-
-        res.status(201).json({ success: true, path: projectPath });
+        res.status(201).json({ success: true, path: projectPath, minionId });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
 });
 
-// POST /api/scan — trigger full re-scan
+// POST /api/scan — trigger full sync (disk ↔ Minions reconciliation)
 app.post('/api/scan', async (req, res) => {
     try {
-        const data = legacyScan();
+        const data = await syncProjects();
+        // Also update status.json for backward compat
         fs.writeFileSync(path.join(ROOT, 'status.json'), JSON.stringify(data, null, 2));
         res.json(data);
     } catch (err) {

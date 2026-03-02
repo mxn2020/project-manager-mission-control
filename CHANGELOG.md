@@ -5,6 +5,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and thi
 
 ## [Unreleased]
 
+## [1.0.6] — 2026-03-02
+
+### ✨ Features
+- **Unified project sync engine** — Disk `PROJECT.yaml` is now the single source of truth; Minions stores only the index (paths + UUID). Sync button triggers full disk ↔ Minions reconciliation: matches by UUID, updates paths, creates new entries, marks orphans
+- **UUID bi-directional linking** — Each `PROJECT.yaml` gets an `id` field written back by the sync process, enabling stable matching even when folders move
+- **Enriched project listing** — `GET /api/projects` reads Minions index → enriches each project live from disk
+
+### 🐛 Bug Fixes
+- **"Project not found" on click** — Projects now resolve directly from disk paths instead of stale Minions data
+
 ## [1.0.5] — 2026-03-02
 
 ### ✨ Features
@@ -89,7 +99,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and thi
 - Hybrid project source: legacy PROJECT.yaml scanner + Minions adapter
 - VPS deployment via rsync + PM2
 
-[Unreleased]: https://github.com/mxn2020/project-manager-mission-control/compare/v1.0.5...HEAD
+[Unreleased]: https://github.com/mxn2020/project-manager-mission-control/compare/v1.0.6...HEAD
+[1.0.6]: https://github.com/mxn2020/project-manager-mission-control/compare/v1.0.5...v1.0.6
 [1.0.5]: https://github.com/mxn2020/project-manager-mission-control/compare/v1.0.4...v1.0.5
 [1.0.4]: https://github.com/mxn2020/project-manager-mission-control/compare/v1.0.2...v1.0.4
 [1.0.2]: https://github.com/mxn2020/project-manager-mission-control/releases/tag/v1.0.2
