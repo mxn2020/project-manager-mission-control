@@ -1,6 +1,7 @@
 import { useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { useState } from 'react';
+import { PageHeader } from '../components/ui';
 
 export default function AILogsPage() {
     const logs = useQuery(api.aiLogs.listLogs, { limit: 100 });
@@ -33,14 +34,11 @@ export default function AILogsPage() {
 
     return (
         <div>
-            <div className="page-header">
-                <h1 className="page-title">📝 AI Logs</h1>
-                <p className="page-description">Browse AI request history, token usage, and costs</p>
-            </div>
+            <PageHeader title="📝 AI Logs" description="Browse AI request history, token usage, and costs" />
 
             {/* Stats Cards */}
             {stats && (
-                <div className="stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12, marginBottom: 20 }}>
+                <div className="grid-auto gap-12 mb-20">
                     <div className="stat-card">
                         <div className="stat-value">{stats.totalCalls}</div>
                         <div className="stat-label">Total Calls</div>
@@ -67,7 +65,7 @@ export default function AILogsPage() {
             )}
 
             {/* Filters */}
-            <div className="filter-bar" style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <div className="filter-bar flex-row flex-wrap gap-8">
                 {(['all', 'success', 'error'] as const).map(f => (
                     <button
                         key={f}
@@ -82,16 +80,13 @@ export default function AILogsPage() {
                     value={search}
                     onChange={e => setSearch(e.target.value)}
                     placeholder="🔍 Search logs..."
-                    style={{
-                        padding: '6px 12px', borderRadius: 6, border: '1px solid var(--border)',
-                        background: 'var(--bg-secondary)', color: 'inherit', fontSize: 12, flex: 1, minWidth: 150,
-                    }}
+                    className="form-input-sm flex-1" style={{ minWidth: 150, background: 'var(--bg-secondary)' }}
                 />
-                <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{filtered.length} results</span>
+                <span className="text-sm text-tertiary">{filtered.length} results</span>
             </div>
 
             {/* Logs Table */}
-            <div className="logs-table" style={{ marginTop: 16 }}>
+            <div className="mt-16">
                 {!logs ? (
                     <div className="loading"><div className="loading-spinner" /> Loading logs...</div>
                 ) : filtered.length === 0 ? (
@@ -103,13 +98,13 @@ export default function AILogsPage() {
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                         <thead>
                             <tr style={{ borderBottom: '1px solid var(--border)', textAlign: 'left' }}>
-                                <th style={{ padding: '8px 12px', color: 'var(--text-secondary)' }}>Time</th>
-                                <th style={{ padding: '8px 12px', color: 'var(--text-secondary)' }}>Model</th>
-                                <th style={{ padding: '8px 12px', color: 'var(--text-secondary)' }}>Tokens</th>
-                                <th style={{ padding: '8px 12px', color: 'var(--text-secondary)' }}>Cost</th>
-                                <th style={{ padding: '8px 12px', color: 'var(--text-secondary)' }}>Duration</th>
-                                <th style={{ padding: '8px 12px', color: 'var(--text-secondary)' }}>Tools</th>
-                                <th style={{ padding: '8px 12px', color: 'var(--text-secondary)' }}>Status</th>
+                                <th className="text-muted" style={{ padding: '8px 12px' }}>Time</th>
+                                <th className="text-muted" style={{ padding: '8px 12px' }}>Model</th>
+                                <th className="text-muted" style={{ padding: '8px 12px' }}>Tokens</th>
+                                <th className="text-muted" style={{ padding: '8px 12px' }}>Cost</th>
+                                <th className="text-muted" style={{ padding: '8px 12px' }}>Duration</th>
+                                <th className="text-muted" style={{ padding: '8px 12px' }}>Tools</th>
+                                <th className="text-muted" style={{ padding: '8px 12px' }}>Status</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -125,10 +120,10 @@ export default function AILogsPage() {
                                         onClick={() => setExpandedId(expandedId === log._id ? null : log._id)}
                                     >
                                         <td style={{ padding: '8px 12px', whiteSpace: 'nowrap' }}>{formatTime(log.createdAt)}</td>
-                                        <td style={{ padding: '8px 12px', fontFamily: 'monospace', fontSize: 11 }}>{log.model.split('/').pop()}</td>
+                                        <td className="font-mono text-sm" style={{ padding: '8px 12px' }}>{log.model.split('/').pop()}</td>
                                         <td style={{ padding: '8px 12px' }}>
                                             {log.totalTokens ? log.totalTokens.toLocaleString() : '—'}
-                                            {log.promptTokens && <span style={{ color: 'var(--text-tertiary)', fontSize: 10 }}> ({log.promptTokens}↑ {log.completionTokens}↓)</span>}
+                                            {log.promptTokens && <span className="text-tertiary text-xs"> ({log.promptTokens}↑ {log.completionTokens}↓)</span>}
                                         </td>
                                         <td style={{ padding: '8px 12px' }}>
                                             {log.costCents ? `$${(log.costCents / 100).toFixed(4)}` : 'Free'}
@@ -138,13 +133,10 @@ export default function AILogsPage() {
                                             {log.toolCalls ? '🔧 ' + JSON.parse(log.toolCalls).length : '—'}
                                         </td>
                                         <td style={{ padding: '8px 12px' }}>
-                                            <span style={{
-                                                display: 'inline-block',
-                                                padding: '2px 8px',
-                                                borderRadius: 4,
-                                                fontSize: 11,
+                                            <span className="tag" style={{
                                                 background: log.status === 'success' ? 'rgba(52,211,153,0.15)' : 'rgba(248,113,113,0.15)',
                                                 color: log.status === 'success' ? '#34d399' : '#f87171',
+                                                border: 'none',
                                             }}>
                                                 {log.status}
                                             </span>
@@ -153,10 +145,10 @@ export default function AILogsPage() {
                                     {expandedId === log._id && (
                                         <tr key={`${log._id}-detail`}>
                                             <td colSpan={7} style={{ padding: '12px 16px', background: 'var(--bg-secondary)' }}>
-                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, maxHeight: 400, overflow: 'auto' }}>
+                                                <div className="grid-2 gap-12" style={{ maxHeight: 400, overflow: 'auto' }}>
                                                     <div>
-                                                        <div style={{ fontWeight: 600, marginBottom: 6, color: 'var(--text-secondary)', fontSize: 11, textTransform: 'uppercase' }}>Prompt</div>
-                                                        <pre style={{ fontSize: 11, whiteSpace: 'pre-wrap', background: 'var(--bg-primary)', padding: 12, borderRadius: 8, maxHeight: 300, overflow: 'auto' }}>
+                                                        <div className="section-label mb-4">Prompt</div>
+                                                        <pre className="text-sm whitespace-pre" style={{ background: 'var(--bg-primary)', padding: 12, borderRadius: 8, maxHeight: 300, overflow: 'auto' }}>
                                                             {(() => {
                                                                 try {
                                                                     const msgs = JSON.parse(log.promptMessages);
@@ -166,14 +158,14 @@ export default function AILogsPage() {
                                                         </pre>
                                                     </div>
                                                     <div>
-                                                        <div style={{ fontWeight: 600, marginBottom: 6, color: 'var(--text-secondary)', fontSize: 11, textTransform: 'uppercase' }}>Response</div>
-                                                        <pre style={{ fontSize: 11, whiteSpace: 'pre-wrap', background: 'var(--bg-primary)', padding: 12, borderRadius: 8, maxHeight: 300, overflow: 'auto' }}>
+                                                        <div className="section-label mb-4">Response</div>
+                                                        <pre className="text-sm whitespace-pre" style={{ background: 'var(--bg-primary)', padding: 12, borderRadius: 8, maxHeight: 300, overflow: 'auto' }}>
                                                             {log.responseContent}
                                                         </pre>
                                                     </div>
                                                 </div>
                                                 {log.errorMessage && (
-                                                    <div style={{ marginTop: 8, padding: 8, background: 'rgba(248,113,113,0.1)', borderRadius: 6, color: '#f87171', fontSize: 12 }}>
+                                                    <div className="error-box mt-8">
                                                         ❌ {log.errorMessage}
                                                     </div>
                                                 )}

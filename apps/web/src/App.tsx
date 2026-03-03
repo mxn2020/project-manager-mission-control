@@ -27,6 +27,7 @@ import IntegrationsPage from './pages/IntegrationsPage';
 import FilesPage from './pages/FilesPage';
 import DependencyGraphPage from './pages/DependencyGraphPage';
 import WorkflowsPage from './pages/WorkflowsPage';
+import MarketingPage from './pages/MarketingPage';
 import IdeasPage from './pages/IdeasPage';
 import WikiPage from './pages/WikiPage';
 import LoginPage from './pages/LoginPage';
@@ -39,7 +40,7 @@ function AppShell() {
   const navigate = useNavigate();
   const auth = useAuth();
   const isMobile = useIsMobile();
-  const { data, loading, error, runScan } = useProjects();
+  const { data, loading, error, refresh, runScan } = useProjects();
 
   // ─── Auth Loading State ──────────────────────────────────────────────
   if (auth.isLoading || auth.isSetupLoading) {
@@ -76,6 +77,7 @@ function AppShell() {
     if (p.startsWith('/files')) return WORKSPACES.find(ws => ws.id === 'files')!;
     if (p.startsWith('/dependencies')) return WORKSPACES.find(ws => ws.id === 'dependencies')!;
     if (p.startsWith('/workflows')) return WORKSPACES.find(ws => ws.id === 'workflows')!;
+    if (p.startsWith('/marketing')) return WORKSPACES.find(ws => ws.id === 'marketing')!;
     if (p.startsWith('/ideas')) return WORKSPACES.find(ws => ws.id === 'ideas')!;
     if (p.startsWith('/wiki')) return WORKSPACES.find(ws => ws.id === 'wiki')!;
     return WORKSPACES[0];
@@ -95,7 +97,7 @@ function AppShell() {
 
           {/* Grouped dropdowns */}
           {[
-            { label: '📋 Work', ids: ['tasks', 'workflows', 'content', 'ideas'] },
+            { label: '📋 Work', ids: ['tasks', 'workflows', 'marketing', 'content', 'ideas'] },
             { label: '📖 Knowledge', ids: ['wiki', 'roadmap', 'files'] },
             { label: '📦 Data', ids: ['minions', 'analytics', 'costs', 'dependencies'] },
             { label: '⚙️ System', ids: ['ai', 'integrations', 'admin'] },
@@ -199,8 +201,8 @@ function AppShell() {
             <Route path="/grid" element={data ? <GridPage data={data} /> : null} />
             <Route path="/table" element={data ? <TablePage data={data} /> : null} />
             <Route path="/tree" element={data ? <TreePage data={data} /> : null} />
-            <Route path="/kanban" element={data ? <KanbanPage data={data} /> : null} />
-            <Route path="/focus" element={data ? <FocusPage data={data} /> : null} />
+            <Route path="/kanban" element={data ? <KanbanPage data={data} onRefresh={refresh} /> : null} />
+            <Route path="/focus" element={data ? <FocusPage data={data} onRefresh={refresh} /> : null} />
             <Route path="/project/:path" element={<ProjectPage />} />
 
             {/* Mobile create/delete routes */}
@@ -221,6 +223,7 @@ function AppShell() {
             <Route path="/integrations" element={<IntegrationsPage />} />
             <Route path="/dependencies" element={<DependencyGraphPage />} />
             <Route path="/workflows" element={<WorkflowsPage />} />
+            <Route path="/marketing" element={<MarketingPage />} />
             <Route path="/ideas" element={<IdeasPage />} />
             <Route path="/wiki" element={<WikiPage />} />
             <Route path="/files" element={<FilesPage />} />

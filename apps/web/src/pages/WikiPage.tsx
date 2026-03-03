@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../lib/api';
+import SearchableSelect from '../components/SearchableSelect';
 
 const CATEGORIES = [
     { value: 'standard', label: 'Standards', icon: '📏' },
@@ -86,7 +87,7 @@ export default function WikiPage() {
     return (
         <div>
             <div className="page-header">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div className="flex-between">
                     <div>
                         <h1 className="page-title">📖 Wiki & Standards</h1>
                         <p className="page-description">Patterns, standards, setup guides, and knowledge base</p>
@@ -97,49 +98,47 @@ export default function WikiPage() {
 
             {/* Create Form */}
             {showCreate && (
-                <div style={{ background: 'var(--bg-secondary)', borderRadius: 12, padding: 20, marginBottom: 16, border: '1px solid var(--border)' }}>
+                <div className="section-card mb-16">
                     <input value={newTitle} onChange={e => setNewTitle(e.target.value)} placeholder="Article title *"
-                        style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'inherit', fontSize: 13, marginBottom: 12 }} />
+                        className="form-input mb-12" />
                     <textarea value={newBody} onChange={e => setNewBody(e.target.value)} placeholder="Markdown content..."
-                        style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'inherit', fontSize: 13, fontFamily: 'monospace', minHeight: 120, resize: 'vertical', marginBottom: 12 }} />
-                    <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-                        <select value={newCat} onChange={e => setNewCat(e.target.value)}
-                            style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'inherit', fontSize: 12 }}>
-                            {CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.icon} {c.label}</option>)}
-                        </select>
-                        <select value={newScope} onChange={e => setNewScope(e.target.value)}
-                            style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'inherit', fontSize: 12 }}>
-                            {SCOPES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
-                        </select>
+                        className="form-textarea mb-12 font-mono" style={{ minHeight: 120 }} />
+                    <div className="flex-row flex-wrap gap-12">
+                        <SearchableSelect
+                            options={CATEGORIES.map(c => ({ value: c.value, label: `${c.icon} ${c.label}` }))}
+                            value={newCat} onChange={setNewCat} placeholder="Category" clearable={false} width="160px" />
+                        <SearchableSelect
+                            options={SCOPES.map(s => ({ value: s.value, label: s.label }))}
+                            value={newScope} onChange={setNewScope} placeholder="Scope" clearable={false} width="140px" />
                         <input value={newTags} onChange={e => setNewTags(e.target.value)} placeholder="Tags (comma-separated)"
-                            style={{ flex: 1, padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'inherit', fontSize: 12, minWidth: 120 }} />
-                        <button className="btn btn-secondary" onClick={() => setShowCreate(false)} style={{ fontSize: 12 }}>Cancel</button>
-                        <button className="btn btn-primary" onClick={handleCreate} disabled={!newTitle.trim()} style={{ fontSize: 12 }}>Create</button>
+                            className="form-input-sm flex-1" style={{ minWidth: 120 }} />
+                        <button className="btn btn-secondary text-base" onClick={() => setShowCreate(false)}>Cancel</button>
+                        <button className="btn btn-primary text-base" onClick={handleCreate} disabled={!newTitle.trim()}>Create</button>
                     </div>
                 </div>
             )}
 
             {/* Main Layout: sidebar + content */}
-            <div style={{ display: 'grid', gridTemplateColumns: '240px 1fr', gap: 16, marginTop: 8 }}>
+            <div className="gap-16 mt-8" style={{ display: 'grid', gridTemplateColumns: '240px 1fr' }}>
                 {/* Sidebar */}
                 <div>
                     <input value={search} onChange={e => setSearch(e.target.value)} placeholder="🔍 Search..."
-                        style={{ width: '100%', padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-secondary)', color: 'inherit', fontSize: 12, marginBottom: 12 }} />
+                        className="form-input-sm mb-12" style={{ width: '100%', background: 'var(--bg-secondary)' }} />
 
                     {/* Scope filter */}
-                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 12 }}>
-                        <button className={`btn ${!filterScope ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setFilterScope('')} style={{ fontSize: 10, padding: '3px 8px' }}>All</button>
+                    <div className="flex-row flex-wrap gap-4 mb-12">
+                        <button className={`btn ${!filterScope ? 'btn-primary' : 'btn-secondary'} text-xs`} onClick={() => setFilterScope('')} style={{ padding: '3px 8px' }}>All</button>
                         {SCOPES.map(s => (
-                            <button key={s.value} className={`btn ${filterScope === s.value ? 'btn-primary' : 'btn-secondary'}`}
+                            <button key={s.value} className={`btn ${filterScope === s.value ? 'btn-primary' : 'btn-secondary'} text-xs`}
                                 onClick={() => setFilterScope(filterScope === s.value ? '' : s.value)}
-                                style={{ fontSize: 10, padding: '3px 8px' }}>{s.label}</button>
+                                style={{ padding: '3px 8px' }}>{s.label}</button>
                         ))}
                     </div>
 
                     {/* Category tree */}
-                    <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', marginBottom: 6 }}>Categories</div>
+                    <div className="section-label mb-6">Categories</div>
                     <button onClick={() => setFilterCat('')}
-                        style={{
+                        className="sidebar-item" style={{
                             display: 'block', width: '100%', textAlign: 'left', padding: '6px 10px', borderRadius: 6,
                             background: !filterCat ? 'var(--accent-bg)' : 'transparent', border: 'none', color: 'inherit',
                             cursor: 'pointer', fontSize: 12, marginBottom: 2,
@@ -153,17 +152,17 @@ export default function WikiPage() {
                                     background: filterCat === c.value ? 'var(--accent-bg)' : 'transparent', border: 'none', color: 'inherit',
                                     cursor: 'pointer', fontSize: 12, marginBottom: 2, opacity: count > 0 ? 1 : 0.4,
                                 }}>
-                                {c.icon} {c.label} <span style={{ float: 'right', color: 'var(--text-tertiary)' }}>{count}</span>
+                                {c.icon} {c.label} <span className="text-tertiary" style={{ float: 'right' }}>{count}</span>
                             </button>
                         );
                     })}
 
                     {/* Article list */}
-                    <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', marginTop: 16, marginBottom: 6 }}>Articles</div>
+                    <div className="section-label mt-16 mb-6">Articles</div>
                     {articles === null ? (
-                        <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>Loading...</div>
+                        <div className="text-sm text-tertiary">Loading...</div>
                     ) : all.length === 0 ? (
-                        <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>No articles</div>
+                        <div className="text-sm text-tertiary">No articles</div>
                     ) : (
                         all.map(a => (
                             <div key={a.id} onClick={() => { setSelected(a.id); setEditMode(false); }}
@@ -172,12 +171,12 @@ export default function WikiPage() {
                                     background: selected === a.id ? 'var(--accent-bg)' : 'transparent',
                                     border: selected === a.id ? '1px solid var(--accent)' : '1px solid transparent',
                                 }}>
-                                <div style={{ fontWeight: 500, fontSize: 12 }}>{a.title}</div>
-                                <div style={{ display: 'flex', gap: 4, marginTop: 2 }}>
+                                <div className="font-medium text-base">{a.title}</div>
+                                <div className="flex-row gap-4 mt-4">
                                     <span style={{ fontSize: 9, padding: '1px 4px', borderRadius: 3, background: (SCOPE_MAP[a.scope]?.color || '#6b7280') + '20', color: SCOPE_MAP[a.scope]?.color || '#6b7280' }}>
                                         {a.scope}
                                     </span>
-                                    <span style={{ fontSize: 9, color: 'var(--text-tertiary)' }}>{CAT_MAP[a.category]?.icon}</span>
+                                    <span className="text-tertiary" style={{ fontSize: 9 }}>{CAT_MAP[a.category]?.icon}</span>
                                 </div>
                             </div>
                         ))
@@ -185,41 +184,40 @@ export default function WikiPage() {
                 </div>
 
                 {/* Content Area */}
-                <div style={{ background: 'var(--bg-secondary)', borderRadius: 12, padding: 20, border: '1px solid var(--border)', minHeight: 400 }}>
+                <div className="section-card" style={{ minHeight: 400 }}>
                     {!selectedArticle ? (
-                        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 300, color: 'var(--text-tertiary)', fontSize: 14 }}>
+                        <div className="flex-center text-tertiary text-lg" style={{ height: 300 }}>
                             ← Select an article or create a new one
                         </div>
                     ) : (
                         <>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+                            <div className="flex-between mb-16">
                                 <div>
-                                    <h2 style={{ margin: 0, fontSize: 20 }}>{selectedArticle.title}</h2>
-                                    <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
-                                        <span style={{ padding: '2px 8px', borderRadius: 4, fontSize: 10, background: (SCOPE_MAP[selectedArticle.scope]?.color || '#6b7280') + '20', color: SCOPE_MAP[selectedArticle.scope]?.color }}>
+                                    <h2 className="text-3xl font-bold" style={{ margin: 0 }}>{selectedArticle.title}</h2>
+                                    <div className="flex-row gap-6 mt-8">
+                                        <span className="text-xs" style={{ padding: '2px 8px', borderRadius: 4, background: (SCOPE_MAP[selectedArticle.scope]?.color || '#6b7280') + '20', color: SCOPE_MAP[selectedArticle.scope]?.color }}>
                                             {selectedArticle.scope}
                                         </span>
-                                        <span style={{ padding: '2px 8px', borderRadius: 4, fontSize: 10, background: 'var(--bg-primary)', border: '1px solid var(--border)' }}>
-                                            {CAT_MAP[selectedArticle.category]?.icon} {CAT_MAP[selectedArticle.category]?.label}
-                                        </span>
-                                        <span style={{ fontSize: 10, color: 'var(--text-tertiary)', lineHeight: '20px' }}>
+                                        <span className="tag">{CAT_MAP[selectedArticle.category]?.icon} {CAT_MAP[selectedArticle.category]?.label}</span>
+                                        <span className="text-xs text-tertiary" style={{ lineHeight: '20px' }}>
                                             Updated {new Date(selectedArticle.updatedAt).toLocaleDateString()}
                                         </span>
                                     </div>
                                 </div>
-                                <div style={{ display: 'flex', gap: 6 }}>
-                                    <button className="btn btn-secondary" onClick={() => { setEditMode(!editMode); setEditBody(selectedArticle.body || ''); }}
-                                        style={{ fontSize: 11 }}>{editMode ? 'Preview' : '✏️ Edit'}</button>
+                                <div className="flex-row gap-6">
+                                    <button className="btn btn-secondary text-sm" onClick={() => { setEditMode(!editMode); setEditBody(selectedArticle.body || ''); }}>
+                                        {editMode ? 'Preview' : '✏️ Edit'}
+                                    </button>
                                     <button onClick={() => handleDelete(selectedArticle.id)}
-                                        style={{ background: 'rgba(248,113,113,0.1)', border: 'none', borderRadius: 6, padding: '4px 10px', color: '#f87171', cursor: 'pointer', fontSize: 11 }}>🗑️</button>
+                                        className="icon-btn" style={{ background: 'rgba(248,113,113,0.1)', color: '#f87171', padding: '4px 10px', borderRadius: 6 }}>🗑️</button>
                                 </div>
                             </div>
 
                             {/* Tags */}
                             {(selectedArticle.tags || []).length > 0 && (
-                                <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 16 }}>
+                                <div className="flex-row flex-wrap gap-4 mb-16">
                                     {selectedArticle.tags.map((t: string) => (
-                                        <span key={t} style={{ padding: '2px 8px', borderRadius: 4, fontSize: 10, background: 'var(--bg-primary)', border: '1px solid var(--border)' }}>#{t}</span>
+                                        <span key={t} className="tag">#{t}</span>
                                     ))}
                                 </div>
                             )}
@@ -227,19 +225,15 @@ export default function WikiPage() {
                             {editMode ? (
                                 <div>
                                     <textarea value={editBody} onChange={e => setEditBody(e.target.value)}
-                                        style={{
-                                            width: '100%', padding: '12px', borderRadius: 8, border: '1px solid var(--border)',
-                                            background: 'var(--bg-primary)', color: 'inherit', fontSize: 13, fontFamily: 'monospace',
-                                            minHeight: 300, resize: 'vertical',
-                                        }} />
-                                    <div style={{ display: 'flex', gap: 8, marginTop: 8, justifyContent: 'flex-end' }}>
-                                        <button className="btn btn-secondary" onClick={() => setEditMode(false)} style={{ fontSize: 12 }}>Cancel</button>
-                                        <button className="btn btn-primary" onClick={handleSaveBody} style={{ fontSize: 12 }}>Save</button>
+                                        className="form-textarea font-mono" style={{ minHeight: 300 }} />
+                                    <div className="flex-row gap-8 mt-8" style={{ justifyContent: 'flex-end' }}>
+                                        <button className="btn btn-secondary text-base" onClick={() => setEditMode(false)}>Cancel</button>
+                                        <button className="btn btn-primary text-base" onClick={handleSaveBody}>Save</button>
                                     </div>
                                 </div>
                             ) : (
-                                <div style={{ fontSize: 14, lineHeight: 1.7, color: 'var(--text-secondary)', whiteSpace: 'pre-wrap' }}>
-                                    {selectedArticle.body || <span style={{ fontStyle: 'italic', color: 'var(--text-tertiary)' }}>No content yet — click Edit to start writing.</span>}
+                                <div className="text-lg text-muted whitespace-pre" style={{ lineHeight: 1.7 }}>
+                                    {selectedArticle.body || <span className="text-tertiary" style={{ fontStyle: 'italic' }}>No content yet — click Edit to start writing.</span>}
                                 </div>
                             )}
                         </>

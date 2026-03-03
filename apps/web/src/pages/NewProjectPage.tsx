@@ -69,10 +69,10 @@ export default function NewProjectPage() {
                 </button>
                 <span className="mobile-page-title">New Project</span>
                 <button
-                    className="btn btn-primary"
+                    className="btn btn-primary text-md"
                     onClick={handleSubmit}
                     disabled={submitting || !name.trim() || !lane}
-                    style={{ fontSize: 13, padding: '6px 14px' }}
+                    style={{ padding: '6px 14px' }}
                 >
                     {submitting ? '⏳' : 'Create'}
                 </button>
@@ -91,7 +91,7 @@ export default function NewProjectPage() {
                 </div>
 
                 {name && (
-                    <div style={{ padding: '6px 12px', background: 'var(--bg-secondary)', borderRadius: 6, fontSize: 11, fontFamily: 'monospace', color: 'var(--text-tertiary)' }}>
+                    <div className="font-mono text-sm text-tertiary" style={{ padding: '6px 12px', background: 'var(--bg-secondary)', borderRadius: 6 }}>
                         📁 {previewPath}/PROJECT.yaml
                     </div>
                 )}
@@ -111,7 +111,7 @@ export default function NewProjectPage() {
                     />
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div className="grid-2 gap-12">
                     <div className="mobile-form-group">
                         <label className="mobile-form-label">Tier</label>
                         <SearchableSelect options={tierOptions} value={tier} onChange={setTier} clearable={false} />
@@ -124,35 +124,35 @@ export default function NewProjectPage() {
 
                 <div className="mobile-form-group">
                     <label className="mobile-form-label">Tech Stack</label>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 8 }}>
+                    <div className="flex-row flex-wrap gap-4 mb-8">
                         {stack.map(t => (
                             <span
                                 key={t}
                                 onClick={() => setStack(stack.filter(s => s !== t))}
-                                style={{ padding: '3px 10px', borderRadius: 4, fontSize: 12, background: 'var(--accent)', color: '#fff', cursor: 'pointer' }}
+                                className="tag text-base" style={{ background: 'var(--accent)', color: '#fff', cursor: 'pointer' }}
                             >
                                 {t} ✕
                             </span>
                         ))}
                     </div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 8 }}>
+                    <div className="flex-row flex-wrap gap-4 mb-8">
                         {COMMON_STACKS.filter(t => !stack.includes(t)).slice(0, 10).map(t => (
                             <button
                                 key={t}
                                 onClick={() => addStack(t)}
-                                style={{ padding: '3px 8px', borderRadius: 4, fontSize: 11, background: 'var(--bg-secondary)', color: 'var(--text-secondary)', border: '1px solid var(--border)', cursor: 'pointer' }}
+                                className="text-sm" style={{ padding: '3px 8px', borderRadius: 4, background: 'var(--bg-secondary)', color: 'var(--text-secondary)', border: '1px solid var(--border)', cursor: 'pointer' }}
                             >
                                 + {t}
                             </button>
                         ))}
                     </div>
                     <input
-                        className="mobile-form-input"
+                        className="mobile-form-input text-md"
                         value={stackInput}
                         onChange={e => setStackInput(e.target.value)}
                         onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addStack(stackInput); } }}
                         placeholder="Custom tech (press Enter)"
-                        style={{ fontSize: 13, padding: '8px 12px' }}
+                        style={{ padding: '8px 12px' }}
                     />
                 </div>
 
@@ -166,7 +166,7 @@ export default function NewProjectPage() {
                     />
                 </div>
 
-                <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14, cursor: 'pointer' }}>
+                <label className="flex-row gap-10 text-lg" style={{ cursor: 'pointer' }}>
                     <input
                         type="checkbox"
                         checked={oss}
@@ -177,7 +177,7 @@ export default function NewProjectPage() {
                 </label>
 
                 {error && (
-                    <div style={{ padding: '10px 14px', background: 'rgba(248,113,113,0.1)', borderRadius: 8, color: 'var(--error)', fontSize: 13 }}>
+                    <div className="text-md" style={{ padding: '10px 14px', background: 'rgba(248,113,113,0.1)', borderRadius: 8, color: 'var(--error)' }}>
                         {error}
                     </div>
                 )}

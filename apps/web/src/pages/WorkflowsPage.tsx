@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { api } from '../lib/api';
 import { useProjects } from '../hooks/useProjects';
 import SearchableSelect, { type SelectOption } from '../components/SearchableSelect';
+import MultiSelect from '../components/MultiSelect';
 
 const CATEGORIES = [
     { value: 'project-setup', label: 'Project Setup', icon: '🏗️' },
@@ -92,7 +93,7 @@ export default function WorkflowsPage() {
     return (
         <div>
             <div className="page-header">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div className="flex-between">
                     <div>
                         <h1 className="page-title">🔄 Workflows</h1>
                         <p className="page-description">Reusable workflows for project setup, content loops, daily routines</p>
@@ -121,25 +122,28 @@ export default function WorkflowsPage() {
 
             {/* Create Form */}
             {showCreate && (
-                <div style={{ background: 'var(--bg-secondary)', borderRadius: 12, padding: 20, marginBottom: 16, border: '1px solid var(--border)' }}>
+                <div className="section-card mb-16">
                     <input value={newTitle} onChange={e => setNewTitle(e.target.value)} placeholder="Workflow title *"
-                        style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'inherit', fontSize: 13, marginBottom: 12 }} />
+                        className="form-input mb-12" />
                     <textarea value={newDesc} onChange={e => setNewDesc(e.target.value)} placeholder="Description (optional)"
-                        style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'inherit', fontSize: 13, minHeight: 50, resize: 'vertical', marginBottom: 12 }} />
-                    <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+                        className="form-textarea mb-12" style={{ minHeight: 50 }} />
+                    <div className="mb-12">
+                        <MultiSelect options={projectOptions} value={newProjects} onChange={setNewProjects} placeholder="Link projects..." grouped />
+                    </div>
+                    <div className="flex-row flex-wrap gap-12">
                         <SearchableSelect options={CATEGORIES} value={newCat} onChange={setNewCat} placeholder="Category" clearable={false} width="160px" />
-                        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, cursor: 'pointer' }}>
+                        <label className="flex-row gap-6 text-base" style={{ cursor: 'pointer' }}>
                             <input type="checkbox" checked={newIsTemplate} onChange={e => setNewIsTemplate(e.target.checked)} /> Template
                         </label>
-                        <div style={{ flex: 1 }} />
-                        <button className="btn btn-secondary" onClick={() => setShowCreate(false)} style={{ fontSize: 12 }}>Cancel</button>
-                        <button className="btn btn-primary" onClick={handleCreate} disabled={!newTitle.trim()} style={{ fontSize: 12 }}>Create</button>
+                        <div className="flex-1" />
+                        <button className="btn btn-secondary text-base" onClick={() => setShowCreate(false)}>Cancel</button>
+                        <button className="btn btn-primary text-base" onClick={handleCreate} disabled={!newTitle.trim()}>Create</button>
                     </div>
                 </div>
             )}
 
             {/* Workflow List */}
-            <div style={{ marginTop: 16 }}>
+            <div className="mt-16">
                 {workflows === null ? (
                     <div className="loading"><div className="loading-spinner" /> Loading workflows...</div>
                 ) : allWorkflows.length === 0 ? (
@@ -153,20 +157,20 @@ export default function WorkflowsPage() {
                         const total = totalSteps(wf);
                         const pct = total > 0 ? Math.round((done / total) * 100) : 0;
                         return (
-                            <div key={wf.id} style={{
-                                background: 'var(--bg-secondary)', borderRadius: 10, marginBottom: 8,
+                            <div key={wf.id} className="mb-8" style={{
+                                background: 'var(--bg-secondary)', borderRadius: 10,
                                 border: expanded === wf.id ? '1px solid var(--accent)' : '1px solid var(--border)',
                                 borderLeft: `3px solid ${CAT_COLORS[wf.category] || '#6b7280'}`,
                             }}>
-                                <div style={{ padding: '14px 16px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12 }}
+                                <div className="flex-row gap-12" style={{ padding: '14px 16px', cursor: 'pointer', alignItems: 'center' }}
                                     onClick={() => setExpanded(expanded === wf.id ? null : wf.id)}>
-                                    <span style={{ fontSize: 18 }}>{CATEGORIES.find(c => c.value === wf.category)?.icon || '⚙️'}</span>
-                                    <div style={{ flex: 1 }}>
-                                        <div style={{ fontWeight: 600, fontSize: 14 }}>
+                                    <span className="text-2xl">{CATEGORIES.find(c => c.value === wf.category)?.icon || '⚙️'}</span>
+                                    <div className="flex-1">
+                                        <div className="font-semibold text-lg">
                                             {wf.title}
-                                            {wf.isTemplate && <span style={{ marginLeft: 8, padding: '1px 6px', borderRadius: 4, fontSize: 9, background: 'rgba(167,139,250,0.15)', color: '#a78bfa' }}>TEMPLATE</span>}
+                                            {wf.isTemplate && <span className="tag" style={{ marginLeft: 8, fontSize: 9, background: 'rgba(167,139,250,0.15)', color: '#a78bfa', border: 'none' }}>TEMPLATE</span>}
                                         </div>
-                                        <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>
+                                        <div className="text-sm text-tertiary mt-4">
                                             {wf.category} · {done}/{total} steps · {(wf.linkedProjects || []).length} projects
                                         </div>
                                     </div>
@@ -175,51 +179,53 @@ export default function WorkflowsPage() {
                                             <div style={{ width: `${pct}%`, height: '100%', background: pct === 100 ? '#34d399' : '#818cf8', borderRadius: 3, transition: 'width 0.3s' }} />
                                         </div>
                                     )}
-                                    <button onClick={e => { e.stopPropagation(); handleDelete(wf.id); }}
-                                        style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer' }}>✕</button>
+                                    <button onClick={e => { e.stopPropagation(); handleDelete(wf.id); }} className="icon-btn text-tertiary">✕</button>
                                 </div>
 
                                 {expanded === wf.id && (
                                     <div style={{ padding: '0 16px 16px', borderTop: '1px solid var(--border)' }}>
-                                        {wf.description && <div style={{ padding: '12px 0', fontSize: 13, color: 'var(--text-secondary)' }}>{wf.description}</div>}
+                                        {wf.description && <div className="text-md text-muted" style={{ padding: '12px 0' }}>{wf.description}</div>}
 
-                                        {/* Linked projects */}
-                                        {(wf.linkedProjects || []).length > 0 && (
-                                            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
-                                                {wf.linkedProjects.map((p: string) => (
-                                                    <span key={p} style={{ padding: '2px 8px', borderRadius: 4, fontSize: 10, background: 'var(--bg-primary)', border: '1px solid var(--border)' }}>📁 {p}</span>
-                                                ))}
-                                            </div>
-                                        )}
+                                        {/* Linked projects — inline edit */}
+                                        <div className="mb-12">
+                                            <MultiSelect
+                                                options={projectOptions}
+                                                value={wf.linkedProjects || []}
+                                                onChange={async (newProjects) => {
+                                                    await api.workflows.update(wf.id, { linkedProjects: newProjects });
+                                                    await load();
+                                                }}
+                                                placeholder="Link projects..."
+                                                grouped
+                                            />
+                                        </div>
 
                                         {/* Steps */}
-                                        <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', marginBottom: 8 }}>
+                                        <div className="section-label mb-8">
                                             Steps ({total})
                                         </div>
                                         {(wf.steps || []).map((step: Step, i: number) => (
-                                            <div key={step.id} style={{
-                                                display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px',
-                                                background: 'var(--bg-primary)', borderRadius: 8, marginBottom: 4,
+                                            <div key={step.id} className="flex-row gap-10 mb-4" style={{
+                                                padding: '8px 12px', alignItems: 'center',
+                                                background: 'var(--bg-primary)', borderRadius: 8,
                                                 border: '1px solid var(--border)', opacity: step.done ? 0.5 : 1,
                                             }}>
                                                 <div onClick={() => handleToggleStep(wf.id, wf, step.id)}
-                                                    style={{
-                                                        width: 20, height: 20, borderRadius: 4, cursor: 'pointer', flexShrink: 0,
+                                                    className="flex-center flex-shrink-0" style={{
+                                                        width: 20, height: 20, borderRadius: 4, cursor: 'pointer',
                                                         border: `2px solid ${step.done ? '#34d399' : 'var(--border)'}`,
                                                         background: step.done ? '#34d399' : 'transparent',
-                                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
                                                         color: 'white', fontSize: 12,
                                                     }}>
                                                     {step.done && '✓'}
                                                 </div>
-                                                <span style={{ fontSize: 11, color: 'var(--text-tertiary)', fontFamily: 'monospace', width: 20 }}>{i + 1}</span>
-                                                <span style={{ fontSize: 13, textDecoration: step.done ? 'line-through' : 'none', flex: 1 }}>{step.title}</span>
-                                                <button onClick={() => handleDeleteStep(wf.id, wf, step.id)}
-                                                    style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', fontSize: 10 }}>✕</button>
+                                                <span className="text-sm text-tertiary font-mono" style={{ width: 20 }}>{i + 1}</span>
+                                                <span className="text-md flex-1" style={{ textDecoration: step.done ? 'line-through' : 'none' }}>{step.title}</span>
+                                                <button onClick={() => handleDeleteStep(wf.id, wf, step.id)} className="icon-btn text-tertiary text-xs">✕</button>
                                             </div>
                                         ))}
                                         <button onClick={() => handleAddStep(wf.id, wf)}
-                                            className="btn btn-secondary" style={{ fontSize: 11, marginTop: 8, padding: '4px 12px' }}>
+                                            className="btn btn-secondary text-sm mt-8" style={{ padding: '4px 12px' }}>
                                             + Add Step
                                         </button>
                                     </div>

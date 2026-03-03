@@ -2,45 +2,45 @@ import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { StatusData, Project, Tier } from '../lib/types';
 import { TIER_CONFIG, LANE_COLORS, TIER_ORDER, PRIORITY_ORDER } from '../lib/types';
-
-function HealthBadge({ score }: { score: number }) {
-    const cls = score >= 60 ? 'health-good' : score >= 40 ? 'health-warn' : 'health-bad';
-    return <span className={`health-badge ${cls}`}>{score}</span>;
-}
+import { groupByDimension, type Dimension } from '../lib/dimensions';
+import { useDimensions } from '../hooks/useDimensions';
+import { PageHeader, FilterBar, Card, Badge, EmptyState, DimensionPicker } from '../components/ui';
+import SearchableSelect from '../components/SearchableSelect';
 
 function ProjectCard({ project, onClick }: { project: Project; onClick: () => void }) {
     const tierCfg = TIER_CONFIG[project.tier as Tier] || TIER_CONFIG.idea;
     const laneColor = LANE_COLORS[project.lane] || 'var(--text-tertiary)';
     return (
-        <div className="project-card" onClick={onClick}>
-            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: tierCfg.color, borderRadius: '12px 12px 0 0' }} />
+        <Card onClick={onClick} accentColor={tierCfg.color}>
             <div className="card-header">
                 <div className="card-name">{project.name}</div>
-                <span className="tier-badge" style={{ color: tierCfg.color, background: tierCfg.bg }}>{tierCfg.emoji} {tierCfg.label}</span>
+                <Badge variant="tier" tier={project.tier} />
             </div>
             <div className="card-description">{project.description}</div>
             <div className="card-stack">
-                {project.stack.slice(0, 4).map(s => <span key={s} className="stack-tag">{s}</span>)}
-                {project.stack.length > 4 && <span className="stack-tag">+{project.stack.length - 4}</span>}
+                {(project.stack || []).slice(0, 4).map(s => <span key={s} className="stack-tag">{s}</span>)}
+                {(project.stack || []).length > 4 && <span className="stack-tag">+{(project.stack || []).length - 4}</span>}
             </div>
             <div className="card-footer">
                 <span className="card-lane" style={{ color: laneColor, background: laneColor + '18' }}>{project.lane}</span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <HealthBadge score={project.health_score} />
-                    {project.oss && <span className="oss-badge">OSS</span>}
+                    <Badge variant="health" score={project.health_score} />
+                    {project.oss && <Badge variant="oss" />}
                     {project.last_active && <span className="card-date">{project.last_active}</span>}
                 </div>
             </div>
-        </div>
+        </Card>
     );
 }
 
 export default function GridPage({ data }: { data: StatusData }) {
     const navigate = useNavigate();
+    const { dimensions } = useDimensions(data.projects);
     const [search, setSearch] = useState('');
     const [tierFilter, setTierFilter] = useState('all');
     const [laneFilter, setLaneFilter] = useState('all');
     const [priorityFilter, setPriorityFilter] = useState('all');
+    const [groupDimension, setGroupDimension] = useState('');
 
     const lanes = useMemo(() => [...new Set(data.projects.map(p => p.lane))].sort(), [data]);
     const filtered = useMemo(() => data.projects.filter(p => {
@@ -51,34 +51,55 @@ export default function GridPage({ data }: { data: StatusData }) {
         return true;
     }), [data.projects, search, tierFilter, laneFilter, priorityFilter]);
 
+    const activeDimension = dimensions.find(d => d.id === groupDimension);
+    const groups = useMemo(() => {
+        if (!activeDimension) return null;
+        return groupByDimension(filtered, activeDimension);
+    }, [filtered, activeDimension]);
+
+    const renderGrid = (projects: Project[]) => (
+        <div className="project-grid">
+            {projects.map(p => <ProjectCard key={p.path} project={p} onClick={() => navigate(`/project/${encodeURIComponent(p.path)}`)} />)}
+        </div>
+    );
+
     return (
         <div>
-            <div className="page-header">
-                <h1 className="page-title">Grid View</h1>
-                <p className="page-description">Browse all projects as cards</p>
-            </div>
-            <div className="filter-bar">
-                <input className="search-input" placeholder="Search projects..." value={search} onChange={e => setSearch(e.target.value)} />
-                <select className="filter-select" value={tierFilter} onChange={e => setTierFilter(e.target.value)}>
-                    <option value="all">All Tiers</option>
-                    {TIER_ORDER.map(t => <option key={t} value={t}>{TIER_CONFIG[t].emoji} {TIER_CONFIG[t].label}</option>)}
-                </select>
-                <select className="filter-select" value={laneFilter} onChange={e => setLaneFilter(e.target.value)}>
-                    <option value="all">All Lanes</option>
-                    {lanes.map(l => <option key={l} value={l}>{l}</option>)}
-                </select>
-                <select className="filter-select" value={priorityFilter} onChange={e => setPriorityFilter(e.target.value)}>
-                    <option value="all">All Priorities</option>
-                    {PRIORITY_ORDER.map(p => <option key={p} value={p}>{p}</option>)}
-                </select>
-                <span className="result-count">{filtered.length} projects</span>
-            </div>
+            <PageHeader title="Grid View" description="Browse all projects as cards" />
+            <FilterBar
+                search={{ value: search, onChange: setSearch, placeholder: 'Search projects...' }}
+                resultCount={filtered.length}
+                filters={
+                    <>
+                        <DimensionPicker dimensions={dimensions} selected={groupDimension} onChange={setGroupDimension} />
+                        <SearchableSelect
+                            options={[{ value: 'all', label: 'All Tiers' }, ...TIER_ORDER.map(t => ({ value: t, label: `${TIER_CONFIG[t].emoji} ${TIER_CONFIG[t].label}` }))]}
+                            value={tierFilter} onChange={setTierFilter} placeholder="Tier" clearable={false} width="150px" />
+                        <SearchableSelect
+                            options={[{ value: 'all', label: 'All Lanes' }, ...lanes.map(l => ({ value: l, label: l }))]}
+                            value={laneFilter} onChange={setLaneFilter} placeholder="Lane" clearable={false} width="150px" />
+                        <SearchableSelect
+                            options={[{ value: 'all', label: 'All Priorities' }, ...PRIORITY_ORDER.map(p => ({ value: p, label: p }))]}
+                            value={priorityFilter} onChange={setPriorityFilter} placeholder="Priority" clearable={false} width="150px" />
+                    </>
+                }
+            />
             {filtered.length === 0 ? (
-                <div className="empty-state"><div className="empty-state-icon">🔍</div><div className="empty-state-text">No matching projects</div></div>
+                <EmptyState icon="🔍" message="No matching projects" />
+            ) : groups ? (
+                // Grouped view
+                groups.filter(g => g.projects.length > 0).map(g => (
+                    <div key={g.key} className="dimension-group">
+                        <div className="dimension-group-header" style={{ borderColor: g.sub.color || 'var(--border)' }}>
+                            {g.sub.icon && <span className="dimension-group-icon">{g.sub.icon}</span>}
+                            <span className="dimension-group-label" style={{ color: g.sub.color }}>{g.sub.label}</span>
+                            <span className="dimension-group-count">{g.projects.length}</span>
+                        </div>
+                        {renderGrid(g.projects)}
+                    </div>
+                ))
             ) : (
-                <div className="project-grid">
-                    {filtered.map(p => <ProjectCard key={p.path} project={p} onClick={() => navigate(`/project/${encodeURIComponent(p.path)}`)} />)}
-                </div>
+                renderGrid(filtered)
             )}
         </div>
     );

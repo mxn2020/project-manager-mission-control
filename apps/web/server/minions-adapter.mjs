@@ -241,6 +241,22 @@ const workflowTypes = [
             { name: 'lastRunAt', type: 'date', label: 'lastRunAt' },
         ],
     },
+    {
+        id: 'bundle-workflow-marketing-plan',
+        name: 'MCMarketingPlan',
+        slug: 'mc-marketing-plan',
+        description: 'A marketing plan with goals and linked projects',
+        icon: '📣',
+        schema: [
+            { name: 'category', type: 'select', label: 'category', options: ['product-launch', 'content-campaign', 'social-media', 'email', 'seo', 'paid-ads', 'event', 'custom'] },
+            { name: 'budget', type: 'string', label: 'budget' },
+            { name: 'startDate', type: 'date', label: 'startDate' },
+            { name: 'endDate', type: 'date', label: 'endDate' },
+            { name: 'goals', type: 'textarea', label: 'goals' }, // JSON array [{id,title,done}]
+            { name: 'linkedProjects', type: 'tags', label: 'linkedProjects' },
+            { name: 'channels', type: 'tags', label: 'channels' },
+        ],
+    },
 ];
 
 // Ideas / Brainstorming Bundle

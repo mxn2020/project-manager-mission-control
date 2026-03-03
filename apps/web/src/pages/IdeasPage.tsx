@@ -72,75 +72,75 @@ function IdeaCard({ idea, selected, onToggleSelect, onUpdate, onArchive, onDelet
         }}
             onMouseEnter={() => setShowActions(true)} onMouseLeave={() => setShowActions(false)}
         >
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+            <div className="flex-row gap-8" style={{ alignItems: 'flex-start' }}>
                 <input type="checkbox" checked={selected} onChange={onToggleSelect}
                     style={{ marginTop: 3, cursor: 'pointer', accentColor: 'var(--accent)' }} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 600, fontSize: compact ? 12 : 14 }}>{idea.title}</div>
+                <div className="flex-1 min-w-0">
+                    <div className="font-semibold" style={{ fontSize: compact ? 12 : 14 }}>{idea.title}</div>
                     {!compact && (
-                        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 4 }}>
-                            <span style={{ padding: '1px 6px', borderRadius: 4, fontSize: 10, background: cat.color + '20', color: cat.color }}>{cat.icon} {cat.label}</span>
+                        <div className="flex-row flex-wrap gap-4 mt-4">
+                            <span className="text-xs" style={{ padding: '1px 6px', borderRadius: 4, background: cat.color + '20', color: cat.color }}>{cat.icon} {cat.label}</span>
                             {(idea.linkedProjects || []).map((p: string) => (
-                                <span key={p} style={{ padding: '1px 6px', borderRadius: 4, fontSize: 9, background: 'var(--bg-primary)', border: '1px solid var(--border)' }}>📁 {p.split('/').pop()}</span>
+                                <span key={p} className="tag" style={{ fontSize: 9 }}>📁 {p.split('/').pop()}</span>
                             ))}
                         </div>
                     )}
                 </div>
-                <span style={{
-                    fontSize: 12, fontWeight: 700, minWidth: 20, textAlign: 'center',
+                <span className="text-base font-bold text-center" style={{
+                    minWidth: 20,
                     color: (idea.score || 5) >= 8 ? '#34d399' : (idea.score || 5) >= 5 ? '#fbbf24' : '#f87171',
                 }}>{idea.score || 5}</span>
             </div>
 
             {!compact && !editing && idea.body && (
                 <div onClick={() => { setEditing(true); setEditBody(idea.body || ''); }}
-                    style={{ marginTop: 8, fontSize: 12, color: 'var(--text-secondary)', whiteSpace: 'pre-wrap', cursor: 'pointer', maxHeight: 60, overflow: 'hidden' }}>
+                    className="text-base text-muted whitespace-pre mt-8" style={{ cursor: 'pointer', maxHeight: 60, overflow: 'hidden' }}>
                     {idea.body}
                 </div>
             )}
 
             {editing && (
-                <div style={{ marginTop: 8 }}>
+                <div className="mt-8">
                     <textarea value={editBody} onChange={e => setEditBody(e.target.value)}
-                        style={{ width: '100%', padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'inherit', fontSize: 12, minHeight: 60, resize: 'vertical' }} />
-                    <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
-                        <button className="btn btn-primary" onClick={() => { onUpdate({ body: editBody }); setEditing(false); }} style={{ fontSize: 10, padding: '3px 8px' }}>Save</button>
-                        <button className="btn btn-secondary" onClick={() => setEditing(false)} style={{ fontSize: 10, padding: '3px 8px' }}>Cancel</button>
+                        className="form-textarea text-base" style={{ minHeight: 60 }} />
+                    <div className="flex-row gap-6 mt-4">
+                        <button className="btn btn-primary text-xs" onClick={() => { onUpdate({ body: editBody }); setEditing(false); }} style={{ padding: '3px 8px' }}>Save</button>
+                        <button className="btn btn-secondary text-xs" onClick={() => setEditing(false)} style={{ padding: '3px 8px' }}>Cancel</button>
                     </div>
                 </div>
             )}
 
             {!compact && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8 }}>
+                <div className="flex-row gap-6 mt-8">
                     <input type="range" min={1} max={10} value={idea.score || 5}
-                        onChange={e => onUpdate({ score: +e.target.value })} style={{ flex: 1, height: 4 }} />
+                        onChange={e => onUpdate({ score: +e.target.value })} className="flex-1" style={{ height: 4 }} />
                 </div>
             )}
 
             {!compact && (idea.tags || []).length > 0 && (
-                <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 6 }}>
+                <div className="flex-row flex-wrap gap-4 mt-8">
                     {idea.tags.map((t: string) => (
-                        <span key={t} style={{ padding: '1px 5px', borderRadius: 3, fontSize: 9, background: 'var(--bg-primary)', border: '1px solid var(--border)' }}>{t}</span>
+                        <span key={t} className="tag" style={{ fontSize: 9 }}>{t}</span>
                     ))}
                 </div>
             )}
 
             {/* Action buttons — show on hover */}
             {showActions && (
-                <div style={{
+                <div className="flex-row gap-2" style={{
                     position: 'absolute', top: compact ? 4 : 8, right: compact ? 4 : 8,
-                    display: 'flex', gap: 2, background: 'var(--bg-secondary)', borderRadius: 6, padding: '2px 4px',
+                    background: 'var(--bg-secondary)', borderRadius: 6, padding: '2px 4px',
                     border: '1px solid var(--border)', boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
                 }}>
-                    <button onClick={onPromote} title="Promote to Task" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12 }}>📋</button>
-                    <button onClick={onArchive} title={idea.archived ? 'Unarchive' : 'Archive'} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12 }}>{idea.archived ? '📤' : '📥'}</button>
-                    <button onClick={onDelete} title="Delete" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12 }}>🗑️</button>
+                    <button onClick={onPromote} title="Promote to Task" className="icon-btn">📋</button>
+                    <button onClick={onArchive} title={idea.archived ? 'Unarchive' : 'Archive'} className="icon-btn">{idea.archived ? '📤' : '📥'}</button>
+                    <button onClick={onDelete} title="Delete" className="icon-btn">🗑️</button>
                 </div>
             )}
 
             {/* Link project inline */}
             {!compact && showActions && (
-                <div style={{ marginTop: 6 }}>
+                <div className="mt-8">
                     <SearchableSelect options={projectOptions} value={(idea.linkedProjects || [])[0] || ''}
                         onChange={v => onLinkProject(v)} placeholder="📁 Link project..." width="100%" />
                 </div>
@@ -302,23 +302,23 @@ export default function IdeasPage() {
     });
 
     const renderCards = () => (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 12 }}>
+        <div className="gap-12" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' }}>
             {allIdeas.map(idea => <IdeaCard key={idea.id} {...cardProps(idea)} />)}
         </div>
     );
 
     const renderPipeline = () => (
-        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${CATEGORIES.length}, minmax(180px, 1fr))`, gap: 8, overflowX: 'auto' }}>
+        <div className="gap-8" style={{ display: 'grid', gridTemplateColumns: `repeat(${CATEGORIES.length}, minmax(180px, 1fr))`, overflowX: 'auto' }}>
             {CATEGORIES.map(cat => {
                 const items = allIdeas.filter(i => i.category === cat.value);
                 return (
                     <div key={cat.value}>
-                        <div style={{ padding: '8px 12px', background: cat.color + '15', borderRadius: '8px 8px 0 0', borderBottom: `2px solid ${cat.color}`, fontSize: 12, fontWeight: 600, textAlign: 'center' }}>
-                            {cat.icon} {cat.label} <span style={{ opacity: 0.5 }}>({items.length})</span>
+                        <div className="text-base font-semibold text-center" style={{ padding: '8px 12px', background: cat.color + '15', borderRadius: '8px 8px 0 0', borderBottom: `2px solid ${cat.color}` }}>
+                            {cat.icon} {cat.label} <span className="opacity-50">({items.length})</span>
                         </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: 6, minHeight: 100, background: 'var(--bg-primary)', borderRadius: '0 0 8px 8px' }}>
+                        <div className="flex-col gap-6" style={{ padding: 6, minHeight: 100, background: 'var(--bg-primary)', borderRadius: '0 0 8px 8px' }}>
                             {items.map(idea => <IdeaCard key={idea.id} {...cardProps(idea)} compact />)}
-                            {items.length === 0 && <div style={{ fontSize: 11, color: 'var(--text-tertiary)', textAlign: 'center', padding: 20 }}>Empty</div>}
+                            {items.length === 0 && <div className="text-sm text-tertiary text-center" style={{ padding: 20 }}>Empty</div>}
                         </div>
                     </div>
                 );
@@ -328,28 +328,28 @@ export default function IdeasPage() {
 
     const renderList = () => (
         <div style={{ background: 'var(--bg-secondary)', borderRadius: 10, border: '1px solid var(--border)', overflow: 'hidden' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '30px 1fr 80px 60px 120px 100px 60px', gap: 8, padding: '8px 12px', fontSize: 10, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', borderBottom: '1px solid var(--border)' }}>
+            <div className="section-label" style={{ display: 'grid', gridTemplateColumns: '30px 1fr 80px 60px 120px 100px 60px', gap: 8, padding: '8px 12px', borderBottom: '1px solid var(--border)', marginBottom: 0 }}>
                 <span><input type="checkbox" checked={selected.size === allIdeas.length && allIdeas.length > 0} onChange={() => selected.size === allIdeas.length ? selectNone() : selectAll()} /></span>
                 <span>Title</span><span>Category</span><span>Score</span><span>Tags</span><span>Updated</span><span>Actions</span>
             </div>
             {allIdeas.map(idea => {
                 const cat = CAT_MAP[idea.category] || CAT_MAP.other;
                 return (
-                    <div key={idea.id} style={{
+                    <div key={idea.id} className="text-base" style={{
                         display: 'grid', gridTemplateColumns: '30px 1fr 80px 60px 120px 100px 60px', gap: 8,
-                        padding: '8px 12px', fontSize: 12, borderBottom: '1px solid var(--border)',
+                        padding: '8px 12px', borderBottom: '1px solid var(--border)',
                         background: selected.has(idea.id) ? 'var(--accent-bg)' : 'transparent', opacity: idea.archived ? 0.5 : 1,
                     }}>
                         <span><input type="checkbox" checked={selected.has(idea.id)} onChange={() => toggleSelect(idea.id)} /></span>
-                        <span style={{ fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{idea.title}</span>
-                        <span style={{ fontSize: 10, color: cat.color }}>{cat.icon} {cat.label}</span>
-                        <span style={{ fontWeight: 700, color: (idea.score || 5) >= 8 ? '#34d399' : (idea.score || 5) >= 5 ? '#fbbf24' : '#f87171' }}>{idea.score || 5}</span>
-                        <span style={{ fontSize: 10, color: 'var(--text-tertiary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{(idea.tags || []).join(', ')}</span>
-                        <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{idea.updatedAt ? new Date(idea.updatedAt).toLocaleDateString() : ''}</span>
-                        <span style={{ display: 'flex', gap: 2 }}>
-                            <button onClick={() => handlePromote(idea.id)} title="Promote" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11 }}>📋</button>
-                            <button onClick={() => handleArchive(idea.id, !idea.archived)} title="Archive" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11 }}>{idea.archived ? '📤' : '📥'}</button>
-                            <button onClick={() => handleDelete(idea.id)} title="Delete" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11 }}>🗑️</button>
+                        <span className="font-medium truncate">{idea.title}</span>
+                        <span className="text-xs" style={{ color: cat.color }}>{cat.icon} {cat.label}</span>
+                        <span className="font-bold" style={{ color: (idea.score || 5) >= 8 ? '#34d399' : (idea.score || 5) >= 5 ? '#fbbf24' : '#f87171' }}>{idea.score || 5}</span>
+                        <span className="text-xs text-tertiary truncate">{(idea.tags || []).join(', ')}</span>
+                        <span className="text-xs text-tertiary">{idea.updatedAt ? new Date(idea.updatedAt).toLocaleDateString() : ''}</span>
+                        <span className="flex-row gap-2">
+                            <button onClick={() => handlePromote(idea.id)} title="Promote" className="icon-btn">📋</button>
+                            <button onClick={() => handleArchive(idea.id, !idea.archived)} title="Archive" className="icon-btn">{idea.archived ? '📤' : '📥'}</button>
+                            <button onClick={() => handleDelete(idea.id)} title="Delete" className="icon-btn">🗑️</button>
                         </span>
                     </div>
                 );
@@ -358,17 +358,17 @@ export default function IdeasPage() {
     );
 
     const renderKanban = () => (
-        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${SCORE_BUCKETS.length}, 1fr)`, gap: 12 }}>
+        <div className="gap-12" style={{ display: 'grid', gridTemplateColumns: `repeat(${SCORE_BUCKETS.length}, 1fr)` }}>
             {SCORE_BUCKETS.map(bucket => {
                 const items = allIdeas.filter(i => (i.score || 5) >= bucket.min && (i.score || 5) <= bucket.max);
                 return (
                     <div key={bucket.key}>
-                        <div style={{ padding: '10px 14px', background: bucket.color + '15', borderRadius: '10px 10px 0 0', borderBottom: `2px solid ${bucket.color}`, fontSize: 13, fontWeight: 600, textAlign: 'center' }}>
-                            {bucket.label} <span style={{ opacity: 0.5 }}>({items.length})</span>
+                        <div className="text-md font-semibold text-center" style={{ padding: '10px 14px', background: bucket.color + '15', borderRadius: '10px 10px 0 0', borderBottom: `2px solid ${bucket.color}` }}>
+                            {bucket.label} <span className="opacity-50">({items.length})</span>
                         </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: 8, minHeight: 150, background: 'var(--bg-primary)', borderRadius: '0 0 10px 10px' }}>
+                        <div className="flex-col gap-8" style={{ padding: 8, minHeight: 150, background: 'var(--bg-primary)', borderRadius: '0 0 10px 10px' }}>
                             {items.map(idea => <IdeaCard key={idea.id} {...cardProps(idea)} />)}
-                            {items.length === 0 && <div style={{ fontSize: 12, color: 'var(--text-tertiary)', textAlign: 'center', padding: 40 }}>No ideas</div>}
+                            {items.length === 0 && <div className="text-base text-tertiary text-center" style={{ padding: 40 }}>No ideas</div>}
                         </div>
                     </div>
                 );
@@ -411,7 +411,7 @@ export default function IdeasPage() {
     return (
         <div>
             <div className="page-header">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div className="flex-between">
                     <div>
                         <h1 className="page-title">💡 Ideas & Brainstorming</h1>
                         <p className="page-description">Capture, score, combine, and promote ideas</p>
@@ -421,13 +421,13 @@ export default function IdeasPage() {
             </div>
 
             {/* View Switcher + Filters */}
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12 }}>
+            <div className="flex-row flex-wrap gap-8 mb-12">
                 {/* Views */}
-                <div style={{ display: 'flex', gap: 2, background: 'var(--bg-secondary)', borderRadius: 8, padding: 2 }}>
+                <div className="flex-row gap-2" style={{ background: 'var(--bg-secondary)', borderRadius: 8, padding: 2 }}>
                     {VIEW_OPTIONS.map(v => (
                         <button key={v.value} onClick={() => setView(v.value)}
-                            className={`btn ${view === v.value ? 'btn-primary' : 'btn-secondary'}`}
-                            style={{ fontSize: 11, padding: '4px 10px', borderRadius: 6 }}>
+                            className={`btn ${view === v.value ? 'btn-primary' : 'btn-secondary'} text-sm`}
+                            style={{ padding: '4px 10px', borderRadius: 6 }}>
                             {v.icon} {v.label}
                         </button>
                     ))}
@@ -437,15 +437,15 @@ export default function IdeasPage() {
 
                 {/* Search */}
                 <input value={search} onChange={e => setSearch(e.target.value)} placeholder="🔍 Search..."
-                    style={{ padding: '5px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-secondary)', color: 'inherit', fontSize: 12, width: 150 }} />
+                    className="form-input-sm" style={{ width: 150, background: 'var(--bg-secondary)' }} />
 
                 {/* Category filter */}
-                <div style={{ display: 'flex', gap: 2 }}>
-                    <button className={`btn ${!filterCat ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setFilterCat('')} style={{ fontSize: 10, padding: '3px 8px' }}>All</button>
+                <div className="flex-row gap-2">
+                    <button className={`btn ${!filterCat ? 'btn-primary' : 'btn-secondary'} text-xs`} onClick={() => setFilterCat('')} style={{ padding: '3px 8px' }}>All</button>
                     {CATEGORIES.map(c => (
-                        <button key={c.value} className={`btn ${filterCat === c.value ? 'btn-primary' : 'btn-secondary'}`}
+                        <button key={c.value} className={`btn ${filterCat === c.value ? 'btn-primary' : 'btn-secondary'} text-xs`}
                             onClick={() => setFilterCat(filterCat === c.value ? '' : c.value)}
-                            style={{ fontSize: 10, padding: '3px 8px' }} title={c.label}>{c.icon}</button>
+                            style={{ padding: '3px 8px' }} title={c.label}>{c.icon}</button>
                     ))}
                 </div>
 
@@ -453,64 +453,60 @@ export default function IdeasPage() {
                 <SearchableSelect options={projectOptions} value={filterProject} onChange={setFilterProject} placeholder="📁 Project" width="140px" grouped />
 
                 {/* Sort */}
-                <select value={sortBy} onChange={e => setSortBy(e.target.value as any)}
-                    style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-secondary)', color: 'inherit', fontSize: 11 }}>
-                    <option value="date">Newest</option>
-                    <option value="score">Score ↓</option>
-                    <option value="title">A-Z</option>
-                </select>
+                <SearchableSelect
+                    options={[{ value: 'date', label: 'Newest' }, { value: 'score', label: 'Score ↓' }, { value: 'title', label: 'A-Z' }]}
+                    value={sortBy} onChange={v => setSortBy(v as any)} placeholder="Sort" clearable={false} width="110px" />
 
-                <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--text-tertiary)' }}>
+                <label className="flex-row gap-4 text-sm text-tertiary">
                     <input type="checkbox" checked={showArchived} onChange={e => setShowArchived(e.target.checked)} /> Archived
                 </label>
 
-                <span style={{ fontSize: 11, color: 'var(--text-tertiary)', marginLeft: 'auto' }}>{allIdeas.length} ideas</span>
+                <span className="text-sm text-tertiary" style={{ marginLeft: 'auto' }}>{allIdeas.length} ideas</span>
             </div>
 
             {/* Multiselect Toolbar */}
             {selected.size > 0 && (
-                <div style={{
-                    display: 'flex', gap: 8, alignItems: 'center', padding: '8px 14px', marginBottom: 12,
+                <div className="flex-row gap-8 mb-12" style={{
+                    padding: '8px 14px',
                     background: 'var(--accent-bg)', borderRadius: 8, border: '1px solid var(--accent)',
                 }}>
-                    <span style={{ fontSize: 12, fontWeight: 600 }}>{selected.size} selected</span>
-                    <div style={{ flex: 1 }} />
+                    <span className="text-base font-semibold">{selected.size} selected</span>
+                    <div className="flex-1" />
                     {selected.size >= 2 && (
-                        <button className="btn btn-primary" onClick={handleCombine} style={{ fontSize: 11, padding: '4px 12px' }}>🔗 Combine</button>
+                        <button className="btn btn-primary text-sm" onClick={handleCombine} style={{ padding: '4px 12px' }}>🔗 Combine</button>
                     )}
-                    <button className="btn btn-secondary" onClick={handleArchiveSelected} style={{ fontSize: 11, padding: '4px 12px' }}>📥 Archive All</button>
-                    <button className="btn btn-secondary" onClick={selectNone} style={{ fontSize: 11, padding: '4px 10px' }}>✕ Clear</button>
+                    <button className="btn btn-secondary text-sm" onClick={handleArchiveSelected} style={{ padding: '4px 12px' }}>📥 Archive All</button>
+                    <button className="btn btn-secondary text-sm" onClick={selectNone} style={{ padding: '4px 10px' }}>✕ Clear</button>
                 </div>
             )}
 
             {/* Create Form */}
             {showCreate && (
-                <div style={{ background: 'var(--bg-secondary)', borderRadius: 12, padding: 20, marginBottom: 16, border: '1px solid var(--border)' }}>
+                <div className="section-card mb-16">
                     <input value={newTitle} onChange={e => setNewTitle(e.target.value)} placeholder="Idea title *"
-                        style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'inherit', fontSize: 13, marginBottom: 12 }} />
+                        className="form-input mb-12" />
                     <textarea value={newBody} onChange={e => setNewBody(e.target.value)} placeholder="Describe the idea..."
-                        style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'inherit', fontSize: 13, minHeight: 80, resize: 'vertical', marginBottom: 12 }} />
-                    <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-                        <select value={newCat} onChange={e => setNewCat(e.target.value)}
-                            style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'inherit', fontSize: 12 }}>
-                            {CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.icon} {c.label}</option>)}
-                        </select>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>Score:</span>
+                        className="form-textarea mb-12" style={{ minHeight: 80 }} />
+                    <div className="flex-row flex-wrap gap-12">
+                        <SearchableSelect
+                            options={CATEGORIES.map(c => ({ value: c.value, label: `${c.icon} ${c.label}` }))}
+                            value={newCat} onChange={setNewCat} placeholder="Category" clearable={false} width="160px" />
+                        <div className="flex-row gap-6">
+                            <span className="text-sm text-tertiary">Score:</span>
                             <input type="range" min={1} max={10} value={newScore} onChange={e => setNewScore(+e.target.value)} style={{ width: 80 }} />
-                            <span style={{ fontSize: 13, fontWeight: 600, minWidth: 20 }}>{newScore}</span>
+                            <span className="text-md font-semibold" style={{ minWidth: 20 }}>{newScore}</span>
                         </div>
                         <SearchableSelect options={projectOptions} value={newProject} onChange={setNewProject} placeholder="📁 Project" width="160px" grouped />
                         <input value={newTags} onChange={e => setNewTags(e.target.value)} placeholder="Tags (comma-separated)"
-                            style={{ flex: 1, padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'inherit', fontSize: 12, minWidth: 100 }} />
-                        <button className="btn btn-secondary" onClick={() => setShowCreate(false)} style={{ fontSize: 12 }}>Cancel</button>
-                        <button className="btn btn-primary" onClick={handleCreate} disabled={!newTitle.trim()} style={{ fontSize: 12 }}>Save</button>
+                            className="form-input-sm flex-1" style={{ minWidth: 100 }} />
+                        <button className="btn btn-secondary text-base" onClick={() => setShowCreate(false)}>Cancel</button>
+                        <button className="btn btn-primary text-base" onClick={handleCreate} disabled={!newTitle.trim()}>Save</button>
                     </div>
                 </div>
             )}
 
             {/* View Content */}
-            <div style={{ marginTop: 8 }}>
+            <div className="mt-8">
                 {ideas === null ? (
                     <div className="loading"><div className="loading-spinner" /> Loading ideas...</div>
                 ) : allIdeas.length === 0 ? (

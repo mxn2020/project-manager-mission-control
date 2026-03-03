@@ -16,19 +16,19 @@ import cors from 'cors';
 import fs from 'fs';
 import path from 'path';
 import { execSync } from 'child_process';
-import { initMinions, getMinions, getRegistry, listByType, minionToFlat, createMinion, getMinion, updateMinion, deleteMinion, isMinionsReady } from './minions-adapter.mjs';
+import { initMinions, getMinions, getRegistry, listByType, minionToFlat, createMinion, getMinion, updateMinion, deleteMinion } from './minions-adapter.mjs';
 import { handleChat } from './ai-chat.mjs';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
-// Navigate up from apps/web/server to the monorepo root
-const ROOT = process.env.PROJECT_ROOT || path.resolve(path.dirname(new URL(import.meta.url).pathname), '../../../..');
+// Navigate up from apps/web/server to the projects root (antigravity/)
+const ROOT = process.env.PROJECT_ROOT || path.resolve(path.dirname(new URL(import.meta.url).pathname), '../../../../..');
 const API_KEY = process.env.MC_API_KEY || '';
 const MINIONS_DIR = path.join(ROOT, '.minions');
 const CONVEX_URL = process.env.CONVEX_URL;
 if (!CONVEX_URL) console.warn('⚠️  CONVEX_URL not set — Convex token validation will fail');
 
-let minionsReady = false;
+
 
 // Token cache: { token → { user, expiresAt } }
 const tokenCache = new Map();
@@ -262,39 +262,7 @@ function calculateHealthScore(dir) {
     return Math.min(score, 100);
 }
 
-function legacyScan() {
-    console.log('🔍 Legacy scan: scanning for PROJECT.yaml files...');
-    const projects = findProjectYamls(ROOT);
-    const byTier = {}, byLane = {}, byPriority = {}, byStack = {};
-    const enrichedProjects = projects.map(p => {
-        const tier = p.tier || 'idea';
-        const lane = p.lane || 'uncategorized';
-        const prio = p.priority || 'medium';
-        byTier[tier] = (byTier[tier] || 0) + 1;
-        byLane[lane] = (byLane[lane] || 0) + 1;
-        byPriority[prio] = (byPriority[prio] || 0) + 1;
-        const stacks = Array.isArray(p.stack) ? p.stack : [];
-        for (const s of stacks) byStack[s] = (byStack[s] || 0) + 1;
-        const healthScore = p._absolutePath ? calculateHealthScore(p._absolutePath) : 0;
-        return {
-            name: p.name || '', description: p.description || '',
-            tier, lane, priority: prio,
-            oss: p.oss === true || p.oss === 'true',
-            stack: stacks, repo: p.repo || null,
-            deploy_url: p.deploy_url || null, last_active: p.last_active || null,
-            tags: Array.isArray(p.tags) ? p.tags : [], notes: p.notes || '',
-            path: p._path || '', yaml_path: p._yamlPath || '',
-            health_score: healthScore,
-        };
-    });
 
-    return {
-        generated_at: new Date().toISOString(),
-        total_projects: enrichedProjects.length,
-        summary: { by_tier: byTier, by_lane: byLane, by_priority: byPriority, by_stack: byStack },
-        projects: enrichedProjects,
-    };
-}
 
 // ─── Unified Sync Engine ────────────────────────────────────────────────────
 
@@ -343,8 +311,21 @@ function enrichProjectFromDisk(minionId, projectPath) {
     if (!data) {
         return {
             _minionId: minionId,
+            id: minionId,
             name: path.basename(projectPath),
+            description: '',
+            tier: 'idea',
+            lane: 'uncategorized',
+            priority: 'medium',
+            oss: false,
+            stack: [],
+            repo: null,
+            deploy_url: null,
+            last_active: null,
+            tags: [],
+            notes: '',
             path: projectPath,
+            yaml_path: '',
             syncStatus: 'orphaned',
             health_score: 0,
         };
@@ -382,12 +363,7 @@ async function syncProjects() {
     const diskProjects = findProjectYamls(ROOT);
     const results = { created: 0, updated: 0, orphaned: 0, total: 0 };
 
-    if (!minionsReady) {
-        // Without Minions, just return the legacy scan data
-        const data = legacyScan();
-        results.total = data.total_projects;
-        return { ...results, ...data };
-    }
+
 
     const mc = getMinions();
     const existingMinions = await listByType('project');
@@ -540,43 +516,42 @@ async function syncProjects() {
 // GET /api/projects — list all projects (Minions index enriched from disk)
 app.get('/api/projects', async (req, res) => {
     try {
-        if (minionsReady) {
-            const minions = await listByType('project');
-            const enrichedProjects = [];
-            const byTier = {}, byLane = {}, byPriority = {}, byStack = {};
+        const minions = await listByType('project');
+        const enrichedProjects = [];
+        const byTier = {}, byLane = {}, byPriority = {}, byStack = {};
 
-            for (const m of minions) {
-                const projectPath = m.fields?.path || '';
-                const project = enrichProjectFromDisk(m.id, projectPath);
-                enrichedProjects.push(project);
+        for (const m of minions) {
+            const projectPath = m.fields?.path || '';
+            const project = enrichProjectFromDisk(m.id, projectPath);
+            enrichedProjects.push(project);
 
-                const tier = project.tier || 'idea';
-                const lane = project.lane || 'uncategorized';
-                const prio = project.priority || 'medium';
-                byTier[tier] = (byTier[tier] || 0) + 1;
-                byLane[lane] = (byLane[lane] || 0) + 1;
-                byPriority[prio] = (byPriority[prio] || 0) + 1;
-                const stacks = Array.isArray(project.stack) ? project.stack : [];
-                for (const s of stacks) byStack[s] = (byStack[s] || 0) + 1;
-            }
-
-            return res.json({
-                generated_at: new Date().toISOString(),
-                total_projects: enrichedProjects.length,
-                summary: { by_tier: byTier, by_lane: byLane, by_priority: byPriority, by_stack: byStack },
-                projects: enrichedProjects,
-                source: 'minions',
-            });
+            const tier = project.tier || 'idea';
+            const lane = project.lane || 'uncategorized';
+            const prio = project.priority || 'medium';
+            byTier[tier] = (byTier[tier] || 0) + 1;
+            byLane[lane] = (byLane[lane] || 0) + 1;
+            byPriority[prio] = (byPriority[prio] || 0) + 1;
+            const stacks = Array.isArray(project.stack) ? project.stack : [];
+            for (const s of stacks) byStack[s] = (byStack[s] || 0) + 1;
         }
 
-        // Fallback to legacy scan
-        const statusPath = path.join(ROOT, 'status.json');
-        if (!fs.existsSync(statusPath)) {
-            const data = legacyScan();
-            fs.writeFileSync(statusPath, JSON.stringify(data, null, 2));
-            return res.json(data);
-        }
-        res.json(JSON.parse(fs.readFileSync(statusPath, 'utf-8')));
+        res.json({
+            generated_at: new Date().toISOString(),
+            total_projects: enrichedProjects.length,
+            summary: { by_tier: byTier, by_lane: byLane, by_priority: byPriority, by_stack: byStack },
+            projects: enrichedProjects,
+            source: 'minions',
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// POST /api/scan — full sync: reconcile disk PROJECT.yaml files with Minions index
+app.post('/api/scan', async (req, res) => {
+    try {
+        const result = await syncProjects();
+        res.json(result);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -600,7 +575,7 @@ app.get('/api/projects/:projectPath', async (req, res) => {
         parsed.health_score = calculateHealthScore(absDir);
 
         // Get Minion ID if available
-        if (minionsReady && parsed.id) {
+        if (parsed.id) {
             parsed._minionId = parsed.id;
         }
 
@@ -624,31 +599,29 @@ app.put('/api/projects/:projectPath', async (req, res) => {
         // Write the YAML file
         fs.writeFileSync(yamlPath, yaml, 'utf-8');
 
-        // Sync title/description to Minions if ready
-        if (minionsReady) {
-            try {
-                const data = parseYaml(yaml);
-                const mc = getMinions();
-                const minions = await listByType('project');
-                const match = minions.find(m =>
-                    m.fields?.path === projectPath ||
-                    (data.id && m.id === data.id)
-                );
-                if (match) {
-                    const updated = await mc.update(match, {
-                        title: data.name || match.title,
-                        description: data.description || match.description || '',
-                        fields: {
-                            ...match.fields,
-                            path: projectPath,
-                            lastSyncedAt: new Date().toISOString(),
-                            syncStatus: 'synced',
-                        },
-                    });
-                    await mc.save(updated.data);
-                }
-            } catch { /* best effort */ }
-        }
+        // Sync title/description to Minions
+        try {
+            const data = parseYaml(yaml);
+            const mc = getMinions();
+            const minions = await listByType('project');
+            const match = minions.find(m =>
+                m.fields?.path === projectPath ||
+                (data.id && m.id === data.id)
+            );
+            if (match) {
+                const updated = await mc.update(match, {
+                    title: data.name || match.title,
+                    description: data.description || match.description || '',
+                    fields: {
+                        ...match.fields,
+                        path: projectPath,
+                        lastSyncedAt: new Date().toISOString(),
+                        syncStatus: 'synced',
+                    },
+                });
+                await mc.save(updated.data);
+            }
+        } catch { /* best effort */ }
 
         res.json({ success: true });
     } catch (err) {
@@ -672,29 +645,27 @@ app.post('/api/projects', async (req, res) => {
 
         fs.mkdirSync(absDir, { recursive: true });
 
-        // Create Minion entry first to get the UUID
+        // Create Minion entry to get the UUID
         let minionId = null;
-        if (minionsReady) {
-            try {
-                const mc = getMinions();
-                const wrapper = await mc.create('project', {
-                    title: name,
-                    description: description || '',
-                    status: 'active',
-                    priority: priority || 'medium',
-                    tags: [],
-                    fields: {
-                        path: projectPath,
-                        yamlPath: path.join(projectPath, 'PROJECT.yaml'),
-                        accountsPath: '',
-                        lastSyncedAt: new Date().toISOString(),
-                        syncStatus: 'synced',
-                    },
-                });
-                await mc.save(wrapper.data);
-                minionId = wrapper.data.id;
-            } catch { /* continue without Minion */ }
-        }
+        try {
+            const mc = getMinions();
+            const wrapper = await mc.create('project', {
+                title: name,
+                description: description || '',
+                status: 'active',
+                priority: priority || 'medium',
+                tags: [],
+                fields: {
+                    path: projectPath,
+                    yamlPath: path.join(projectPath, 'PROJECT.yaml'),
+                    accountsPath: '',
+                    lastSyncedAt: new Date().toISOString(),
+                    syncStatus: 'synced',
+                },
+            });
+            await mc.save(wrapper.data);
+            minionId = wrapper.data.id;
+        } catch { /* continue without Minion */ }
 
         // Generate PROJECT.yaml with id field
         const yamlData = {
@@ -721,17 +692,8 @@ app.post('/api/projects', async (req, res) => {
     }
 });
 
-// POST /api/scan — trigger full sync (disk ↔ Minions reconciliation)
-app.post('/api/scan', async (req, res) => {
-    try {
-        const data = await syncProjects();
-        // Also update status.json for backward compat
-        fs.writeFileSync(path.join(ROOT, 'status.json'), JSON.stringify(data, null, 2));
-        res.json(data);
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
+
+
 
 // ─── Accounts API ───────────────────────────────────────────────────────────
 
@@ -840,12 +802,66 @@ app.post('/api/config/reset', (req, res) => {
     res.json(scannerConfig);
 });
 
+// ─── Dimensions & Focus Group API ───────────────────────────────────────────
+
+const DIMENSIONS_FILE = path.join(ROOT, '.mc-dimensions.json');
+const DEFAULT_DIMENSIONS_CONFIG = { dimensions: [], focusGroup: [] };
+
+let dimensionsConfig = { ...DEFAULT_DIMENSIONS_CONFIG };
+try {
+    if (fs.existsSync(DIMENSIONS_FILE)) {
+        const saved = JSON.parse(fs.readFileSync(DIMENSIONS_FILE, 'utf-8'));
+        dimensionsConfig = { ...DEFAULT_DIMENSIONS_CONFIG, ...saved };
+    }
+} catch { /* use defaults */ }
+
+function saveDimensionsConfig() {
+    try { fs.writeFileSync(DIMENSIONS_FILE, JSON.stringify(dimensionsConfig, null, 2)); } catch { }
+}
+
+// GET /api/dimensions — get dimensions configuration
+app.get('/api/dimensions', (req, res) => {
+    res.json(dimensionsConfig);
+});
+
+// PUT /api/dimensions — update dimensions configuration
+app.put('/api/dimensions', (req, res) => {
+    try {
+        const { dimensions } = req.body;
+        if (dimensions && Array.isArray(dimensions)) {
+            dimensionsConfig.dimensions = dimensions;
+        }
+        saveDimensionsConfig();
+        res.json(dimensionsConfig);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// GET /api/focus-group — get focused project paths
+app.get('/api/focus-group', (req, res) => {
+    res.json({ focusGroup: dimensionsConfig.focusGroup || [] });
+});
+
+// PUT /api/focus-group — update focused project paths
+app.put('/api/focus-group', (req, res) => {
+    try {
+        const { focusGroup } = req.body;
+        if (Array.isArray(focusGroup)) {
+            dimensionsConfig.focusGroup = focusGroup;
+            saveDimensionsConfig();
+        }
+        res.json({ focusGroup: dimensionsConfig.focusGroup });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // ─── Tasks API (Minions-backed) ─────────────────────────────────────────────
 
 // GET /api/tasks — list tasks with optional filters
 app.get('/api/tasks', async (req, res) => {
     try {
-        if (!minionsReady) return res.status(503).json({ error: 'Minions not initialized' });
         const all = await listByType('mc-task');
         let tasks = all.map(minionToFlat);
 
@@ -866,7 +882,6 @@ app.get('/api/tasks', async (req, res) => {
 // GET /api/tasks/stats — task statistics
 app.get('/api/tasks/stats', async (req, res) => {
     try {
-        if (!minionsReady) return res.status(503).json({ error: 'Minions not initialized' });
         const all = await listByType('mc-task');
         const tasks = all.map(minionToFlat);
         const byStatus = {};
@@ -886,7 +901,6 @@ app.get('/api/tasks/stats', async (req, res) => {
 // POST /api/tasks — create task
 app.post('/api/tasks', async (req, res) => {
     try {
-        if (!minionsReady) return res.status(503).json({ error: 'Minions not initialized' });
         const { projectPath, title, description, taskType, status, priority, effort, dueDate, tags } = req.body;
         if (!title) return res.status(400).json({ error: 'title is required' });
 
@@ -910,7 +924,6 @@ app.post('/api/tasks', async (req, res) => {
 // PUT /api/tasks/:id — update task
 app.put('/api/tasks/:id', async (req, res) => {
     try {
-        if (!minionsReady) return res.status(503).json({ error: 'Minions not initialized' });
         const task = await updateMinion(req.params.id, req.body);
         res.json(task);
     } catch (err) {
@@ -921,7 +934,6 @@ app.put('/api/tasks/:id', async (req, res) => {
 // DELETE /api/tasks/:id — delete task
 app.delete('/api/tasks/:id', async (req, res) => {
     try {
-        if (!minionsReady) return res.status(503).json({ error: 'Minions not initialized' });
         await deleteMinion(req.params.id);
         res.json({ success: true });
     } catch (err) {
@@ -934,7 +946,6 @@ app.delete('/api/tasks/:id', async (req, res) => {
 // GET /api/content — list content plans
 app.get('/api/content', async (req, res) => {
     try {
-        if (!minionsReady) return res.status(503).json({ error: 'Minions not initialized' });
         const all = await listByType('contentPlan');
         let plans = all.map(m => {
             const flat = minionToFlat(m);
@@ -960,7 +971,6 @@ app.get('/api/content', async (req, res) => {
 // GET /api/content/stats — content statistics
 app.get('/api/content/stats', async (req, res) => {
     try {
-        if (!minionsReady) return res.status(503).json({ error: 'Minions not initialized' });
         const all = await listByType('contentPlan');
         const plans = all.map(minionToFlat);
         const byStatus = {};
@@ -986,7 +996,6 @@ app.get('/api/content/stats', async (req, res) => {
 // POST /api/content — create content plan
 app.post('/api/content', async (req, res) => {
     try {
-        if (!minionsReady) return res.status(503).json({ error: 'Minions not initialized' });
         const { projectPath, releaseTag, releaseTitle, releaseNotes, releaseDate } = req.body;
         if (!projectPath || !releaseTag) return res.status(400).json({ error: 'projectPath and releaseTag required' });
 
@@ -1011,7 +1020,6 @@ app.post('/api/content', async (req, res) => {
 // PUT /api/content/:id — update content plan
 app.put('/api/content/:id', async (req, res) => {
     try {
-        if (!minionsReady) return res.status(503).json({ error: 'Minions not initialized' });
         const updates = { ...req.body };
         // If items is an array, serialize to JSON string for storage
         if (Array.isArray(updates.items)) {
@@ -1031,7 +1039,6 @@ app.put('/api/content/:id', async (req, res) => {
 // DELETE /api/content/:id — delete content plan
 app.delete('/api/content/:id', async (req, res) => {
     try {
-        if (!minionsReady) return res.status(503).json({ error: 'Minions not initialized' });
         await deleteMinion(req.params.id);
         res.json({ success: true });
     } catch (err) {
@@ -1042,7 +1049,6 @@ app.delete('/api/content/:id', async (req, res) => {
 // POST /api/content/:id/items — add item to content plan
 app.post('/api/content/:id/items', async (req, res) => {
     try {
-        if (!minionsReady) return res.status(503).json({ error: 'Minions not initialized' });
         const existing = await getMinion(req.params.id);
         if (!existing) return res.status(404).json({ error: 'Plan not found' });
 
@@ -1072,7 +1078,6 @@ app.post('/api/content/:id/items', async (req, res) => {
 // PUT /api/content/:id/items/:itemId — update item in content plan
 app.put('/api/content/:id/items/:itemId', async (req, res) => {
     try {
-        if (!minionsReady) return res.status(503).json({ error: 'Minions not initialized' });
         const existing = await getMinion(req.params.id);
         if (!existing) return res.status(404).json({ error: 'Plan not found' });
 
@@ -1102,7 +1107,6 @@ function parseSteps(raw) {
 
 app.get('/api/workflows', async (req, res) => {
     try {
-        if (!minionsReady) return res.status(503).json({ error: 'Minions not initialized' });
         const all = await listByType('mc-workflow');
         let workflows = all.map(m => {
             const flat = minionToFlat(m);
@@ -1119,7 +1123,6 @@ app.get('/api/workflows', async (req, res) => {
 
 app.post('/api/workflows', async (req, res) => {
     try {
-        if (!minionsReady) return res.status(503).json({ error: 'Minions not initialized' });
         const { title, description, category, steps, linkedProjects, isTemplate, schedule } = req.body;
         if (!title) return res.status(400).json({ error: 'title required' });
         const wf = await createMinion('mc-workflow', {
@@ -1138,7 +1141,6 @@ app.post('/api/workflows', async (req, res) => {
 
 app.put('/api/workflows/:id', async (req, res) => {
     try {
-        if (!minionsReady) return res.status(503).json({ error: 'Minions not initialized' });
         const updates = { ...req.body };
         if (Array.isArray(updates.steps)) updates.steps = JSON.stringify(updates.steps);
         if (Array.isArray(updates.linkedProjects)) updates.tags = updates.linkedProjects;
@@ -1150,7 +1152,68 @@ app.put('/api/workflows/:id', async (req, res) => {
 
 app.delete('/api/workflows/:id', async (req, res) => {
     try {
-        if (!minionsReady) return res.status(503).json({ error: 'Minions not initialized' });
+        await deleteMinion(req.params.id);
+        res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ─── Marketing Plans API (Minions-backed) ───────────────────────────────────
+
+function parseGoals(raw) {
+    if (!raw) return [];
+    if (Array.isArray(raw)) return raw;
+    try { return JSON.parse(raw); } catch { return []; }
+}
+
+app.get('/api/marketing', async (req, res) => {
+    try {
+        const all = await listByType('mc-marketing-plan');
+        let plans = all.map(m => {
+            const flat = minionToFlat(m);
+            flat.goals = parseGoals(flat.goals);
+            return flat;
+        });
+        const { category, project } = req.query;
+        if (category) plans = plans.filter(p => p.category === category);
+        if (project) plans = plans.filter(p => (p.linkedProjects || []).includes(project));
+        plans.sort((a, b) => new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime());
+        res.json(plans);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/marketing', async (req, res) => {
+    try {
+        const { title, description, category, budget, startDate, endDate, goals, linkedProjects, channels } = req.body;
+        if (!title) return res.status(400).json({ error: 'title required' });
+        const plan = await createMinion('mc-marketing-plan', {
+            title, description: description || '', status: 'draft',
+            category: category || 'custom',
+            budget: budget || '',
+            startDate: startDate || '',
+            endDate: endDate || '',
+            goals: JSON.stringify(goals || []),
+            linkedProjects: linkedProjects || [],
+            channels: channels || [],
+            tags: linkedProjects || [],
+        });
+        plan.goals = parseGoals(plan.goals);
+        res.status(201).json(plan);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.put('/api/marketing/:id', async (req, res) => {
+    try {
+        const updates = { ...req.body };
+        if (Array.isArray(updates.goals)) updates.goals = JSON.stringify(updates.goals);
+        if (Array.isArray(updates.linkedProjects)) updates.tags = updates.linkedProjects;
+        const plan = await updateMinion(req.params.id, updates);
+        plan.goals = parseGoals(plan.goals);
+        res.json(plan);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.delete('/api/marketing/:id', async (req, res) => {
+    try {
         await deleteMinion(req.params.id);
         res.json({ success: true });
     } catch (err) { res.status(500).json({ error: err.message }); }
@@ -1160,7 +1223,6 @@ app.delete('/api/workflows/:id', async (req, res) => {
 
 app.get('/api/ideas', async (req, res) => {
     try {
-        if (!minionsReady) return res.status(503).json({ error: 'Minions not initialized' });
         const all = await listByType('mc-idea');
         let ideas = all.map(minionToFlat);
         const { category, search, archived } = req.query;
@@ -1183,7 +1245,6 @@ app.get('/api/ideas', async (req, res) => {
 
 app.post('/api/ideas', async (req, res) => {
     try {
-        if (!minionsReady) return res.status(503).json({ error: 'Minions not initialized' });
         const { title, body, category, score, tags, linkedProjects } = req.body;
         if (!title) return res.status(400).json({ error: 'title required' });
         const idea = await createMinion('mc-idea', {
@@ -1199,7 +1260,6 @@ app.post('/api/ideas', async (req, res) => {
 
 app.put('/api/ideas/:id', async (req, res) => {
     try {
-        if (!minionsReady) return res.status(503).json({ error: 'Minions not initialized' });
         const idea = await updateMinion(req.params.id, req.body);
         res.json(idea);
     } catch (err) { res.status(500).json({ error: err.message }); }
@@ -1207,7 +1267,6 @@ app.put('/api/ideas/:id', async (req, res) => {
 
 app.delete('/api/ideas/:id', async (req, res) => {
     try {
-        if (!minionsReady) return res.status(503).json({ error: 'Minions not initialized' });
         await deleteMinion(req.params.id);
         res.json({ success: true });
     } catch (err) { res.status(500).json({ error: err.message }); }
@@ -1216,7 +1275,6 @@ app.delete('/api/ideas/:id', async (req, res) => {
 // Promote idea → task
 app.post('/api/ideas/:id/promote', async (req, res) => {
     try {
-        if (!minionsReady) return res.status(503).json({ error: 'Minions not initialized' });
         const idea = await getMinion(req.params.id);
         if (!idea) return res.status(404).json({ error: 'Idea not found' });
         // Create mc-task from idea
@@ -1239,7 +1297,6 @@ app.post('/api/ideas/:id/promote', async (req, res) => {
 // Combine multiple ideas into one
 app.post('/api/ideas/combine', async (req, res) => {
     try {
-        if (!minionsReady) return res.status(503).json({ error: 'Minions not initialized' });
         const { ids, title } = req.body;
         if (!Array.isArray(ids) || ids.length < 2) return res.status(400).json({ error: 'Need at least 2 idea IDs' });
         // Load all ideas
@@ -1275,7 +1332,6 @@ app.post('/api/ideas/combine', async (req, res) => {
 
 app.get('/api/wiki', async (req, res) => {
     try {
-        if (!minionsReady) return res.status(503).json({ error: 'Minions not initialized' });
         const all = await listByType('mc-wiki-article');
         let articles = all.map(minionToFlat);
         const { category, scope, search } = req.query;
@@ -1296,7 +1352,6 @@ app.get('/api/wiki', async (req, res) => {
 
 app.post('/api/wiki', async (req, res) => {
     try {
-        if (!minionsReady) return res.status(503).json({ error: 'Minions not initialized' });
         const { title, body, category, scope, tags, relatedArticles, linkedProjects } = req.body;
         if (!title) return res.status(400).json({ error: 'title required' });
         const article = await createMinion('mc-wiki-article', {
@@ -1313,7 +1368,6 @@ app.post('/api/wiki', async (req, res) => {
 
 app.put('/api/wiki/:id', async (req, res) => {
     try {
-        if (!minionsReady) return res.status(503).json({ error: 'Minions not initialized' });
         const article = await updateMinion(req.params.id, req.body);
         res.json(article);
     } catch (err) { res.status(500).json({ error: err.message }); }
@@ -1321,7 +1375,6 @@ app.put('/api/wiki/:id', async (req, res) => {
 
 app.delete('/api/wiki/:id', async (req, res) => {
     try {
-        if (!minionsReady) return res.status(503).json({ error: 'Minions not initialized' });
         await deleteMinion(req.params.id);
         res.json({ success: true });
     } catch (err) { res.status(500).json({ error: err.message }); }
@@ -1332,10 +1385,12 @@ app.delete('/api/wiki/:id', async (req, res) => {
 // Cached project data for dep graph + automation (refreshes every 60s)
 let cachedStatusData = null;
 let cachedStatusDataAt = 0;
-function getStatusData() {
+async function getStatusData() {
     const now = Date.now();
     if (!cachedStatusData || now - cachedStatusDataAt > 60_000) {
-        cachedStatusData = legacyScan();
+        const minions = await listByType('project');
+        const projects = minions.map(m => enrichProjectFromDisk(m.id, m.fields?.path || ''));
+        cachedStatusData = { projects };
         cachedStatusDataAt = now;
     }
     return cachedStatusData;
@@ -1343,7 +1398,7 @@ function getStatusData() {
 
 app.get('/api/dependencies', async (req, res) => {
     try {
-        const projects = getStatusData()?.projects || [];
+        const projects = (await getStatusData())?.projects || [];
         const depGraph = { nodes: [], links: [], packages: {} };
 
         for (const project of projects) {
@@ -1435,7 +1490,7 @@ app.post('/api/automation/run', async (req, res) => {
         }
 
         // Step 2: Stale detection (>30 days no activity)
-        const staleProjects = (getStatusData()?.projects || [])
+        const staleProjects = ((await getStatusData())?.projects || [])
             .filter(p => {
                 if (!p.last_active) return true;
                 const daysSince = (Date.now() - new Date(p.last_active).getTime()) / (1000 * 60 * 60 * 24);
@@ -1446,7 +1501,7 @@ app.post('/api/automation/run', async (req, res) => {
 
         // Step 3: Git status check (uncommitted changes)
         const gitStatus = [];
-        for (const p of (getStatusData()?.projects || []).slice(0, 30)) {
+        for (const p of ((await getStatusData())?.projects || []).slice(0, 30)) {
             const projectDir = path.join(ROOT, p.path);
             try {
                 if (!fs.existsSync(path.join(projectDir, '.git'))) continue;
@@ -1460,7 +1515,7 @@ app.post('/api/automation/run', async (req, res) => {
 
         // Step 4: Health overview
         const healthBuckets = { excellent: 0, good: 0, fair: 0, poor: 0, unknown: 0 };
-        for (const p of (getStatusData()?.projects || [])) {
+        for (const p of ((await getStatusData())?.projects || [])) {
             const h = p.health_score || 0;
             if (h >= 80) healthBuckets.excellent++;
             else if (h >= 60) healthBuckets.good++;
@@ -1542,7 +1597,6 @@ app.get('/api/ai/logs/stats', async (req, res) => {
 // POST /api/ai/chat — AI chat with Minions tool-calling
 app.post('/api/ai/chat', async (req, res) => {
     try {
-        if (!minionsReady) return res.status(503).json({ error: 'Minions not initialized' });
         const { messages, sessionId } = req.body;
         if (!messages || !Array.isArray(messages)) {
             return res.status(400).json({ error: 'messages array required' });
@@ -1561,7 +1615,6 @@ app.post('/api/ai/chat', async (req, res) => {
 // GET /api/minions-types — list all registered types with counts
 app.get('/api/minions-types', async (req, res) => {
     try {
-        if (!minionsReady) return res.status(503).json({ error: 'Minions not initialized' });
         const mc = getMinions();
         const registry = getRegistry();
         const allMinions = await mc.listMinions();
@@ -1593,7 +1646,6 @@ app.get('/api/minions-types', async (req, res) => {
 // GET /api/minions/:typeSlug — list all minions of a type
 app.get('/api/minions/:typeSlug', async (req, res) => {
     try {
-        if (!minionsReady) return res.status(503).json({ error: 'Minions not initialized' });
         const minions = await listByType(req.params.typeSlug);
         res.json({ items: minions.map(minionToFlat), total: minions.length });
     } catch (err) {
@@ -1604,7 +1656,6 @@ app.get('/api/minions/:typeSlug', async (req, res) => {
 // POST /api/minions/:typeSlug — create a new minion
 app.post('/api/minions/:typeSlug', async (req, res) => {
     try {
-        if (!minionsReady) return res.status(503).json({ error: 'Minions not initialized' });
         const mc = getMinions();
         const { title, description, status, priority, tags, fields } = req.body;
         const wrapper = await mc.create(req.params.typeSlug, {
@@ -1625,7 +1676,6 @@ app.post('/api/minions/:typeSlug', async (req, res) => {
 // PUT /api/minions/:typeSlug/:id — update a minion
 app.put('/api/minions/:typeSlug/:id', async (req, res) => {
     try {
-        if (!minionsReady) return res.status(503).json({ error: 'Minions not initialized' });
         const mc = getMinions();
         const existing = await mc.load(req.params.id);
         if (!existing) return res.status(404).json({ error: 'Minion not found' });
@@ -1643,7 +1693,6 @@ app.put('/api/minions/:typeSlug/:id', async (req, res) => {
 // DELETE /api/minions/:typeSlug/:id — delete a minion
 app.delete('/api/minions/:typeSlug/:id', async (req, res) => {
     try {
-        if (!minionsReady) return res.status(503).json({ error: 'Minions not initialized' });
         const mc = getMinions();
         const existing = await mc.load(req.params.id);
         if (!existing) return res.status(404).json({ error: 'Minion not found' });
@@ -1659,7 +1708,6 @@ app.get('/api/health', (req, res) => {
     res.json({
         status: 'ok',
         root: ROOT,
-        minionsReady,
         uptime: process.uptime(),
     });
 });
@@ -1736,12 +1784,10 @@ app.post('/api/projects/:projectPath/clone', async (req, res) => {
         if (!repoUrl) {
             // Try to find from project data
             try {
-                if (minionsReady) {
-                    const minions = await listByType('project');
-                    const match = minions.find(m => m.fields?.path === projectPath);
-                    if (match?.fields?.repo && match.fields.repo !== 'null') {
-                        repoUrl = match.fields.repo;
-                    }
+                const minions = await listByType('project');
+                const match = minions.find(m => m.fields?.path === projectPath);
+                if (match?.fields?.repo && match.fields.repo !== 'null') {
+                    repoUrl = match.fields.repo;
                 }
                 if (!repoUrl) {
                     // Fallback: check PROJECT.yaml
@@ -1911,19 +1957,13 @@ server.listen(PORT, async () => {
     console.log(`   Root directory: ${ROOT}`);
     console.log(`   Auth: ${process.env.NODE_ENV === 'production' ? 'enabled' : 'disabled (dev mode)'}`);
 
-    // Initialize Minions if .minions directory exists
-    if (fs.existsSync(MINIONS_DIR)) {
-        try {
-            await initMinions(MINIONS_DIR);
-            minionsReady = true;
-            console.log(`   📦 Minions: ready (${MINIONS_DIR})`);
-        } catch (err) {
-            console.warn(`   ⚠️  Minions init failed: ${err.message}`);
-            console.log(`   📋 Falling back to legacy PROJECT.yaml scanning`);
-        }
-    } else {
-        console.log(`   📋 Minions: not migrated yet (no .minions directory)`);
-        console.log(`      Run: node scripts/migrate-to-minions.mjs ${ROOT}`);
+    // Always initialize Minions (creates .minions/ dir if missing)
+    try {
+        await initMinions(MINIONS_DIR);
+        console.log(`   📦 Minions: ready (${MINIONS_DIR})`);
+    } catch (err) {
+        console.error(`   ❌ Minions init failed: ${err.message}`);
+        process.exit(1);
     }
 
     // Detect already-cloned projects

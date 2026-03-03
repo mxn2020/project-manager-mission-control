@@ -2,6 +2,9 @@ import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { useState, useEffect } from 'react';
 import { getAuthHeaders, API_BASE } from '../lib/api';
+import SearchableSelect from '../components/SearchableSelect';
+import { useDimensions } from '../hooks/useDimensions';
+import { DEFAULT_DIMENSIONS, type Dimension, type SubDimension } from '../lib/dimensions';
 
 interface ScannerConfig {
     yamlFilenames: string[];
@@ -19,7 +22,12 @@ export default function AdminPage() {
     const toggleProvider = useMutation(api.aiConfig.toggleProvider);
     const toggleModel = useMutation(api.aiConfig.toggleModel);
 
-    const [tab, setTab] = useState<'providers' | 'models' | 'datasources' | 'system'>('providers');
+    const [tab, setTab] = useState<'providers' | 'models' | 'datasources' | 'dimensions' | 'system'>('providers');
+    const { dimensions, saveDimensions } = useDimensions();
+    const [newDimName, setNewDimName] = useState('');
+    const [newDimField, setNewDimField] = useState('');
+    const [newDimIcon, setNewDimIcon] = useState('🏷️');
+    const [newSubKey, setNewSubKey] = useState<Record<string, string>>({});
     const [showAddProvider, setShowAddProvider] = useState(false);
     const [showAddModel, setShowAddModel] = useState(false);
 
@@ -109,8 +117,6 @@ export default function AdminPage() {
         setShowAddModel(false);
     };
 
-    const inputStyle = { padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'inherit', fontSize: 13, boxSizing: 'border-box' as const, width: '100%' };
-
     return (
         <div>
             <div className="page-header">
@@ -119,10 +125,10 @@ export default function AdminPage() {
             </div>
 
             {/* Tabs */}
-            <div className="filter-bar" style={{ marginBottom: 20 }}>
-                {(['providers', 'models', 'datasources', 'system'] as const).map(t => (
+            <div className="filter-bar mb-20">
+                {(['providers', 'models', 'datasources', 'dimensions', 'system'] as const).map(t => (
                     <button key={t} className={`btn ${tab === t ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setTab(t)} style={{ textTransform: 'capitalize' }}>
-                        {t === 'providers' ? '🔌 ' : t === 'models' ? '🤖 ' : t === 'datasources' ? '📂 ' : '⚙️ '}
+                        {t === 'providers' ? '🔌 ' : t === 'models' ? '🤖 ' : t === 'datasources' ? '📂 ' : t === 'dimensions' ? '📐 ' : '⚙️ '}
                         {t === 'datasources' ? 'Data Sources' : t}
                     </button>
                 ))}
@@ -131,20 +137,20 @@ export default function AdminPage() {
             {/* Providers Tab */}
             {tab === 'providers' && (
                 <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                        <h3 style={{ margin: 0, fontSize: 14 }}>AI Providers</h3>
-                        <button className="btn btn-primary" onClick={() => setShowAddProvider(!showAddProvider)} style={{ fontSize: 12 }}>+ Add Provider</button>
+                    <div className="flex-between mb-16" style={{ alignItems: 'center' }}>
+                        <h3 className="section-header" style={{ margin: 0 }}>AI Providers</h3>
+                        <button className="btn btn-primary text-base" onClick={() => setShowAddProvider(!showAddProvider)}>+ Add Provider</button>
                     </div>
 
                     {showAddProvider && (
-                        <div style={{ background: 'var(--bg-secondary)', borderRadius: 12, padding: 16, marginBottom: 16, border: '1px solid var(--border)' }}>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-                                <input placeholder="Name (e.g. NVIDIA NIM)" value={pName} onChange={e => setPName(e.target.value)} style={inputStyle} />
-                                <input placeholder="Slug (e.g. nvidia)" value={pSlug} onChange={e => setPSlug(e.target.value)} style={inputStyle} />
-                                <input placeholder="Base URL" value={pUrl} onChange={e => setPUrl(e.target.value)} style={inputStyle} />
-                                <input placeholder="API Key Env Var (e.g. NVIDIA_API_KEY)" value={pKey} onChange={e => setPKey(e.target.value)} style={inputStyle} />
+                        <div className="section-card-sm mb-16">
+                            <div className="grid-2 gap-12 mb-12">
+                                <input placeholder="Name (e.g. NVIDIA NIM)" value={pName} onChange={e => setPName(e.target.value)} className="form-input" />
+                                <input placeholder="Slug (e.g. nvidia)" value={pSlug} onChange={e => setPSlug(e.target.value)} className="form-input" />
+                                <input placeholder="Base URL" value={pUrl} onChange={e => setPUrl(e.target.value)} className="form-input" />
+                                <input placeholder="API Key Env Var (e.g. NVIDIA_API_KEY)" value={pKey} onChange={e => setPKey(e.target.value)} className="form-input" />
                             </div>
-                            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                            <div className="flex-row gap-8" style={{ justifyContent: 'flex-end' }}>
                                 <button className="btn btn-secondary" onClick={() => setShowAddProvider(false)}>Cancel</button>
                                 <button className="btn btn-primary" onClick={handleAddProvider}>Add Provider</button>
                             </div>
@@ -153,20 +159,20 @@ export default function AdminPage() {
 
                     {!providers ? <div className="loading"><div className="loading-spinner" /></div> : (
                         providers.map((p: any) => (
-                            <div key={p._id} style={{
-                                display: 'flex', alignItems: 'center', gap: 16, padding: '14px 16px',
-                                background: 'var(--bg-secondary)', borderRadius: 8, marginBottom: 8, border: '1px solid var(--border)',
+                            <div key={p._id} className="flex-row gap-16 mb-8" style={{
+                                padding: '14px 16px',
+                                background: 'var(--bg-secondary)', borderRadius: 8, border: '1px solid var(--border)',
                             }}>
                                 <div style={{ width: 10, height: 10, borderRadius: '50%', background: p.isEnabled ? '#34d399' : '#6b7280' }} />
-                                <div style={{ flex: 1 }}>
-                                    <div style={{ fontWeight: 600, fontSize: 14 }}>{p.name}</div>
-                                    <div style={{ fontSize: 11, color: 'var(--text-tertiary)', fontFamily: 'monospace' }}>{p.baseUrl}</div>
+                                <div className="flex-1">
+                                    <div className="font-semibold text-lg">{p.name}</div>
+                                    <div className="text-sm text-tertiary font-mono">{p.baseUrl}</div>
                                 </div>
-                                <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{p.slug}</span>
-                                <span style={{ fontSize: 11, color: 'var(--text-tertiary)', fontFamily: 'monospace' }}>{p.apiKeyEnvVar}</span>
-                                <button className={`btn ${p.isEnabled ? 'btn-secondary' : 'btn-primary'}`}
+                                <span className="text-sm text-tertiary">{p.slug}</span>
+                                <span className="text-sm text-tertiary font-mono">{p.apiKeyEnvVar}</span>
+                                <button className={`btn ${p.isEnabled ? 'btn-secondary' : 'btn-primary'} text-sm`}
                                     onClick={() => toggleProvider({ id: p._id, isEnabled: !p.isEnabled })}
-                                    style={{ fontSize: 11, padding: '4px 12px' }}>
+                                    style={{ padding: '4px 12px' }}>
                                     {p.isEnabled ? 'Disable' : 'Enable'}
                                 </button>
                             </div>
@@ -178,25 +184,24 @@ export default function AdminPage() {
             {/* Models Tab */}
             {tab === 'models' && (
                 <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                        <h3 style={{ margin: 0, fontSize: 14 }}>AI Models</h3>
-                        <button className="btn btn-primary" onClick={() => setShowAddModel(!showAddModel)} style={{ fontSize: 12 }}>+ Add Model</button>
+                    <div className="flex-between mb-16" style={{ alignItems: 'center' }}>
+                        <h3 className="section-header" style={{ margin: 0 }}>AI Models</h3>
+                        <button className="btn btn-primary text-base" onClick={() => setShowAddModel(!showAddModel)}>+ Add Model</button>
                     </div>
 
                     {showAddModel && (
-                        <div style={{ background: 'var(--bg-secondary)', borderRadius: 12, padding: 16, marginBottom: 16, border: '1px solid var(--border)' }}>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-                                <select value={mProviderId} onChange={e => setMProviderId(e.target.value)} style={inputStyle}>
-                                    <option value="">Select Provider</option>
-                                    {(providers || []).map((p: any) => <option key={p._id} value={p._id}>{p.name}</option>)}
-                                </select>
-                                <input placeholder="Model ID" value={mModelId} onChange={e => setMModelId(e.target.value)} style={inputStyle} />
-                                <input placeholder="Display Name" value={mDisplayName} onChange={e => setMDisplayName(e.target.value)} style={inputStyle} />
-                                <input placeholder="Max Tokens" type="number" value={mMaxTokens} onChange={e => setMMaxTokens(e.target.value)} style={inputStyle} />
-                                <input placeholder="Context Window" type="number" value={mContextWindow} onChange={e => setMContextWindow(e.target.value)} style={inputStyle} />
-                                <input placeholder="Cost/M Input (cents)" type="number" step="0.01" value={mCostInput} onChange={e => setMCostInput(e.target.value)} style={inputStyle} />
+                        <div className="section-card-sm mb-16">
+                            <div className="grid-2 gap-12 mb-12">
+                                <SearchableSelect
+                                    options={[{ value: '', label: 'Select Provider' }, ...(providers || []).map((p: any) => ({ value: p._id, label: p.name }))]}
+                                    value={mProviderId} onChange={setMProviderId} placeholder="Provider" clearable={false} />
+                                <input placeholder="Model ID" value={mModelId} onChange={e => setMModelId(e.target.value)} className="form-input" />
+                                <input placeholder="Display Name" value={mDisplayName} onChange={e => setMDisplayName(e.target.value)} className="form-input" />
+                                <input placeholder="Max Tokens" type="number" value={mMaxTokens} onChange={e => setMMaxTokens(e.target.value)} className="form-input" />
+                                <input placeholder="Context Window" type="number" value={mContextWindow} onChange={e => setMContextWindow(e.target.value)} className="form-input" />
+                                <input placeholder="Cost/M Input (cents)" type="number" step="0.01" value={mCostInput} onChange={e => setMCostInput(e.target.value)} className="form-input" />
                             </div>
-                            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                            <div className="flex-row gap-8" style={{ justifyContent: 'flex-end' }}>
                                 <button className="btn btn-secondary" onClick={() => setShowAddModel(false)}>Cancel</button>
                                 <button className="btn btn-primary" onClick={handleAddModel}>Add Model</button>
                             </div>
@@ -205,23 +210,23 @@ export default function AdminPage() {
 
                     {!models ? <div className="loading"><div className="loading-spinner" /></div> : (
                         (models as any[]).map((m: any) => (
-                            <div key={m._id} style={{
-                                display: 'flex', alignItems: 'center', gap: 16, padding: '14px 16px',
-                                background: 'var(--bg-secondary)', borderRadius: 8, marginBottom: 8, border: '1px solid var(--border)',
+                            <div key={m._id} className="flex-row gap-16 mb-8" style={{
+                                padding: '14px 16px',
+                                background: 'var(--bg-secondary)', borderRadius: 8, border: '1px solid var(--border)',
                             }}>
                                 <div style={{ width: 10, height: 10, borderRadius: '50%', background: m.isEnabled ? '#34d399' : '#6b7280' }} />
-                                <div style={{ flex: 1 }}>
-                                    <div style={{ fontWeight: 600, fontSize: 14 }}>
+                                <div className="flex-1">
+                                    <div className="font-semibold text-lg">
                                         {m.displayName}
-                                        {m.isDefault && <span style={{ marginLeft: 8, padding: '1px 6px', borderRadius: 4, background: '#818cf830', color: '#818cf8', fontSize: 10 }}>DEFAULT</span>}
+                                        {m.isDefault && <span className="tag" style={{ marginLeft: 8, background: '#818cf830', color: '#818cf8', border: 'none' }}>DEFAULT</span>}
                                     </div>
-                                    <div style={{ fontSize: 11, color: 'var(--text-tertiary)', fontFamily: 'monospace' }}>{m.modelId}</div>
+                                    <div className="text-sm text-tertiary font-mono">{m.modelId}</div>
                                 </div>
-                                <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{m.maxTokens} max</span>
-                                <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{m.contextWindow?.toLocaleString()} ctx</span>
-                                <button className={`btn ${m.isEnabled ? 'btn-secondary' : 'btn-primary'}`}
+                                <span className="text-sm text-tertiary">{m.maxTokens} max</span>
+                                <span className="text-sm text-tertiary">{m.contextWindow?.toLocaleString()} ctx</span>
+                                <button className={`btn ${m.isEnabled ? 'btn-secondary' : 'btn-primary'} text-sm`}
                                     onClick={() => toggleModel({ id: m._id, isEnabled: !m.isEnabled })}
-                                    style={{ fontSize: 11, padding: '4px 12px' }}>
+                                    style={{ padding: '4px 12px' }}>
                                     {m.isEnabled ? 'Disable' : 'Enable'}
                                 </button>
                             </div>
@@ -233,43 +238,43 @@ export default function AdminPage() {
             {/* Data Sources Tab */}
             {tab === 'datasources' && (
                 <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                        <h3 style={{ margin: 0, fontSize: 14 }}>📂 Data Sources Configuration</h3>
-                        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                            {configSaved && <span style={{ color: '#34d399', fontSize: 12 }}>✓ Saved</span>}
-                            <button className="btn btn-secondary" onClick={resetConfig} style={{ fontSize: 12 }}>↩ Reset Defaults</button>
+                    <div className="flex-between mb-16" style={{ alignItems: 'center' }}>
+                        <h3 className="section-header" style={{ margin: 0 }}>📂 Data Sources Configuration</h3>
+                        <div className="flex-row gap-8">
+                            {configSaved && <span className="text-base" style={{ color: '#34d399' }}>✓ Saved</span>}
+                            <button className="btn btn-secondary text-base" onClick={resetConfig}>↩ Reset Defaults</button>
                         </div>
                     </div>
 
                     {configLoading || !config ? (
                         <div className="loading"><div className="loading-spinner" /></div>
                     ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                        <div className="flex-col gap-20">
                             {/* YAML Filenames */}
-                            <div style={{ background: 'var(--bg-secondary)', borderRadius: 12, padding: 16, border: '1px solid var(--border)' }}>
-                                <h4 style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 600 }}>YAML Filenames</h4>
-                                <p style={{ fontSize: 11, color: 'var(--text-tertiary)', margin: '0 0 12px' }}>
+                            <div className="section-card-sm">
+                                <h4 className="font-semibold text-md mb-8" style={{ margin: 0 }}>YAML Filenames</h4>
+                                <p className="section-sublabel">
                                     Which YAML files to scan for in each project directory. The scanner checks them in order and uses the first match.
                                 </p>
-                                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
+                                <div className="flex-row flex-wrap gap-6 mb-8">
                                     {config.yamlFilenames.map(f => (
-                                        <span key={f} style={{
-                                            display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: 6,
-                                            background: 'var(--bg-primary)', border: '1px solid var(--border)', fontSize: 12, fontFamily: 'monospace',
+                                        <span key={f} className="flex-row gap-4 text-base font-mono" style={{
+                                            padding: '4px 10px', borderRadius: 6,
+                                            background: 'var(--bg-primary)', border: '1px solid var(--border)',
                                         }}>
                                             {f}
                                             <button onClick={() => {
                                                 const nf = config.yamlFilenames.filter(x => x !== f);
                                                 if (nf.length > 0) saveConfig({ yamlFilenames: nf });
-                                            }} style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', fontSize: 12, padding: '0 2px' }}>✕</button>
+                                            }} className="icon-btn" style={{ color: '#f87171' }}>✕</button>
                                         </span>
                                     ))}
                                 </div>
-                                <div style={{ display: 'flex', gap: 8 }}>
+                                <div className="flex-row gap-8">
                                     <input value={newYamlFile} onChange={e => setNewYamlFile(e.target.value)}
                                         onKeyDown={e => { if (e.key === 'Enter' && newYamlFile.trim()) { saveConfig({ yamlFilenames: [...config.yamlFilenames, newYamlFile.trim()] }); setNewYamlFile(''); } }}
-                                        placeholder="e.g. GITHUB.yaml" style={{ ...inputStyle, flex: 1 }} />
-                                    <button className="btn btn-primary" style={{ fontSize: 12 }}
+                                        placeholder="e.g. GITHUB.yaml" className="form-input flex-1" />
+                                    <button className="btn btn-primary text-base"
                                         onClick={() => { if (newYamlFile.trim()) { saveConfig({ yamlFilenames: [...config.yamlFilenames, newYamlFile.trim()] }); setNewYamlFile(''); } }}>
                                         + Add
                                     </button>
@@ -277,27 +282,27 @@ export default function AdminPage() {
                             </div>
 
                             {/* Scan Depth */}
-                            <div style={{ background: 'var(--bg-secondary)', borderRadius: 12, padding: 16, border: '1px solid var(--border)' }}>
-                                <h4 style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 600 }}>Scan Depth</h4>
-                                <p style={{ fontSize: 11, color: 'var(--text-tertiary)', margin: '0 0 12px' }}>
+                            <div className="section-card-sm">
+                                <h4 className="font-semibold text-md mb-8" style={{ margin: 0 }}>Scan Depth</h4>
+                                <p className="section-sublabel">
                                     Maximum folder depth to scan for YAML files (1-20).
                                 </p>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                <div className="flex-row gap-12">
                                     <input type="range" min="1" max="20" value={config.maxScanDepth}
                                         onChange={e => saveConfig({ maxScanDepth: parseInt(e.target.value) })}
-                                        style={{ flex: 1 }} />
-                                    <span style={{ fontSize: 14, fontWeight: 600, fontFamily: 'monospace', minWidth: 30 }}>{config.maxScanDepth}</span>
+                                        className="flex-1" />
+                                    <span className="text-lg font-semibold font-mono" style={{ minWidth: 30 }}>{config.maxScanDepth}</span>
                                 </div>
                             </div>
 
                             {/* Subfolder Scanning */}
-                            <div style={{ background: 'var(--bg-secondary)', borderRadius: 12, padding: 16, border: '1px solid var(--border)' }}>
-                                <h4 style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 600 }}>Subfolder Scanning</h4>
-                                <p style={{ fontSize: 11, color: 'var(--text-tertiary)', margin: '0 0 12px' }}>
+                            <div className="section-card-sm">
+                                <h4 className="font-semibold text-md mb-8" style={{ margin: 0 }}>Subfolder Scanning</h4>
+                                <p className="section-sublabel">
                                     Also look for YAML files inside a subfolder (e.g. .meta/PROJECT.yaml).
                                 </p>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 13 }}>
+                                <div className="flex-row gap-12">
+                                    <label className="flex-row gap-6 text-md" style={{ cursor: 'pointer' }}>
                                         <input type="checkbox" checked={config.scanSubfolders}
                                             onChange={e => saveConfig({ scanSubfolders: e.target.checked })} />
                                         Enable subfolder scanning
@@ -305,34 +310,34 @@ export default function AdminPage() {
                                     {config.scanSubfolders && (
                                         <input value={config.scanSubfolderName}
                                             onChange={e => saveConfig({ scanSubfolderName: e.target.value })}
-                                            placeholder=".meta" style={{ ...inputStyle, width: 120 }} />
+                                            placeholder=".meta" className="form-input" style={{ width: 120 }} />
                                     )}
                                 </div>
                             </div>
 
                             {/* Ignore Patterns */}
-                            <div style={{ background: 'var(--bg-secondary)', borderRadius: 12, padding: 16, border: '1px solid var(--border)' }}>
-                                <h4 style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 600 }}>Ignore Patterns</h4>
-                                <p style={{ fontSize: 11, color: 'var(--text-tertiary)', margin: '0 0 12px' }}>
+                            <div className="section-card-sm">
+                                <h4 className="font-semibold text-md mb-8" style={{ margin: 0 }}>Ignore Patterns</h4>
+                                <p className="section-sublabel">
                                     Directory names to skip during scanning. These directories and their contents will be ignored.
                                 </p>
-                                <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 8 }}>
+                                <div className="flex-row flex-wrap gap-4 mb-8">
                                     {config.ignorePatterns.map(p => (
-                                        <span key={p} style={{
-                                            display: 'flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 4,
-                                            background: 'var(--bg-primary)', border: '1px solid var(--border)', fontSize: 11, fontFamily: 'monospace',
+                                        <span key={p} className="flex-row gap-4 text-sm font-mono" style={{
+                                            padding: '3px 8px', borderRadius: 4,
+                                            background: 'var(--bg-primary)', border: '1px solid var(--border)',
                                         }}>
                                             {p}
                                             <button onClick={() => saveConfig({ ignorePatterns: config.ignorePatterns.filter(x => x !== p) })}
-                                                style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', fontSize: 11, padding: '0 2px' }}>✕</button>
+                                                className="icon-btn text-sm" style={{ color: '#f87171' }}>✕</button>
                                         </span>
                                     ))}
                                 </div>
-                                <div style={{ display: 'flex', gap: 8 }}>
+                                <div className="flex-row gap-8">
                                     <input value={newIgnore} onChange={e => setNewIgnore(e.target.value)}
                                         onKeyDown={e => { if (e.key === 'Enter' && newIgnore.trim()) { saveConfig({ ignorePatterns: [...config.ignorePatterns, newIgnore.trim()] }); setNewIgnore(''); } }}
-                                        placeholder="e.g. vendor" style={{ ...inputStyle, flex: 1 }} />
-                                    <button className="btn btn-primary" style={{ fontSize: 12 }}
+                                        placeholder="e.g. vendor" className="form-input flex-1" />
+                                    <button className="btn btn-primary text-base"
                                         onClick={() => { if (newIgnore.trim()) { saveConfig({ ignorePatterns: [...config.ignorePatterns, newIgnore.trim()] }); setNewIgnore(''); } }}>
                                         + Add
                                     </button>
@@ -343,11 +348,117 @@ export default function AdminPage() {
                 </div>
             )}
 
+            {/* Dimensions Tab */}
+            {tab === 'dimensions' && (
+                <div>
+                    <div className="flex-between mb-16" style={{ alignItems: 'center' }}>
+                        <h3 className="section-header" style={{ margin: 0 }}>📐 Dimensions</h3>
+                        <span className="text-sm text-tertiary">Used to group projects in Grid, Tree, Kanban, and Focus views</span>
+                    </div>
+
+                    {dimensions.map(dim => {
+                        const isBuiltIn = dim.builtIn;
+                        return (
+                            <div key={dim.id} className="section-card-sm mb-12">
+                                <div className="flex-row gap-10 mb-12">
+                                    <span className="text-2xl">{dim.icon}</span>
+                                    <div className="flex-1">
+                                        <div className="font-semibold text-lg">
+                                            {dim.label}
+                                            {isBuiltIn && <span className="tag" style={{ marginLeft: 8, background: 'var(--accent-bg)', color: 'var(--accent)', border: 'none' }}>BUILT-IN</span>}
+                                        </div>
+                                        <div className="text-sm text-tertiary font-mono">field: {dim.field}</div>
+                                    </div>
+                                    {!isBuiltIn && (
+                                        <button className="btn btn-secondary text-sm" style={{ color: '#f87171', padding: '4px 10px' }}
+                                            onClick={() => saveDimensions(dimensions.filter(d => d.id !== dim.id))}>
+                                            Delete
+                                        </button>
+                                    )}
+                                </div>
+                                <div className="text-sm font-semibold text-tertiary mb-4" style={{ textTransform: 'uppercase' }}>SUB-DIMENSIONS</div>
+                                <div className="flex-row flex-wrap gap-6 mb-8">
+                                    {dim.subDimensions.map(sub => (
+                                        <span key={sub.key} className="flex-row gap-4 text-base" style={{
+                                            padding: '4px 10px', borderRadius: 6,
+                                            background: (sub.color || '#6b7280') + '15', border: `1px solid ${sub.color || 'var(--border)'}`,
+                                            color: sub.color || 'var(--text-secondary)',
+                                        }}>
+                                            {sub.icon && <span>{sub.icon}</span>}
+                                            {sub.label}
+                                            {!isBuiltIn && (
+                                                <button onClick={() => {
+                                                    const newSubs = dim.subDimensions.filter(s => s.key !== sub.key);
+                                                    saveDimensions(dimensions.map(d => d.id === dim.id ? { ...d, subDimensions: newSubs } : d));
+                                                }} className="icon-btn text-sm" style={{ color: '#f87171' }}>✕</button>
+                                            )}
+                                        </span>
+                                    ))}
+                                </div>
+                                {!isBuiltIn && (
+                                    <div className="flex-row gap-8">
+                                        <input
+                                            value={newSubKey[dim.id] || ''}
+                                            onChange={e => setNewSubKey(prev => ({ ...prev, [dim.id]: e.target.value }))}
+                                            onKeyDown={e => {
+                                                if (e.key === 'Enter' && newSubKey[dim.id]?.trim()) {
+                                                    const key = newSubKey[dim.id].trim().toLowerCase().replace(/\s+/g, '_');
+                                                    const newSub: SubDimension = { key, label: newSubKey[dim.id].trim(), order: dim.subDimensions.length };
+                                                    saveDimensions(dimensions.map(d => d.id === dim.id ? { ...d, subDimensions: [...d.subDimensions, newSub] } : d));
+                                                    setNewSubKey(prev => ({ ...prev, [dim.id]: '' }));
+                                                }
+                                            }}
+                                            placeholder="Add sub-dimension..."
+                                            className="form-input"
+                                        />
+                                        <button className="btn btn-primary text-base"
+                                            onClick={() => {
+                                                if (newSubKey[dim.id]?.trim()) {
+                                                    const key = newSubKey[dim.id].trim().toLowerCase().replace(/\s+/g, '_');
+                                                    const newSub: SubDimension = { key, label: newSubKey[dim.id].trim(), order: dim.subDimensions.length };
+                                                    saveDimensions(dimensions.map(d => d.id === dim.id ? { ...d, subDimensions: [...d.subDimensions, newSub] } : d));
+                                                    setNewSubKey(prev => ({ ...prev, [dim.id]: '' }));
+                                                }
+                                            }}>+ Add</button>
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })}
+
+                    {/* Add Custom Dimension */}
+                    <div className="section-card-sm mt-16" style={{ border: '1px dashed var(--border)' }}>
+                        <h4 className="font-semibold text-md mb-12" style={{ margin: 0 }}>+ Add Custom Dimension</h4>
+                        <div className="gap-12" style={{ display: 'grid', gridTemplateColumns: 'auto 1fr 1fr', alignItems: 'center' }}>
+                            <input value={newDimIcon} onChange={e => setNewDimIcon(e.target.value)}
+                                className="form-input text-2xl text-center" style={{ width: 50 }} />
+                            <input placeholder="Dimension name (e.g. Team)" value={newDimName}
+                                onChange={e => setNewDimName(e.target.value)} className="form-input" />
+                            <input placeholder="YAML field (e.g. team)" value={newDimField}
+                                onChange={e => setNewDimField(e.target.value)} className="form-input" />
+                        </div>
+                        <div className="flex-row mt-12" style={{ justifyContent: 'flex-end' }}>
+                            <button className="btn btn-primary text-base"
+                                disabled={!newDimName.trim() || !newDimField.trim()}
+                                onClick={() => {
+                                    const id = 'custom_' + newDimField.trim().toLowerCase().replace(/\s+/g, '_');
+                                    const newDim: Dimension = {
+                                        id, label: newDimName.trim(), icon: newDimIcon || '🏷️',
+                                        builtIn: false, field: newDimField.trim(), subDimensions: [],
+                                    };
+                                    saveDimensions([...dimensions, newDim]);
+                                    setNewDimName(''); setNewDimField(''); setNewDimIcon('🏷️');
+                                }}>Create Dimension</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* System Tab */}
             {tab === 'system' && (
                 <div>
-                    <h3 style={{ fontSize: 14, marginBottom: 16 }}>System Information</h3>
-                    <div style={{ display: 'grid', gap: 8 }}>
+                    <h3 className="section-header mb-16">System Information</h3>
+                    <div className="flex-col gap-8">
                         {[
                             { label: 'Convex URL', value: import.meta.env.VITE_CONVEX_URL?.replace('https://', '') || '(not configured)' },
                             { label: 'VPS Server', value: '(configured via environment)' },
@@ -356,12 +467,12 @@ export default function AdminPage() {
                             { label: 'Auth', value: 'Convex session tokens' },
                             { label: 'AI Provider', value: 'NVIDIA NIM (Llama 3.1 70B)' },
                         ].map(item => (
-                            <div key={item.label} style={{
-                                display: 'flex', justifyContent: 'space-between', padding: '10px 16px',
+                            <div key={item.label} className="flex-between" style={{
+                                padding: '10px 16px', alignItems: 'center',
                                 background: 'var(--bg-secondary)', borderRadius: 8, border: '1px solid var(--border)',
                             }}>
-                                <span style={{ fontWeight: 500, fontSize: 13 }}>{item.label}</span>
-                                <span style={{ fontFamily: 'monospace', fontSize: 12, color: 'var(--text-secondary)' }}>{item.value}</span>
+                                <span className="font-medium text-md">{item.label}</span>
+                                <span className="font-mono text-base text-muted">{item.value}</span>
                             </div>
                         ))}
                     </div>

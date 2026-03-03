@@ -5,6 +5,29 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and thi
 
 ## [Unreleased]
 
+## [1.1.0] — 2026-03-03
+
+### ✨ Features
+- **Minions-only architecture** — Removed legacy `legacyScan()`, `status.json` fallback, and all `minionsReady` guards. Server now auto-initializes Minions on startup (creates `.minions/` if missing). `POST /api/scan` route added for Sync button
+- **Dimensions system** — Flexible dimension-based grouping/sorting across views (priority, lane, tier, lifecycle, open tasks). Custom dimensions via settings. Focus group persistence via `/api/focus-group`
+- **Multi-view Focus page** — List, Grid, and Kanban views for focus group with drag-and-drop support and dimension-based grouping
+- **Kanban DnD improvements** — Rotated drag ghost, optimistic updates, debounced batch saving with non-blocking saving indicator
+- **Marketing Plans page** — Full CRUD for marketing plans with goals, budgets, channels, and multi-project linking
+- **Workflows page** — Full CRUD for workflows with steps, scheduling, and multi-project linking via `MultiSelect` component
+- **UI component library** — New in-house components: `PageHeader`, `Card`, `Badge`, `EmptyState`, `FilterBar`, `DimensionPicker`, `GripIcon`, `Dialog`, `MultiSelect`, `SearchableSelect`
+- **Dashboard UI refresh** — Refactored Roadmap, Content, Cost, Tasks, Marketing, Analytics, and AI Logs pages to use in-house UI components and utility CSS classes
+
+### 🐛 Bug Fixes
+- **Focus group persistence** — Fixed `useDimensions` hook to properly persist focus group selections across page reloads
+- **Kanban drag-and-drop** — Fixed full-page reload, blank screen, and loading state issues during DnD operations
+- **View crash fixes** — Added null safety for `project.stack` in Kanban, Tree, and Grid views (orphaned projects missing array fields)
+- **Orphaned project shape** — Server `enrichProjectFromDisk()` now returns complete project shape with defaults for orphaned entries
+- **ROOT path resolution** — Fixed server ROOT from `claw_ecosystem/` (3 projects) to `antigravity/` (273 projects)
+- **Marketing/Workflows creation** — Fixed "Minions not initialized" error blocking creation
+
+### 🗑️ Removed
+- **Legacy scanning** — Deleted `legacyScan()`, `status.json` fallback, `minionsReady` flag, and `migrate-to-minions.mjs` script
+
 ## [1.0.6] — 2026-03-02
 
 ### ✨ Features
@@ -99,7 +122,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and thi
 - Hybrid project source: legacy PROJECT.yaml scanner + Minions adapter
 - VPS deployment via rsync + PM2
 
-[Unreleased]: https://github.com/mxn2020/project-manager-mission-control/compare/v1.0.6...HEAD
+[Unreleased]: https://github.com/mxn2020/project-manager-mission-control/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/mxn2020/project-manager-mission-control/compare/v1.0.6...v1.1.0
 [1.0.6]: https://github.com/mxn2020/project-manager-mission-control/compare/v1.0.5...v1.0.6
 [1.0.5]: https://github.com/mxn2020/project-manager-mission-control/compare/v1.0.4...v1.0.5
 [1.0.4]: https://github.com/mxn2020/project-manager-mission-control/compare/v1.0.2...v1.0.4

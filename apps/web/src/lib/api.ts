@@ -73,6 +73,18 @@ export const api = {
         update: (id: string, data: Record<string, unknown>) => request<any>(`/api/workflows/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
         delete: (id: string) => request<{ success: boolean }>(`/api/workflows/${id}`, { method: 'DELETE' }),
     },
+    marketing: {
+        list: (filters?: { category?: string; project?: string }) => {
+            const p = new URLSearchParams();
+            if (filters?.category) p.set('category', filters.category);
+            if (filters?.project) p.set('project', filters.project);
+            const qs = p.toString();
+            return request<any[]>(`/api/marketing${qs ? '?' + qs : ''}`);
+        },
+        create: (data: Record<string, unknown>) => request<any>('/api/marketing', { method: 'POST', body: JSON.stringify(data) }),
+        update: (id: string, data: Record<string, unknown>) => request<any>(`/api/marketing/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+        delete: (id: string) => request<{ success: boolean }>(`/api/marketing/${id}`, { method: 'DELETE' }),
+    },
     ideas: {
         list: (filters?: { category?: string; search?: string; archived?: string }) => {
             const p = new URLSearchParams();
@@ -100,6 +112,14 @@ export const api = {
         create: (data: Record<string, unknown>) => request<any>('/api/wiki', { method: 'POST', body: JSON.stringify(data) }),
         update: (id: string, data: Record<string, unknown>) => request<any>(`/api/wiki/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
         delete: (id: string) => request<{ success: boolean }>(`/api/wiki/${id}`, { method: 'DELETE' }),
+    },
+    dimensions: {
+        get: () => request<{ dimensions: any[]; focusGroup: string[] }>('/api/dimensions'),
+        update: (data: { dimensions: any[] }) => request<any>('/api/dimensions', { method: 'PUT', body: JSON.stringify(data) }),
+    },
+    focusGroup: {
+        get: () => request<{ focusGroup: string[] }>('/api/focus-group'),
+        set: (focusGroup: string[]) => request<{ focusGroup: string[] }>('/api/focus-group', { method: 'PUT', body: JSON.stringify({ focusGroup }) }),
     },
 };
 

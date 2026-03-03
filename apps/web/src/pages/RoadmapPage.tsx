@@ -3,6 +3,7 @@ import { useProjects } from '../hooks/useProjects';
 import SearchableSelect from '../components/SearchableSelect';
 import CreateProjectModal from '../components/CreateProjectModal';
 import { TIER_CONFIG, TIER_ORDER, type Tier } from '../lib/types';
+import { PageHeader, Badge, EmptyState } from '../components/ui';
 
 type RoadmapView = 'pipeline' | 'list' | 'compact';
 
@@ -78,7 +79,6 @@ export default function RoadmapPage() {
             if (!map[t]) map[t] = [];
             map[t].push(p);
         }
-        // Sort within tier by priority
         const order: Record<string, number> = { high: 0, medium: 1, low: 2, parked: 3 };
         for (const t of Object.keys(map)) {
             map[t].sort((a: any, b: any) => (order[a.priority] ?? 99) - (order[b.priority] ?? 99));
@@ -89,25 +89,25 @@ export default function RoadmapPage() {
     const renderPipeline = () => (
         <>
             {/* Pipeline stages bar */}
-            <div style={{ display: 'grid', gridTemplateColumns: `repeat(${TIER_ORDER.length}, 1fr)`, gap: 4, marginBottom: 8 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: `repeat(${TIER_ORDER.length}, 1fr)`, gap: 4 }} className="mb-8">
                 {TIER_ORDER.map(tier => {
                     const cfg = TIER_CONFIG[tier as Tier];
                     const count = byTier[tier]?.length || 0;
                     return (
-                        <div key={tier} style={{
-                            textAlign: 'center', padding: '12px 8px', borderRadius: 8,
+                        <div key={tier} className="text-center" style={{
+                            padding: '12px 8px', borderRadius: 8,
                             background: cfg?.bg || 'var(--bg-secondary)', border: `1px solid ${cfg?.color || 'var(--border)'}30`,
                         }}>
-                            <div style={{ fontSize: 18 }}>{cfg?.emoji}</div>
-                            <div style={{ fontWeight: 600, fontSize: 13, color: cfg?.color }}>{cfg?.label}</div>
-                            <div style={{ fontSize: 20, fontWeight: 700, marginTop: 4 }}>{count}</div>
+                            <div className="text-2xl">{cfg?.emoji}</div>
+                            <div className="font-semibold text-md" style={{ color: cfg?.color }}>{cfg?.label}</div>
+                            <div className="text-3xl font-bold mt-4">{count}</div>
                         </div>
                     );
                 })}
             </div>
 
             {/* Flow arrow */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, margin: '8px 0 20px', fontSize: 12, color: 'var(--text-tertiary)' }}>
+            <div className="flex-row flex-center gap-8 text-base text-tertiary" style={{ margin: '8px 0 20px' }}>
                 {TIER_ORDER.map((tier, i) => (
                     <span key={tier}>
                         {TIER_CONFIG[tier as Tier]?.emoji} {TIER_CONFIG[tier as Tier]?.label}
@@ -120,31 +120,26 @@ export default function RoadmapPage() {
             {TIER_ORDER.filter(t => (byTier[t]?.length || 0) > 0).map(tier => {
                 const cfg = TIER_CONFIG[tier as Tier];
                 return (
-                    <div key={tier} style={{ marginBottom: 24 }}>
-                        <h3 style={{ fontSize: 14, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
-                            {cfg?.emoji} {cfg?.label}
-                            <span style={{ background: (cfg?.color || '#666') + '25', color: cfg?.color, padding: '2px 8px', borderRadius: 10, fontSize: 11 }}>
-                                {byTier[tier].length}
-                            </span>
-                        </h3>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 8 }}>
+                    <div key={tier} className="dimension-group">
+                        <div className="dimension-group-header" style={{ borderColor: cfg?.color || 'var(--border)' }}>
+                            <span className="dimension-group-icon">{cfg?.emoji}</span>
+                            <span className="dimension-group-label" style={{ color: cfg?.color }}>{cfg?.label}</span>
+                            <span className="dimension-group-count">{byTier[tier].length}</span>
+                        </div>
+                        <div className="grid-auto-180 gap-8">
                             {byTier[tier].map((p: any) => (
-                                <div key={p.path} style={{
-                                    padding: '10px 14px', background: 'var(--bg-secondary)', borderRadius: 8,
-                                    border: '1px solid var(--border)', fontSize: 12,
+                                <div key={p.path} className="section-card-sm" style={{
                                     borderLeft: `3px solid ${cfg?.color || 'var(--border)'}`,
                                 }}>
-                                    <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 4 }}>{p.name}</div>
-                                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-                                        <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{p.lane}</span>
-                                        <span style={{ fontSize: 10, padding: '1px 5px', borderRadius: 4, background: 'var(--bg-primary)', color: 'var(--text-tertiary)' }}>{p.priority}</span>
+                                    <div className="font-semibold text-md mb-4">{p.name}</div>
+                                    <div className="flex-row flex-wrap gap-6">
+                                        <span className="text-xs text-tertiary">{p.lane}</span>
+                                        <Badge variant="priority" priority={p.priority} size="sm" />
                                     </div>
                                     {p.stack?.length > 0 && (
-                                        <div style={{ display: 'flex', gap: 4, marginTop: 6, flexWrap: 'wrap' }}>
-                                            {p.stack.slice(0, 3).map((s: string) => (
-                                                <span key={s} style={{ fontSize: 9, padding: '1px 5px', borderRadius: 3, background: 'var(--bg-primary)', color: 'var(--text-tertiary)' }}>{s}</span>
-                                            ))}
-                                            {p.stack.length > 3 && <span style={{ fontSize: 9, color: 'var(--text-tertiary)' }}>+{p.stack.length - 3}</span>}
+                                        <div className="flex-row flex-wrap gap-4 mt-8">
+                                            {p.stack.slice(0, 3).map((s: string) => <span key={s} className="stack-tag">{s}</span>)}
+                                            {p.stack.length > 3 && <span className="text-xs text-tertiary">+{p.stack.length - 3}</span>}
                                         </div>
                                     )}
                                 </div>
@@ -157,69 +152,52 @@ export default function RoadmapPage() {
     );
 
     const renderList = () => (
-        <div style={{ marginTop: 16 }}>
+        <div className="mt-16">
             {filtered.length === 0 ? (
-                <div className="empty-state">
-                    <div className="empty-state-icon">🗺️</div>
-                    <div className="empty-state-text">No projects match filters</div>
-                </div>
+                <EmptyState icon="🗺️" message="No projects match filters" />
             ) : (
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-                    <thead>
-                        <tr style={{ borderBottom: '2px solid var(--border)', textAlign: 'left' }}>
-                            <th style={{ padding: '8px 12px', color: 'var(--text-tertiary)', fontWeight: 500 }}>Name</th>
-                            <th style={{ padding: '8px 12px', color: 'var(--text-tertiary)', fontWeight: 500 }}>Tier</th>
-                            <th style={{ padding: '8px 12px', color: 'var(--text-tertiary)', fontWeight: 500 }}>Lane</th>
-                            <th style={{ padding: '8px 12px', color: 'var(--text-tertiary)', fontWeight: 500 }}>Priority</th>
-                            <th style={{ padding: '8px 12px', color: 'var(--text-tertiary)', fontWeight: 500 }}>Category</th>
-                            <th style={{ padding: '8px 12px', color: 'var(--text-tertiary)', fontWeight: 500 }}>Stack</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {filtered.map((p: any) => {
-                            const cfg = TIER_CONFIG[p.tier as Tier];
-                            const segments = p.path.split('/');
-                            return (
-                                <tr key={p.path} style={{ borderBottom: '1px solid var(--border)' }}>
-                                    <td style={{ padding: '8px 12px', fontWeight: 500 }}>{p.name}</td>
-                                    <td style={{ padding: '8px 12px' }}>
-                                        <span style={{ color: cfg?.color }}>{cfg?.emoji} {cfg?.label}</span>
-                                    </td>
-                                    <td style={{ padding: '8px 12px', color: 'var(--text-secondary)' }}>{p.lane}</td>
-                                    <td style={{ padding: '8px 12px' }}>
-                                        <span style={{ padding: '2px 6px', borderRadius: 4, fontSize: 10, background: 'var(--bg-secondary)' }}>{p.priority}</span>
-                                    </td>
-                                    <td style={{ padding: '8px 12px', color: 'var(--text-tertiary)', fontSize: 11 }}>
-                                        {segments[0]}{segments.length > 2 ? ` / ${segments[1]}` : ''}
-                                    </td>
-                                    <td style={{ padding: '8px 12px' }}>
-                                        <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
-                                            {(p.stack || []).slice(0, 3).map((s: string) => (
-                                                <span key={s} style={{ fontSize: 9, padding: '1px 4px', borderRadius: 3, background: 'var(--bg-secondary)' }}>{s}</span>
-                                            ))}
-                                        </div>
-                                    </td>
-                                </tr>
-                            );
-                        })}
-                    </tbody>
-                </table>
+                <div className="project-table-wrapper">
+                    <table className="project-table">
+                        <thead>
+                            <tr>
+                                <th>Name</th><th>Tier</th><th>Lane</th><th>Priority</th><th>Category</th><th>Stack</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {filtered.map((p: any) => {
+                                const segments = p.path.split('/');
+                                return (
+                                    <tr key={p.path}>
+                                        <td><div className="table-name">{p.name}</div></td>
+                                        <td><Badge variant="tier" tier={p.tier} /></td>
+                                        <td className="text-muted font-medium">{p.lane}</td>
+                                        <td><Badge variant="priority" priority={p.priority} /></td>
+                                        <td className="text-sm text-tertiary">{segments[0]}{segments.length > 2 ? ` / ${segments[1]}` : ''}</td>
+                                        <td>
+                                            <div className="flex-row flex-wrap gap-4">
+                                                {(p.stack || []).slice(0, 3).map((s: string) => <span key={s} className="stack-tag">{s}</span>)}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                </div>
             )}
         </div>
     );
 
     const renderCompact = () => (
-        <div style={{ marginTop: 16, display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 6 }}>
+        <div className="grid-auto-180 gap-6 mt-16">
             {filtered.map((p: any) => {
                 const cfg = TIER_CONFIG[p.tier as Tier];
                 return (
-                    <div key={p.path} style={{
-                        padding: '8px 12px', background: 'var(--bg-secondary)', borderRadius: 6,
-                        border: '1px solid var(--border)', borderLeft: `3px solid ${cfg?.color || 'var(--border)'}`,
-                        fontSize: 11,
+                    <div key={p.path} className="section-card-sm" style={{
+                        borderLeft: `3px solid ${cfg?.color || 'var(--border)'}`,
                     }}>
-                        <div style={{ fontWeight: 600, fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</div>
-                        <div style={{ color: 'var(--text-tertiary)', marginTop: 2, display: 'flex', gap: 6 }}>
+                        <div className="font-semibold text-base truncate">{p.name}</div>
+                        <div className="flex-row gap-6 text-tertiary text-sm mt-4">
                             <span>{cfg?.emoji}</span>
                             <span>{p.lane}</span>
                             <span style={{ marginLeft: 'auto' }}>{p.priority}</span>
@@ -232,25 +210,23 @@ export default function RoadmapPage() {
 
     return (
         <div>
-            <div className="page-header">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <div>
-                        <h1 className="page-title">🗺️ Roadmap</h1>
-                        <p className="page-description">Project lifecycle progression — from Idea to Shipped</p>
+            <PageHeader
+                title="🗺️ Roadmap"
+                description="Project lifecycle progression — from Idea to Shipped"
+                actions={
+                    <div className="flex-row gap-8">
+                        <span className="text-base text-tertiary">{filtered.length} projects</span>
+                        <button className="btn btn-primary text-base" onClick={() => setShowCreate(true)}>+ New Project</button>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{filtered.length} projects</span>
-                        <button className="btn btn-primary" onClick={() => setShowCreate(true)} style={{ fontSize: 12 }}>+ New Project</button>
-                    </div>
-                </div>
-            </div>
+                }
+            />
 
             {/* Filters */}
-            <div className="filter-bar" style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 16 }}>
-                <div style={{ display: 'flex', borderRadius: 6, overflow: 'hidden', border: '1px solid var(--border)' }}>
-                    <button className={view === 'pipeline' ? 'btn btn-primary' : 'btn btn-secondary'} onClick={() => setView('pipeline')} style={{ borderRadius: 0, fontSize: 12 }}>🔀 Pipeline</button>
-                    <button className={view === 'list' ? 'btn btn-primary' : 'btn btn-secondary'} onClick={() => setView('list')} style={{ borderRadius: 0, fontSize: 12 }}>☰ List</button>
-                    <button className={view === 'compact' ? 'btn btn-primary' : 'btn btn-secondary'} onClick={() => setView('compact')} style={{ borderRadius: 0, fontSize: 12 }}>⊞ Compact</button>
+            <div className="filter-bar flex-row flex-wrap gap-8 mb-16">
+                <div className="view-toggle">
+                    <button className={`btn ${view === 'pipeline' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setView('pipeline')}>🔀 Pipeline</button>
+                    <button className={`btn ${view === 'list' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setView('list')}>☰ List</button>
+                    <button className={`btn ${view === 'compact' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setView('compact')}>⊞ Compact</button>
                 </div>
                 <SearchableSelect options={categoryOptions} value={filterCategory} onChange={(v) => { setFilterCategory(v); setFilterSubcategory(''); }} placeholder="All Categories" width="170px" />
                 {subcategoryOptions.length > 0 && (

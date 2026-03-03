@@ -4,6 +4,7 @@ import type { StatusData } from '../lib/types';
 import { TIER_ORDER, TIER_CONFIG, PRIORITY_ORDER, PRIORITY_CONFIG, LANE_COLORS, type Tier, type Priority } from '../lib/types';
 import CreateProjectModal from '../components/CreateProjectModal';
 import { useIsMobile } from '../hooks/useMediaQuery';
+import { PageHeader, StatCard, Card, Badge } from '../components/ui';
 
 function BarChart({ title, items, colorMap }: { title: string; items: Record<string, number>; colorMap: Record<string, string> }) {
     const maxVal = Math.max(...Object.values(items), 1);
@@ -96,143 +97,129 @@ export default function OverviewPage({ data, onNavigate }: { data: StatusData; o
 
     return (
         <div>
-            <div className="page-header">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <div>
-                        <h1 className="page-title">🏠 Mission Control</h1>
-                        <p className="page-description">Last scanned: {new Date(data.generated_at).toLocaleString()}</p>
-                    </div>
-                    <div style={{ display: 'flex', gap: 8 }}>
-                        <button className="btn btn-primary" onClick={handleNewProject} style={{ fontSize: 12 }}>
-                            ✨ New Project
-                        </button>
-                    </div>
-                </div>
-            </div>
+            <PageHeader
+                title="🏠 Mission Control"
+                description={`Last scanned: ${new Date(data.generated_at).toLocaleString()}`}
+                actions={
+                    <button className="btn btn-primary text-base" onClick={handleNewProject}>
+                        ✨ New Project
+                    </button>
+                }
+            />
 
             {/* KPI Row */}
             <div className="stats-row">
-                <div className="stat-card">
-                    <div className="stat-label">Total Projects</div>
-                    <div className="stat-value">{data.total_projects}</div>
-                </div>
-                <div className="stat-card">
-                    <div className="stat-label">Active</div>
-                    <div className="stat-value" style={{ color: TIER_CONFIG.building.color }}>{(data.summary.by_tier.building || 0) + (data.summary.by_tier.prototype || 0)}</div>
-                    <div className="stat-sub">{data.summary.by_tier.building || 0} building · {data.summary.by_tier.prototype || 0} proto</div>
-                </div>
-                <div className="stat-card">
-                    <div className="stat-label">Shipped</div>
-                    <div className="stat-value" style={{ color: TIER_CONFIG.shipped.color }}>{data.summary.by_tier.shipped || 0}</div>
-                </div>
-                <div className="stat-card">
-                    <div className="stat-label">Open Source</div>
-                    <div className="stat-value" style={{ color: 'var(--success)' }}>{ossCount}</div>
-                    <div className="stat-sub">{Math.round((ossCount / (data.total_projects || 1)) * 100)}% of total</div>
-                </div>
-                <div className="stat-card">
-                    <div className="stat-label">Avg Health</div>
-                    <div className="stat-value" style={{ color: avgHealth >= 60 ? 'var(--success)' : avgHealth >= 40 ? 'var(--warning)' : 'var(--error)' }}>{avgHealth}</div>
-                </div>
-                <div className="stat-card">
-                    <div className="stat-label">Lanes</div>
-                    <div className="stat-value">{Object.keys(data.summary.by_lane).length}</div>
-                </div>
+                <StatCard label="Total Projects" value={data.total_projects} />
+                <StatCard
+                    label="Active"
+                    value={(data.summary.by_tier.building || 0) + (data.summary.by_tier.prototype || 0)}
+                    color={TIER_CONFIG.building.color}
+                    sub={`${data.summary.by_tier.building || 0} building · ${data.summary.by_tier.prototype || 0} proto`}
+                />
+                <StatCard label="Shipped" value={data.summary.by_tier.shipped || 0} color={TIER_CONFIG.shipped.color} />
+                <StatCard
+                    label="Open Source"
+                    value={ossCount}
+                    color="var(--success)"
+                    sub={`${Math.round((ossCount / (data.total_projects || 1)) * 100)}% of total`}
+                />
+                <StatCard
+                    label="Avg Health"
+                    value={avgHealth}
+                    color={avgHealth >= 60 ? 'var(--success)' : avgHealth >= 40 ? 'var(--warning)' : 'var(--error)'}
+                />
+                <StatCard label="Lanes" value={Object.keys(data.summary.by_lane).length} />
             </div>
 
             {/* Main Grid: Charts + Activity */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 20 }}>
+            <div className="grid-2 gap-16 mt-20">
                 {/* Left: Donut charts side by side */}
-                <div style={{ background: 'var(--bg-secondary)', borderRadius: 12, padding: 20, border: '1px solid var(--border)' }}>
-                    <h3 style={{ margin: '0 0 16px', fontSize: 14 }}>Distribution</h3>
-                    <div style={{ display: 'flex', gap: 24, justifyContent: 'center' }}>
-                        <div style={{ textAlign: 'center' }}>
+                <Card>
+                    <h3 className="section-header">Distribution</h3>
+                    <div className="flex-center gap-24">
+                        <div className="text-center">
                             <DonutChart data={data.summary.by_tier} colors={tierColors} />
-                            <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 8 }}>By Tier</div>
+                            <div className="text-sm text-tertiary mt-8">By Tier</div>
                         </div>
-                        <div style={{ textAlign: 'center' }}>
+                        <div className="text-center">
                             <DonutChart data={data.summary.by_priority} colors={priorityColors} />
-                            <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 8 }}>By Priority</div>
+                            <div className="text-sm text-tertiary mt-8">By Priority</div>
                         </div>
                     </div>
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center', marginTop: 12 }}>
+                    <div className="flex-row flex-wrap gap-8 mt-12" style={{ justifyContent: 'center' }}>
                         {TIER_ORDER.map(t => (
-                            <span key={t} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11 }}>
+                            <span key={t} className="flex-row gap-4 text-sm">
                                 <span style={{ width: 8, height: 8, borderRadius: 2, background: TIER_CONFIG[t].color, display: 'inline-block' }} />
                                 {TIER_CONFIG[t].label} ({data.summary.by_tier[t] || 0})
                             </span>
                         ))}
                     </div>
-                </div>
+                </Card>
 
                 {/* Right: Active projects */}
-                <div style={{ background: 'var(--bg-secondary)', borderRadius: 12, padding: 20, border: '1px solid var(--border)' }}>
-                    <h3 style={{ margin: '0 0 16px', fontSize: 14, display: 'flex', justifyContent: 'space-between' }}>
+                <Card>
+                    <h3 className="section-header flex-between">
                         🔥 Active Projects
-                        <span style={{ fontSize: 11, color: 'var(--text-tertiary)', fontWeight: 400 }}>{activeProjects.length} in progress</span>
+                        <span className="text-sm text-tertiary" style={{ fontWeight: 400 }}>{activeProjects.length} in progress</span>
                     </h3>
                     {activeProjects.length === 0 ? (
-                        <div style={{ textAlign: 'center', padding: 20, color: 'var(--text-tertiary)', fontSize: 13 }}>No active projects</div>
+                        <div className="text-center text-tertiary text-md" style={{ padding: 20 }}>No active projects</div>
                     ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        <div className="flex-col gap-6">
                             {activeProjects.map(p => {
                                 const cfg = TIER_CONFIG[p.tier as Tier];
                                 return (
-                                    <div key={p.path} style={{
-                                        display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px',
+                                    <div key={p.path} className="list-row" style={{
                                         background: 'var(--bg-primary)', borderRadius: 6, borderLeft: `3px solid ${cfg?.color || '#6b7280'}`,
                                     }}>
-                                        <span style={{ fontSize: 14 }}>{cfg?.emoji}</span>
-                                        <div style={{ flex: 1, minWidth: 0 }}>
-                                            <div style={{ fontWeight: 600, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</div>
-                                            <div style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{p.lane}</div>
+                                        <span className="text-lg">{cfg?.emoji}</span>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="font-semibold text-md truncate">{p.name}</div>
+                                            <div className="text-xs text-tertiary">{p.lane}</div>
                                         </div>
-                                        <span style={{
-                                            padding: '2px 6px', borderRadius: 4, fontSize: 10,
-                                            background: PRIORITY_CONFIG[p.priority as Priority]?.color + '20',
-                                            color: PRIORITY_CONFIG[p.priority as Priority]?.color,
-                                        }}>{p.priority}</span>
+                                        <Badge variant="custom" label={p.priority}
+                                            color={PRIORITY_CONFIG[p.priority as Priority]?.color}
+                                            bg={(PRIORITY_CONFIG[p.priority as Priority]?.color || '#6b7280') + '20'}
+                                            size="sm"
+                                        />
                                     </div>
                                 );
                             })}
                         </div>
                     )}
-                </div>
+                </Card>
             </div>
 
             {/* Second Row: Lane chart + Recent activity */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 16 }}>
+            <div className="grid-2 gap-16 mt-16">
                 <div className="overview-charts" style={{ margin: 0 }}>
                     <BarChart title="By Lane" items={data.summary.by_lane} colorMap={LANE_COLORS} />
                     <BarChart title="Top Stacks" items={Object.fromEntries(Object.entries(data.summary.by_stack).sort((a, b) => b[1] - a[1]).slice(0, 8))} colorMap={topStacks} />
                 </div>
 
                 {/* Recent Activity */}
-                <div style={{ background: 'var(--bg-secondary)', borderRadius: 12, padding: 20, border: '1px solid var(--border)' }}>
-                    <h3 style={{ margin: '0 0 16px', fontSize: 14 }}>🕐 Recently Active</h3>
+                <Card>
+                    <h3 className="section-header">🕐 Recently Active</h3>
                     {recentProjects.length === 0 ? (
-                        <div style={{ textAlign: 'center', padding: 20, color: 'var(--text-tertiary)', fontSize: 13 }}>No recent activity</div>
+                        <div className="text-center text-tertiary text-md" style={{ padding: 20 }}>No recent activity</div>
                     ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        <div className="flex-col gap-4">
                             {recentProjects.map(p => (
-                                <div key={p.path} style={{
-                                    display: 'flex', alignItems: 'center', gap: 10, padding: '6px 10px',
-                                    borderRadius: 4, fontSize: 12,
-                                }}>
-                                    <span style={{ fontSize: 12 }}>{TIER_CONFIG[p.tier as Tier]?.emoji || '📦'}</span>
-                                    <span style={{ flex: 1, fontWeight: 500 }}>{p.name}</span>
-                                    <span style={{ fontSize: 10, color: 'var(--text-tertiary)', fontFamily: 'monospace' }}>
+                                <div key={p.path} className="flex-row gap-10 text-base" style={{ padding: '6px 10px', borderRadius: 4 }}>
+                                    <span className="text-base">{TIER_CONFIG[p.tier as Tier]?.emoji || '📦'}</span>
+                                    <span className="flex-1 font-medium">{p.name}</span>
+                                    <span className="text-xs text-tertiary font-mono">
                                         {p.last_active}
                                     </span>
                                 </div>
                             ))}
                         </div>
                     )}
-                </div>
+                </Card>
             </div>
 
             {/* Quick Links */}
-            <div style={{ marginTop: 16, display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 8 }}>
+            <div className="grid-auto-180 gap-8 mt-16">
                 {[
                     { icon: '🗺️', label: 'Roadmap', desc: 'Pipeline view', path: '/roadmap' },
                     { icon: '📋', label: 'Tasks', desc: 'Track work', path: '/tasks' },
@@ -241,17 +228,11 @@ export default function OverviewPage({ data, onNavigate }: { data: StatusData; o
                     { icon: '📂', label: 'Files', desc: 'Browse sources', path: '/files' },
                     { icon: '🔧', label: 'Admin', desc: 'Configuration', path: '/admin' },
                 ].map(q => (
-                    <div key={q.path} onClick={() => onNavigate?.(q.path)} style={{
-                        padding: '14px 16px', background: 'var(--bg-secondary)', borderRadius: 8,
-                        border: '1px solid var(--border)', cursor: 'pointer', transition: 'border-color 0.2s',
-                    }}
-                        onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--accent)')}
-                        onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}
-                    >
-                        <div style={{ fontSize: 20 }}>{q.icon}</div>
-                        <div style={{ fontWeight: 600, fontSize: 13, marginTop: 4 }}>{q.label}</div>
-                        <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{q.desc}</div>
-                    </div>
+                    <Card key={q.path} onClick={() => onNavigate?.(q.path)}>
+                        <div className="text-3xl">{q.icon}</div>
+                        <div className="font-semibold text-md mt-4">{q.label}</div>
+                        <div className="text-sm text-tertiary">{q.desc}</div>
+                    </Card>
                 ))}
             </div>
 

@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useProjects } from '../hooks/useProjects';
 import { api } from '../lib/api';
 import SearchableSelect, { type SelectOption } from '../components/SearchableSelect';
+import { PageHeader, EmptyState } from '../components/ui';
 
 const STATUS_FLOW = [
     { key: 'draft', label: 'Draft', icon: '📝', color: '#a78bfa' },
@@ -105,36 +106,33 @@ export default function ContentPage() {
         await loadPlans();
     };
 
-    // Get expanded plan from the loaded plans (items embedded)
     const expandedDetail = expandedPlan ? allPlans.find((p: any) => p.id === expandedPlan) : null;
 
     return (
         <div>
-            <div className="page-header">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <div>
-                        <h1 className="page-title">📢 Content Planner</h1>
-                        <p className="page-description">Manage release announcements across platforms · Minions-backed</p>
-                    </div>
-                    <button className="btn btn-primary" onClick={() => setShowCreate(!showCreate)}>+ New Plan</button>
-                </div>
-            </div>
+            <PageHeader
+                title="📢 Content Planner"
+                description="Manage release announcements across platforms · Minions-backed"
+                actions={
+                    <button className="btn btn-primary text-base" onClick={() => setShowCreate(!showCreate)}>+ New Plan</button>
+                }
+            />
 
             {/* Stats */}
             {stats && (
-                <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
+                <div className="flex-row flex-wrap gap-12 mb-16">
                     <div className="stat-card" style={{ padding: '8px 16px' }}>
-                        <span style={{ fontWeight: 600 }}>{stats.totalPlans}</span>
-                        <span style={{ color: 'var(--text-tertiary)', fontSize: 11, marginLeft: 6 }}>Plans</span>
+                        <span className="font-semibold">{stats.totalPlans}</span>
+                        <span className="text-sm text-tertiary" style={{ marginLeft: 6 }}>Plans</span>
                     </div>
                     <div className="stat-card" style={{ padding: '8px 16px' }}>
-                        <span style={{ fontWeight: 600 }}>{stats.totalItems}</span>
-                        <span style={{ color: 'var(--text-tertiary)', fontSize: 11, marginLeft: 6 }}>Content Items</span>
+                        <span className="font-semibold">{stats.totalItems}</span>
+                        <span className="text-sm text-tertiary" style={{ marginLeft: 6 }}>Content Items</span>
                     </div>
                     {Object.entries(stats.byPlatform).map(([platform, count]) => (
                         <div key={platform} className="stat-card" style={{ padding: '8px 16px' }}>
                             <span>{platformIcons[platform] || '📄'}</span>
-                            <span style={{ fontWeight: 600, marginLeft: 4 }}>{count as number}</span>
+                            <span className="font-semibold" style={{ marginLeft: 4 }}>{count as number}</span>
                         </div>
                     ))}
                 </div>
@@ -142,17 +140,14 @@ export default function ContentPage() {
 
             {/* Create Form */}
             {showCreate && (
-                <div style={{ background: 'var(--bg-secondary)', borderRadius: 12, padding: 20, marginBottom: 16, border: '1px solid var(--border)' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+                <div className="section-card mb-16">
+                    <div className="grid-2 gap-12 mb-12">
                         <SearchableSelect options={projectOptions} value={newProject} onChange={setNewProject} placeholder="Select project *" grouped allowCreate onCreateNew={(v) => setNewProject(v)} />
-                        <input placeholder="Release tag * (e.g. v1.0.0)" value={newTag} onChange={e => setNewTag(e.target.value)}
-                            style={{ padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'inherit', fontSize: 13 }} />
+                        <input placeholder="Release tag * (e.g. v1.0.0)" value={newTag} onChange={e => setNewTag(e.target.value)} className="form-input" />
                     </div>
-                    <input placeholder="Release title (optional)" value={newTitle} onChange={e => setNewTitle(e.target.value)}
-                        style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'inherit', fontSize: 13, marginBottom: 12 }} />
-                    <textarea placeholder="Release notes (optional)" value={newNotes} onChange={e => setNewNotes(e.target.value)}
-                        style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'inherit', fontSize: 13, minHeight: 60, resize: 'vertical', marginBottom: 12 }} />
-                    <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                    <input placeholder="Release title (optional)" value={newTitle} onChange={e => setNewTitle(e.target.value)} className="form-input mb-12" />
+                    <textarea placeholder="Release notes (optional)" value={newNotes} onChange={e => setNewNotes(e.target.value)} className="form-textarea mb-12" />
+                    <div className="flex-row gap-8" style={{ justifyContent: 'flex-end' }}>
                         <button className="btn btn-secondary" onClick={() => setShowCreate(false)}>Cancel</button>
                         <button className="btn btn-primary" onClick={handleCreate} disabled={!newProject.trim() || !newTag.trim()}>Create Plan</button>
                     </div>
@@ -160,13 +155,12 @@ export default function ContentPage() {
             )}
 
             {/* Filter Bar */}
-            <div className="filter-bar">
+            <div className="filter-bar flex-row flex-wrap gap-8 mb-16">
                 {[{ key: 'all', label: `All (${allPlans.length})` }, ...STATUS_FLOW].map(f => (
                     <button
                         key={f.key}
-                        className={`btn ${filter === f.key ? 'btn-primary' : 'btn-secondary'}`}
+                        className={`btn text-base ${filter === f.key ? 'btn-primary' : 'btn-secondary'}`}
                         onClick={() => setFilter(f.key)}
-                        style={{ fontSize: 12 }}
                     >
                         {'icon' in f ? `${f.icon} ` : ''}{f.label}
                     </button>
@@ -174,85 +168,76 @@ export default function ContentPage() {
             </div>
 
             {/* Plans List */}
-            <div style={{ marginTop: 16 }}>
+            <div className="mt-16">
                 {plans === null ? (
                     <div className="loading"><div className="loading-spinner" /> Loading plans...</div>
                 ) : filtered.length === 0 ? (
-                    <div className="empty-state">
-                        <div className="empty-state-icon">📢</div>
-                        <div className="empty-state-text">No content plans yet</div>
-                    </div>
+                    <EmptyState icon="📢" message="No content plans yet" />
                 ) : (
                     filtered.map((plan: any) => (
-                        <div key={plan.id} style={{
-                            background: 'var(--bg-secondary)', borderRadius: 10, marginBottom: 8,
-                            border: expandedPlan === plan.id ? '1px solid var(--accent)' : '1px solid var(--border)',
+                        <div key={plan.id} className="section-card-sm mb-8" style={{
+                            borderColor: expandedPlan === plan.id ? 'var(--accent)' : undefined,
                         }}>
                             <div
-                                style={{ padding: '14px 16px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12 }}
+                                className="flex-row gap-12"
+                                style={{ cursor: 'pointer' }}
                                 onClick={() => setExpandedPlan(expandedPlan === plan.id ? null : plan.id)}
                             >
-                                <span style={{ fontSize: 18 }}>{STATUS_FLOW.find(s => s.key === plan.status)?.icon || '📝'}</span>
-                                <div style={{ flex: 1 }}>
-                                    <div style={{ fontWeight: 600, fontSize: 14 }}>{plan.releaseTitle || `${plan.projectPath} ${plan.releaseTag}`}</div>
-                                    <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>
+                                <span className="text-2xl">{STATUS_FLOW.find(s => s.key === plan.status)?.icon || '📝'}</span>
+                                <div className="flex-1">
+                                    <div className="font-semibold text-lg">{plan.releaseTitle || `${plan.projectPath} ${plan.releaseTag}`}</div>
+                                    <div className="text-sm text-tertiary mt-4">
                                         {plan.projectPath} · {plan.releaseTag} · {new Date(plan.updatedAt).toLocaleDateString()}
                                     </div>
                                 </div>
-                                <select
-                                    value={plan.status}
-                                    onChange={e => { e.stopPropagation(); handleUpdatePlan(plan.id, { status: e.target.value }); }}
-                                    onClick={e => e.stopPropagation()}
-                                    style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'inherit', fontSize: 11 }}
-                                >
-                                    {STATUS_FLOW.map(s => <option key={s.key} value={s.key}>{s.icon} {s.label}</option>)}
-                                </select>
-                                <button
-                                    onClick={e => { e.stopPropagation(); handleDeletePlan(plan.id); }}
-                                    style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer' }}
-                                >✕</button>
+                                <div onClick={e => e.stopPropagation()} style={{ width: 140 }}>
+                                    <SearchableSelect
+                                        options={STATUS_FLOW.map(s => ({ value: s.key, label: `${s.icon} ${s.label}` }))}
+                                        value={plan.status}
+                                        onChange={v => handleUpdatePlan(plan.id, { status: v })}
+                                        placeholder="Status" clearable={false} width="140px" />
+                                </div>
+                                <button onClick={e => { e.stopPropagation(); handleDeletePlan(plan.id); }} className="icon-btn">✕</button>
                             </div>
 
                             {/* Expanded Detail */}
                             {expandedPlan === plan.id && expandedDetail && (
-                                <div style={{ padding: '0 16px 16px', borderTop: '1px solid var(--border)' }}>
+                                <div style={{ borderTop: '1px solid var(--border)', paddingTop: 12, marginTop: 12 }}>
                                     {expandedDetail.releaseNotes && (
-                                        <div style={{ padding: '12px 0', color: 'var(--text-secondary)', fontSize: 13, whiteSpace: 'pre-wrap' }}>
+                                        <div className="text-md text-muted whitespace-pre" style={{ padding: '12px 0' }}>
                                             {expandedDetail.releaseNotes}
                                         </div>
                                     )}
 
                                     {/* Content Items */}
-                                    <div style={{ marginTop: 12 }}>
-                                        <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', marginBottom: 8 }}>
+                                    <div className="mt-12">
+                                        <div className="section-label mb-8">
                                             Content Items ({expandedDetail.items?.length || 0})
                                         </div>
                                         {(expandedDetail.items || []).map((item: any) => (
-                                            <div key={item._id} style={{
-                                                display: 'flex', gap: 8, alignItems: 'flex-start', padding: '8px 12px',
-                                                background: 'var(--bg-primary)', borderRadius: 8, marginBottom: 6, border: '1px solid var(--border)',
+                                            <div key={item._id} className="flex-row gap-8 mb-6" style={{
+                                                alignItems: 'flex-start', padding: '8px 12px',
+                                                background: 'var(--bg-primary)', borderRadius: 8, border: '1px solid var(--border)',
                                             }}>
-                                                <span style={{ fontSize: 16 }}>{platformIcons[item.platform] || '📄'}</span>
-                                                <div style={{ flex: 1 }}>
-                                                    <div style={{ fontSize: 12, whiteSpace: 'pre-wrap' }}>{item.content}</div>
-                                                    <div style={{ fontSize: 10, color: 'var(--text-tertiary)', marginTop: 4 }}>
+                                                <span className="text-xl">{platformIcons[item.platform] || '📄'}</span>
+                                                <div className="flex-1">
+                                                    <div className="text-base whitespace-pre">{item.content}</div>
+                                                    <div className="text-xs text-tertiary mt-4">
                                                         {item.platform} · {item.status}
                                                     </div>
                                                 </div>
-                                                <select
-                                                    value={item.status}
-                                                    onChange={e => handleUpdateItem(plan.id, item._id, { status: e.target.value })}
-                                                    style={{ padding: '2px 6px', borderRadius: 4, border: '1px solid var(--border)', background: 'var(--bg-secondary)', color: 'inherit', fontSize: 10 }}
-                                                >
-                                                    <option value="draft">Draft</option>
-                                                    <option value="scheduled">Scheduled</option>
-                                                    <option value="posted">Posted</option>
-                                                </select>
+                                                <div style={{ width: 120 }}>
+                                                    <SearchableSelect
+                                                        options={[{ value: 'draft', label: 'Draft' }, { value: 'scheduled', label: 'Scheduled' }, { value: 'posted', label: 'Posted' }]}
+                                                        value={item.status}
+                                                        onChange={v => handleUpdateItem(plan.id, item._id, { status: v })}
+                                                        placeholder="Status" clearable={false} width="120px" />
+                                                </div>
                                             </div>
                                         ))}
 
                                         {/* Add Item Form */}
-                                        <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                                        <div className="flex-row gap-8 mt-8">
                                             <div style={{ width: 140 }}>
                                                 <SearchableSelect options={platformOptions} value={newItemPlatform} onChange={setNewItemPlatform} placeholder="Platform" clearable={false} />
                                             </div>
@@ -261,9 +246,9 @@ export default function ContentPage() {
                                                 value={newItemContent}
                                                 onChange={e => setNewItemContent(e.target.value)}
                                                 onKeyDown={e => e.key === 'Enter' && handleAddItem()}
-                                                style={{ flex: 1, padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'inherit', fontSize: 12 }}
+                                                className="form-input-sm flex-1"
                                             />
-                                            <button className="btn btn-primary" onClick={handleAddItem} disabled={!newItemContent.trim()} style={{ fontSize: 12, padding: '6px 12px' }}>Add</button>
+                                            <button className="btn btn-primary text-base" onClick={handleAddItem} disabled={!newItemContent.trim()} style={{ padding: '6px 12px' }}>Add</button>
                                         </div>
                                     </div>
                                 </div>

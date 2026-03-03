@@ -109,8 +109,8 @@ export default function IntegrationsPage() {
         };
         const s = styles[status.status] || styles.error;
         return (
-            <span title={status.error || ''} style={{
-                padding: '1px 6px', borderRadius: 4, fontSize: 10, background: s.bg, color: s.color,
+            <span title={status.error || ''} className="text-xs" style={{
+                padding: '1px 6px', borderRadius: 4, background: s.bg, color: s.color,
             }}>
                 {s.label}
             </span>
@@ -122,12 +122,12 @@ export default function IntegrationsPage() {
     return (
         <div>
             <div className="page-header">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div className="flex-between">
                     <div>
                         <h1 className="page-title">🔗 Integrations</h1>
                         <p className="page-description">GitHub repos, deployment status, and sync overview</p>
                     </div>
-                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <div className="flex-row gap-8">
                         <SearchableSelect
                             options={laneOptions}
                             value={filterLane}
@@ -135,7 +135,7 @@ export default function IntegrationsPage() {
                             placeholder="All Lanes"
                             width="160px"
                         />
-                        <button className="btn btn-secondary" onClick={() => { fetchGitStatus(); fetchCloneStatuses(); }} disabled={loading} style={{ fontSize: 12 }}>
+                        <button className="btn btn-secondary text-base" onClick={() => { fetchGitStatus(); fetchCloneStatuses(); }} disabled={loading}>
                             {loading ? '⏳' : '🔄'} Refresh
                         </button>
                     </div>
@@ -143,7 +143,7 @@ export default function IntegrationsPage() {
             </div>
 
             {/* Summary Stats */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 24 }}>
+            <div className="grid-auto gap-12 mb-24">
                 <div className="stat-card">
                     <div className="stat-value">{projects.length}</div>
                     <div className="stat-label">Total Projects</div>
@@ -168,27 +168,27 @@ export default function IntegrationsPage() {
 
             {/* Deployed Projects */}
             {filteredDeployed.length > 0 && (
-                <div style={{ marginBottom: 24 }}>
-                    <h3 style={{ fontSize: 14, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div className="mb-24">
+                    <h3 className="flex-row gap-8 text-lg mb-12">
                         🌐 Deployed Projects
-                        <span style={{ background: '#34d39930', color: '#34d399', padding: '2px 8px', borderRadius: 10, fontSize: 11 }}>{filteredDeployed.length}</span>
+                        <span className="text-sm" style={{ background: '#34d39930', color: '#34d399', padding: '2px 8px', borderRadius: 10 }}>{filteredDeployed.length}</span>
                     </h3>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 8 }}>
+                    <div className="gap-8" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' }}>
                         {filteredDeployed.map((p: any) => (
-                            <div key={p.path || p.name} style={{
-                                display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px',
+                            <div key={p.path || p.name} className="flex-row gap-12" style={{
+                                padding: '12px 16px', alignItems: 'center',
                                 background: 'var(--bg-secondary)', borderRadius: 8, border: '1px solid var(--border)',
                             }}>
                                 <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#34d399' }} />
-                                <div style={{ flex: 1 }}>
-                                    <div style={{ fontWeight: 600, fontSize: 13 }}>{p.name}</div>
+                                <div className="flex-1">
+                                    <div className="font-semibold text-md">{p.name}</div>
                                     <a href={p.deploy_url} target="_blank" rel="noreferrer"
-                                        style={{ fontSize: 11, color: 'var(--accent)', textDecoration: 'none' }}>
+                                        className="text-sm" style={{ color: 'var(--accent)', textDecoration: 'none' }}>
                                         {p.deploy_url}
                                     </a>
                                 </div>
                                 {getCloneStatusBadge(p.path)}
-                                <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{p.tier}</span>
+                                <span className="text-xs text-tertiary">{p.tier}</span>
                             </div>
                         ))}
                     </div>
@@ -197,42 +197,41 @@ export default function IntegrationsPage() {
 
             {/* GitHub Repos */}
             {filteredWithRepo.length > 0 && (
-                <div style={{ marginBottom: 24 }}>
-                    <h3 style={{ fontSize: 14, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div className="mb-24">
+                    <h3 className="flex-row gap-8 text-lg mb-12">
                         🐙 GitHub Repositories
-                        <span style={{ background: '#60a5fa30', color: '#60a5fa', padding: '2px 8px', borderRadius: 10, fontSize: 11 }}>{filteredWithRepo.length}</span>
+                        <span className="text-sm" style={{ background: '#60a5fa30', color: '#60a5fa', padding: '2px 8px', borderRadius: 10 }}>{filteredWithRepo.length}</span>
                     </h3>
-                    <div style={{ display: 'grid', gap: 6 }}>
+                    <div className="flex-col gap-6">
                         {filteredWithRepo.map((p: any) => {
                             const git = gitStatuses[p.path];
                             const cs = cloneStatuses[p.path];
                             const isCloned = cs?.status === 'cloned';
                             const isCloning = cs?.status === 'cloning' || cloning.has(p.path);
                             return (
-                                <div key={p.path || p.name} style={{
-                                    display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px',
+                                <div key={p.path || p.name} className="flex-row gap-12 text-md" style={{
+                                    padding: '10px 16px', alignItems: 'center',
                                     background: 'var(--bg-secondary)', borderRadius: 8, border: '1px solid var(--border)',
-                                    fontSize: 13,
                                 }}>
                                     <span>🐙</span>
-                                    <div style={{ flex: 1 }}>
-                                        <div style={{ fontWeight: 500 }}>{p.name}</div>
+                                    <div className="flex-1">
+                                        <div className="font-medium">{p.name}</div>
                                         <a href={p.repo} target="_blank" rel="noreferrer"
-                                            style={{ fontSize: 11, color: 'var(--accent)', textDecoration: 'none' }}>
+                                            className="text-sm" style={{ color: 'var(--accent)', textDecoration: 'none' }}>
                                             {p.repo?.replace('https://github.com/', '')}
                                         </a>
                                     </div>
                                     {git && (
                                         <>
-                                            <span style={{ fontSize: 10, fontFamily: 'monospace', color: 'var(--text-tertiary)' }}>
+                                            <span className="text-xs font-mono text-tertiary">
                                                 🌿 {git.branch}
                                             </span>
                                             {git.hasChanges ? (
-                                                <span style={{ padding: '1px 6px', borderRadius: 4, fontSize: 10, background: '#fbbf2420', color: '#fbbf24' }}>
+                                                <span className="text-xs" style={{ padding: '1px 6px', borderRadius: 4, background: '#fbbf2420', color: '#fbbf24' }}>
                                                     {git.changedFiles} changes
                                                 </span>
                                             ) : (
-                                                <span style={{ padding: '1px 6px', borderRadius: 4, fontSize: 10, background: '#34d39920', color: '#34d399' }}>
+                                                <span className="text-xs" style={{ padding: '1px 6px', borderRadius: 4, background: '#34d39920', color: '#34d399' }}>
                                                     ✓ clean
                                                 </span>
                                             )}
@@ -243,8 +242,8 @@ export default function IntegrationsPage() {
                                         <button
                                             onClick={() => handleClone(p.path, p.repo)}
                                             disabled={isCloning}
-                                            style={{
-                                                padding: '3px 10px', borderRadius: 6, fontSize: 10, fontWeight: 600,
+                                            className="text-xs font-semibold" style={{
+                                                padding: '3px 10px', borderRadius: 6,
                                                 background: isCloning ? '#60a5fa20' : '#818cf820',
                                                 color: isCloning ? '#60a5fa' : '#818cf8',
                                                 border: '1px solid transparent', cursor: isCloning ? 'wait' : 'pointer',
@@ -257,8 +256,8 @@ export default function IntegrationsPage() {
                                         <button
                                             onClick={() => handleClone(p.path, p.repo)}
                                             disabled={isCloning}
-                                            style={{
-                                                padding: '3px 10px', borderRadius: 6, fontSize: 10, fontWeight: 600,
+                                            className="text-xs font-semibold" style={{
+                                                padding: '3px 10px', borderRadius: 6,
                                                 background: '#34d39915', color: '#34d399',
                                                 border: '1px solid transparent', cursor: 'pointer',
                                             }}
@@ -266,8 +265,8 @@ export default function IntegrationsPage() {
                                             🔄 Pull
                                         </button>
                                     )}
-                                    <span style={{
-                                        padding: '2px 6px', borderRadius: 4, fontSize: 10,
+                                    <span className="text-xs" style={{
+                                        padding: '2px 6px', borderRadius: 4,
                                         background: p.tier === 'shipped' ? '#34d39920' : 'var(--bg-primary)',
                                         color: p.tier === 'shipped' ? '#34d399' : 'var(--text-tertiary)',
                                     }}>
@@ -283,21 +282,21 @@ export default function IntegrationsPage() {
             {/* Projects without repos */}
             {filteredWithoutRepo.length > 0 && (
                 <div>
-                    <h3 style={{ fontSize: 14, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <h3 className="flex-row gap-8 text-lg mb-12">
                         ⚠️ No Repository
-                        <span style={{ background: '#fbbf2430', color: '#fbbf24', padding: '2px 8px', borderRadius: 10, fontSize: 11 }}>{filteredWithoutRepo.length}</span>
+                        <span className="text-sm" style={{ background: '#fbbf2430', color: '#fbbf24', padding: '2px 8px', borderRadius: 10 }}>{filteredWithoutRepo.length}</span>
                     </h3>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 6 }}>
+                    <div className="gap-6" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))' }}>
                         {filteredWithoutRepo.map((p: any) => (
-                            <div key={p.path || p.name} style={{
-                                padding: '8px 14px', background: 'var(--bg-secondary)', borderRadius: 8,
-                                border: '1px solid var(--border)', fontSize: 12,
-                                display: 'flex', alignItems: 'center', gap: 8,
+                            <div key={p.path || p.name} className="flex-row gap-8 text-base" style={{
+                                padding: '8px 14px', alignItems: 'center',
+                                background: 'var(--bg-secondary)', borderRadius: 8,
+                                border: '1px solid var(--border)',
                             }}>
-                                <span style={{ opacity: 0.5 }}>📦</span>
-                                <span style={{ flex: 1 }}>{p.name}</span>
+                                <span className="opacity-50">📦</span>
+                                <span className="flex-1">{p.name}</span>
                                 {getCloneStatusBadge(p.path)}
-                                <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{p.tier}</span>
+                                <span className="text-xs text-tertiary">{p.tier}</span>
                             </div>
                         ))}
                     </div>

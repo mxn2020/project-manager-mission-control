@@ -4,6 +4,8 @@ import { api } from '../../convex/_generated/api';
 import { useProjects } from '../hooks/useProjects';
 import SearchableSelect, { type SelectOption } from '../components/SearchableSelect';
 
+import { PageHeader } from '../components/ui';
+
 const CATEGORIES = ['hosting', 'domain', 'api', 'database', 'monitoring', 'ai', 'cdn', 'email', 'other'];
 const CATEGORY_ICONS: Record<string, string> = {
     hosting: '🖥️', domain: '🌐', api: '🔌', database: '🗄️',
@@ -70,19 +72,17 @@ export default function CostPage() {
 
     return (
         <div>
-            <div className="page-header">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <div>
-                        <h1 className="page-title">💰 Cost Tracker</h1>
-                        <p className="page-description">Track infrastructure and service costs across projects</p>
-                    </div>
-                    <button className="btn btn-primary" onClick={() => setShowCreate(!showCreate)}>+ Add Cost</button>
-                </div>
-            </div>
+            <PageHeader
+                title="💰 Cost Tracker"
+                description="Track infrastructure and service costs across projects"
+                actions={
+                    <button className="btn btn-primary text-base" onClick={() => setShowCreate(!showCreate)}>+ Add Cost</button>
+                }
+            />
 
             {/* Summary Cards */}
             {summary && (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12, marginBottom: 20 }}>
+                <div className="grid-auto gap-12 mb-20">
                     <div className="stat-card">
                         <div className="stat-value" style={{ color: '#f87171' }}>${summary.totalMonthly.toFixed(2)}</div>
                         <div className="stat-label">Monthly Total</div>
@@ -104,22 +104,22 @@ export default function CostPage() {
 
             {/* Category Breakdown */}
             {summary && Object.keys(summary.byCategory).length > 0 && (
-                <div style={{ background: 'var(--bg-secondary)', borderRadius: 12, padding: 16, marginBottom: 16, border: '1px solid var(--border)' }}>
-                    <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', marginBottom: 12 }}>
+                <div className="section-card-sm mb-16">
+                    <div className="section-label" style={{ marginBottom: 12 }}>
                         Cost Breakdown
                     </div>
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <div className="flex-row flex-wrap gap-8">
                         {Object.entries(summary.byCategory)
                             .sort(([, a], [, b]) => (b as number) - (a as number))
                             .map(([cat, amount]) => (
-                                <div key={cat} style={{
-                                    display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px',
+                                <div key={cat} className="flex-row gap-6" style={{
+                                    padding: '6px 12px',
                                     background: (CATEGORY_COLORS[cat] || '#6b7280') + '15',
                                     borderRadius: 8, border: `1px solid ${(CATEGORY_COLORS[cat] || '#6b7280')}30`,
                                 }}>
                                     <span>{CATEGORY_ICONS[cat] || '📦'}</span>
-                                    <span style={{ fontWeight: 600, fontSize: 13 }}>${(amount as number).toFixed(2)}</span>
-                                    <span style={{ color: 'var(--text-tertiary)', fontSize: 11 }}>{cat}</span>
+                                    <span className="font-semibold text-md">${(amount as number).toFixed(2)}</span>
+                                    <span className="text-tertiary text-sm">{cat}</span>
                                 </div>
                             ))}
                     </div>
@@ -128,20 +128,20 @@ export default function CostPage() {
 
             {/* Create Form */}
             {showCreate && (
-                <div style={{ background: 'var(--bg-secondary)', borderRadius: 12, padding: 20, marginBottom: 16, border: '1px solid var(--border)' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 12 }}>
+                <div className="section-card mb-16">
+                    <div className="grid-3 gap-12 mb-12">
                         <input placeholder="Service name *" value={newName} onChange={e => setNewName(e.target.value)}
-                            style={{ padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'inherit', fontSize: 13 }} />
+                            className="form-input" />
                         <input placeholder="Monthly cost * ($)" type="number" step="0.01" value={newCost} onChange={e => setNewCost(e.target.value)}
-                            style={{ padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'inherit', fontSize: 13 }} />
+                            className="form-input" />
                         <SearchableSelect options={projectOptions} value={newProject} onChange={setNewProject} placeholder="Select project *" grouped allowCreate onCreateNew={(v) => setNewProject(v)} />
                     </div>
-                    <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                    <div className="flex-row gap-12">
                         <div style={{ width: 160 }}>
                             <SearchableSelect options={categoryOptions} value={newCategory} onChange={setNewCategory} placeholder="Category" clearable={false} />
                         </div>
                         <input placeholder="Notes (optional)" value={newNotes} onChange={e => setNewNotes(e.target.value)}
-                            style={{ flex: 1, padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'inherit', fontSize: 12 }} />
+                            className="form-input-sm flex-1" />
                         <button className="btn btn-secondary" onClick={() => setShowCreate(false)}>Cancel</button>
                         <button className="btn btn-primary" onClick={handleCreate} disabled={!newName.trim() || !newCost || !newProject.trim()}>Add</button>
                     </div>
@@ -149,10 +149,10 @@ export default function CostPage() {
             )}
 
             {/* Group By Toggle */}
-            <div className="filter-bar" style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-                <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Group by:</span>
-                <button className={`btn ${groupBy === 'category' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setGroupBy('category')} style={{ fontSize: 12 }}>Category</button>
-                <button className={`btn ${groupBy === 'project' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setGroupBy('project')} style={{ fontSize: 12 }}>Project</button>
+            <div className="filter-bar flex-row gap-8 mb-16">
+                <span className="text-base text-tertiary">Group by:</span>
+                <button className={`btn ${groupBy === 'category' ? 'btn-primary' : 'btn-secondary'} text-base`} onClick={() => setGroupBy('category')}>Category</button>
+                <button className={`btn ${groupBy === 'project' ? 'btn-primary' : 'btn-secondary'} text-base`} onClick={() => setGroupBy('project')}>Project</button>
             </div>
 
             {/* Cost Entries */}
@@ -167,29 +167,22 @@ export default function CostPage() {
                 Object.entries(grouped)
                     .sort(([, a], [, b]) => b.reduce((s: number, c: any) => s + c.monthlyCost, 0) - a.reduce((s: number, c: any) => s + c.monthlyCost, 0))
                     .map(([group, items]) => (
-                        <div key={group} style={{ marginBottom: 12 }}>
-                            <div style={{
-                                display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px',
-                                background: 'var(--bg-secondary)', borderRadius: '8px 8px 0 0', borderBottom: '1px solid var(--border)',
-                            }}>
+                        <div key={group} className="mb-12">
+                            <div className="list-group-header" style={{ borderRadius: '8px 8px 0 0' }}>
                                 <span>{groupBy === 'category' ? (CATEGORY_ICONS[group] || '📦') : '📂'}</span>
-                                <span style={{ fontWeight: 600, fontSize: 13 }}>{group}</span>
-                                <span style={{ marginLeft: 'auto', fontWeight: 600, color: '#f87171', fontSize: 13 }}>
+                                <span className="font-semibold text-md">{group}</span>
+                                <span className="font-semibold text-md" style={{ marginLeft: 'auto', color: '#f87171' }}>
                                     ${items.reduce((s: number, c: any) => s + c.monthlyCost, 0).toFixed(2)}/mo
                                 </span>
                             </div>
                             {items.map((cost: any) => (
-                                <div key={cost._id} style={{
-                                    display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px',
-                                    background: 'var(--bg-secondary)', borderBottom: '1px solid var(--border)', fontSize: 13,
-                                }}>
-                                    <span style={{ fontWeight: 500, flex: 1 }}>{cost.name}</span>
-                                    <span style={{ color: 'var(--text-tertiary)', fontSize: 11 }}>
+                                <div key={cost._id} className="list-row-bordered">
+                                    <span className="font-medium flex-1">{cost.name}</span>
+                                    <span className="text-tertiary text-sm">
                                         {groupBy === 'category' ? cost.projectPath : cost.category}
                                     </span>
-                                    <span style={{ fontWeight: 600, fontFamily: 'monospace' }}>${cost.monthlyCost.toFixed(2)}</span>
-                                    <button onClick={() => deleteCost({ id: cost._id })}
-                                        style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', fontSize: 12 }}>✕</button>
+                                    <span className="font-semibold font-mono">${cost.monthlyCost.toFixed(2)}</span>
+                                    <button onClick={() => deleteCost({ id: cost._id })} className="icon-btn">✕</button>
                                 </div>
                             ))}
                         </div>

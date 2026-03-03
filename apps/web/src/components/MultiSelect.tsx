@@ -1,44 +1,29 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import type { SelectOption } from './SearchableSelect';
 
-export interface SelectOption {
-    value: string;
-    label: string;
-    sublabel?: string;
-    icon?: string;
-    group?: string;
-}
-
-interface SearchableSelectProps {
+interface MultiSelectProps {
     options: SelectOption[];
-    value: string;
-    onChange: (value: string) => void;
+    value: string[];
+    onChange: (value: string[]) => void;
     placeholder?: string;
     label?: string;
-    allowCreate?: boolean;
-    onCreateNew?: (value: string) => void;
     disabled?: boolean;
-    clearable?: boolean;
     grouped?: boolean;
     maxHeight?: number;
     width?: string;
-    loading?: boolean;
 }
 
-export default function SearchableSelect({
+export default function MultiSelect({
     options,
     value,
     onChange,
-    placeholder = 'Search...',
+    placeholder = 'Search & select...',
     label,
-    allowCreate = false,
-    onCreateNew,
     disabled = false,
-    clearable = true,
     grouped = false,
     maxHeight = 260,
     width,
-    loading = false,
-}: SearchableSelectProps) {
+}: MultiSelectProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [search, setSearch] = useState('');
     const [highlightIdx, setHighlightIdx] = useState(0);
@@ -46,22 +31,22 @@ export default function SearchableSelect({
     const inputRef = useRef<HTMLInputElement>(null);
     const listRef = useRef<HTMLDivElement>(null);
 
-    // Find selected option label
-    const selectedOpt = options.find(o => o.value === value);
+    // Exclude already-selected options from dropdown
+    const available = useMemo(() => options.filter(o => !value.includes(o.value)), [options, value]);
 
-    // Filter options
+    // Filter by search
     const filtered = useMemo(() => {
-        if (!search) return options;
+        if (!search) return available;
         const q = search.toLowerCase();
-        return options.filter(o =>
+        return available.filter(o =>
             o.label.toLowerCase().includes(q) ||
             o.sublabel?.toLowerCase().includes(q) ||
             o.value.toLowerCase().includes(q) ||
             o.group?.toLowerCase().includes(q)
         );
-    }, [options, search]);
+    }, [available, search]);
 
-    // Group options if needed
+    // Group if needed
     const groups = useMemo(() => {
         if (!grouped) return null;
         const map = new Map<string, SelectOption[]>();
@@ -73,7 +58,6 @@ export default function SearchableSelect({
         return map;
     }, [filtered, grouped]);
 
-    // Flat list for keyboard nav
     const flatList = useMemo(() => {
         if (!grouped || !groups) return filtered;
         const flat: SelectOption[] = [];
@@ -108,11 +92,16 @@ export default function SearchableSelect({
         setTimeout(() => inputRef.current?.focus(), 10);
     }, [disabled]);
 
-    const handleSelect = useCallback((val: string) => {
-        onChange(val);
-        setIsOpen(false);
+    const handleAdd = useCallback((val: string) => {
+        onChange([...value, val]);
         setSearch('');
-    }, [onChange]);
+        setHighlightIdx(0);
+        setTimeout(() => inputRef.current?.focus(), 10);
+    }, [value, onChange]);
+
+    const handleRemove = useCallback((val: string) => {
+        onChange(value.filter(v => v !== val));
+    }, [value, onChange]);
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === 'ArrowDown') {
@@ -124,73 +113,59 @@ export default function SearchableSelect({
         } else if (e.key === 'Enter') {
             e.preventDefault();
             if (flatList[highlightIdx]) {
-                handleSelect(flatList[highlightIdx].value);
-            } else if (allowCreate && search && onCreateNew) {
-                onCreateNew(search);
-                setIsOpen(false);
-                setSearch('');
+                handleAdd(flatList[highlightIdx].value);
             }
+        } else if (e.key === 'Backspace' && !search && value.length > 0) {
+            handleRemove(value[value.length - 1]);
         } else if (e.key === 'Escape') {
             setIsOpen(false);
             setSearch('');
         }
     };
 
-    const showCreate = allowCreate && search && !filtered.some(o => o.label.toLowerCase() === search.toLowerCase());
+    // Resolve labels for selected values
+    const selectedOptions = value.map(v => options.find(o => o.value === v)).filter(Boolean) as SelectOption[];
 
     return (
         <div ref={containerRef} className="ss-container" style={{ width: width || '100%', position: 'relative' }}>
             {label && <label className="ss-label">{label}</label>}
 
-            {/* Trigger */}
+            {/* Chip area + input */}
             <div
                 className={`ss-trigger ${isOpen ? 'ss-open' : ''} ${disabled ? 'ss-disabled' : ''}`}
                 onClick={handleOpen}
+                style={{ flexWrap: 'wrap', gap: 4, minHeight: 34, height: 'auto', padding: '4px 8px' }}
             >
-                {!isOpen ? (
-                    <>
-                        <span className="ss-value">
-                            {loading && !selectedOpt ? (
-                                <span className="ss-placeholder" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                    <span className="ss-loading-spinner" />
-                                    Loading projects...
-                                </span>
-                            ) : selectedOpt ? (
-                                <>
-                                    {selectedOpt.icon && <span className="ss-icon">{selectedOpt.icon}</span>}
-                                    {selectedOpt.label}
-                                </>
-                            ) : (
-                                <span className="ss-placeholder">{placeholder}</span>
-                            )}
-                        </span>
-                        <span className="ss-chevron">{loading && !selectedOpt ? '' : '▾'}</span>
-                        {clearable && value && (
-                            <button
-                                className="ss-clear"
-                                onClick={(e) => { e.stopPropagation(); onChange(''); }}
-                                title="Clear"
-                            >✕</button>
-                        )}
-                    </>
-                ) : (
+                {selectedOptions.map(opt => (
+                    <span key={opt.value} className="ms-chip">
+                        {opt.icon && <span style={{ marginRight: 2 }}>{opt.icon}</span>}
+                        {opt.label}
+                        <button
+                            className="ms-chip-remove"
+                            onClick={e => { e.stopPropagation(); handleRemove(opt.value); }}
+                        >✕</button>
+                    </span>
+                ))}
+                {isOpen ? (
                     <input
                         ref={inputRef}
-                        className="ss-search"
+                        className="ms-inline-input"
                         value={search}
                         onChange={e => { setSearch(e.target.value); setHighlightIdx(0); }}
                         onKeyDown={handleKeyDown}
-                        placeholder={placeholder}
+                        placeholder={selectedOptions.length === 0 ? placeholder : ''}
                         autoFocus
                     />
-                )}
+                ) : selectedOptions.length === 0 ? (
+                    <span className="ss-placeholder">{placeholder}</span>
+                ) : null}
             </div>
 
             {/* Dropdown */}
             {isOpen && (
                 <div className="ss-dropdown" ref={listRef} style={{ maxHeight }}>
-                    {flatList.length === 0 && !showCreate && (
-                        <div className="ss-empty">{loading ? <><span className="ss-loading-spinner" /> Loading...</> : 'No results found'}</div>
+                    {flatList.length === 0 && (
+                        <div className="ss-empty">No more options</div>
                     )}
 
                     {grouped && groups ? (
@@ -203,8 +178,8 @@ export default function SearchableSelect({
                                         <div
                                             key={opt.value}
                                             data-idx={idx}
-                                            className={`ss-option ${idx === highlightIdx ? 'ss-highlighted' : ''} ${opt.value === value ? 'ss-selected' : ''}`}
-                                            onClick={() => handleSelect(opt.value)}
+                                            className={`ss-option ${idx === highlightIdx ? 'ss-highlighted' : ''}`}
+                                            onClick={() => handleAdd(opt.value)}
                                             onMouseEnter={() => setHighlightIdx(idx)}
                                         >
                                             {opt.icon && <span className="ss-icon">{opt.icon}</span>}
@@ -220,8 +195,8 @@ export default function SearchableSelect({
                             <div
                                 key={opt.value}
                                 data-idx={idx}
-                                className={`ss-option ${idx === highlightIdx ? 'ss-highlighted' : ''} ${opt.value === value ? 'ss-selected' : ''}`}
-                                onClick={() => handleSelect(opt.value)}
+                                className={`ss-option ${idx === highlightIdx ? 'ss-highlighted' : ''}`}
+                                onClick={() => handleAdd(opt.value)}
                                 onMouseEnter={() => setHighlightIdx(idx)}
                             >
                                 {opt.icon && <span className="ss-icon">{opt.icon}</span>}
@@ -229,16 +204,6 @@ export default function SearchableSelect({
                                 {opt.sublabel && <span className="ss-opt-sub">{opt.sublabel}</span>}
                             </div>
                         ))
-                    )}
-
-                    {showCreate && (
-                        <div
-                            className={`ss-option ss-create ${flatList.length === highlightIdx ? 'ss-highlighted' : ''}`}
-                            onClick={() => { onCreateNew?.(search); setIsOpen(false); setSearch(''); }}
-                        >
-                            <span className="ss-icon">➕</span>
-                            <span className="ss-opt-label">Create "{search}"</span>
-                        </div>
                     )}
                 </div>
             )}

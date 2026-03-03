@@ -12,7 +12,7 @@ interface FileEntry {
 }
 
 export default function FilesPage() {
-    const { data } = useProjects();
+    const { data, loading: projectsLoading } = useProjects();
     const projects = data?.projects || [];
     const [selectedProject, setSelectedProject] = useState<string>('');
     const [currentPath, setCurrentPath] = useState<string[]>([]);
@@ -105,7 +105,7 @@ export default function FilesPage() {
             </div>
 
             {/* Project Selector */}
-            <div style={{ marginBottom: 16, maxWidth: 400 }}>
+            <div className="mb-16" style={{ maxWidth: 400 }}>
                 <SearchableSelect
                     options={useMemo(() => projects.map((p: any) => {
                         const segments = (p.path || p.name).split('/');
@@ -121,18 +121,19 @@ export default function FilesPage() {
                     onChange={(v) => { setSelectedProject(v); setCurrentPath([]); setFileContent(null); setError(null); }}
                     placeholder="Search and select a project..."
                     grouped
+                    loading={projectsLoading}
                 />
             </div>
 
             {/* Breadcrumb */}
             {selectedProject && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 12, fontSize: 12 }}>
-                    <span onClick={navigateToRoot} style={{ cursor: 'pointer', color: 'var(--accent)' }}>
+                <div className="flex-row gap-4 mb-12 text-base">
+                    <span onClick={navigateToRoot} className="text-accent" style={{ cursor: 'pointer' }}>
                         📁 {selectedProject.split('/').pop()}
                     </span>
                     {currentPath.map((seg, i) => (
                         <span key={i}>
-                            <span style={{ color: 'var(--text-tertiary)', margin: '0 2px' }}>/</span>
+                            <span className="text-tertiary" style={{ margin: '0 2px' }}>/</span>
                             <span
                                 onClick={() => setCurrentPath(currentPath.slice(0, i + 1))}
                                 style={{ cursor: 'pointer', color: i === currentPath.length - 1 ? 'inherit' : 'var(--accent)' }}
@@ -146,12 +147,12 @@ export default function FilesPage() {
 
             {/* Error */}
             {error && (
-                <div style={{ padding: 16, background: 'rgba(251,191,36,0.1)', borderRadius: 8, border: '1px solid rgba(251,191,36,0.3)', marginBottom: 12 }}>
-                    <div style={{ fontWeight: 600, fontSize: 13, color: '#fbbf24', marginBottom: 4 }}>🔒 Files not available</div>
-                    <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                <div className="mb-12" style={{ padding: 16, background: 'rgba(251,191,36,0.1)', borderRadius: 8, border: '1px solid rgba(251,191,36,0.3)' }}>
+                    <div className="font-semibold text-md mb-4" style={{ color: '#fbbf24' }}>🔒 Files not available</div>
+                    <div className="text-base text-muted">
                         This project needs to be <strong>cloned locally</strong> to browse files. The File Explorer requires the Express server to be running with access to cloned repositories.
                     </div>
-                    <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 6 }}>
+                    <div className="text-sm text-tertiary mt-8">
                         Error: {error}
                     </div>
                 </div>
@@ -168,17 +169,18 @@ export default function FilesPage() {
                                 {currentPath.length > 0 && (
                                     <div
                                         onClick={navigateUp}
+                                        className="flex-row gap-8 text-md"
                                         style={{
-                                            padding: '8px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
-                                            borderBottom: '1px solid var(--border)', fontSize: 13,
+                                            padding: '8px 14px', cursor: 'pointer',
+                                            borderBottom: '1px solid var(--border)',
                                         }}
                                     >
                                         <span>⬆️</span>
-                                        <span style={{ color: 'var(--text-secondary)' }}>..</span>
+                                        <span className="text-muted">..</span>
                                     </div>
                                 )}
                                 {entries.length === 0 && !loading ? (
-                                    <div style={{ padding: 20, textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 13 }}>
+                                    <div className="text-center text-tertiary text-md" style={{ padding: 20 }}>
                                         {error ? 'Could not load files' : 'Empty directory'}
                                     </div>
                                 ) : (
@@ -198,17 +200,18 @@ export default function FilesPage() {
                                                         fetchFile(fullPath);
                                                     }
                                                 }}
+                                                className="flex-row gap-10 text-md"
                                                 style={{
-                                                    padding: '8px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10,
-                                                    borderBottom: '1px solid var(--border)', fontSize: 13,
+                                                    padding: '8px 14px', cursor: 'pointer',
+                                                    borderBottom: '1px solid var(--border)',
                                                     transition: 'background 0.1s',
                                                 }}
                                                 onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-primary)')}
                                                 onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                                             >
                                                 <span>{getFileIcon(entry.name, entry.type)}</span>
-                                                <span style={{ flex: 1, fontWeight: entry.type === 'directory' ? 500 : 400 }}>{entry.name}</span>
-                                                {entry.size && <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{formatSize(entry.size)}</span>}
+                                                <span className="flex-1" style={{ fontWeight: entry.type === 'directory' ? 500 : 400 }}>{entry.name}</span>
+                                                {entry.size && <span className="text-xs text-tertiary">{formatSize(entry.size)}</span>}
                                             </div>
                                         ))
                                 )}
@@ -220,20 +223,19 @@ export default function FilesPage() {
                 {/* File Content Viewer */}
                 {fileContent && (
                     <div style={{ background: 'var(--bg-secondary)', borderRadius: 10, border: '1px solid var(--border)', overflow: 'hidden' }}>
-                        <div style={{
+                        <div className="flex-row" style={{
                             padding: '8px 14px', borderBottom: '1px solid var(--border)',
-                            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                            justifyContent: 'space-between',
                         }}>
-                            <span style={{ fontWeight: 600, fontSize: 13 }}>{fileContent.name}</span>
+                            <span className="font-semibold text-md">{fileContent.name}</span>
                             <button
                                 onClick={() => setFileContent(null)}
-                                style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer' }}
+                                className="icon-btn"
                             >✕</button>
                         </div>
-                        <pre style={{
-                            padding: 14, margin: 0, fontSize: 11, lineHeight: 1.5,
-                            overflow: 'auto', maxHeight: 600, fontFamily: 'monospace',
-                            whiteSpace: 'pre-wrap', color: 'var(--text-secondary)',
+                        <pre className="text-sm text-muted font-mono whitespace-pre" style={{
+                            padding: 14, margin: 0, lineHeight: 1.5,
+                            overflow: 'auto', maxHeight: 600,
                         }}>
                             {fileContent.content}
                         </pre>

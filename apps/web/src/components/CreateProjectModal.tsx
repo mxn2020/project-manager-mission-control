@@ -70,64 +70,54 @@ export default function CreateProjectModal({ onClose, onCreated, lanes }: Create
     const previewPath = lane ? `${lane}/${safeName}` : safeName;
 
     return (
-        <div style={{
-            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 1000,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-            <div style={{
-                background: 'var(--bg-secondary)', borderRadius: 16, border: '1px solid var(--border)',
-                width: '100%', maxWidth: 560, maxHeight: '90vh', overflow: 'auto',
-                boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
-            }}>
+        <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+            <div className="modal-content" style={{ maxWidth: 560 }}>
                 {/* Header */}
-                <div style={{
-                    padding: '20px 24px 16px', borderBottom: '1px solid var(--border)',
-                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                }}>
-                    <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>✨ Create New Project</h2>
-                    <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', fontSize: 18 }}>✕</button>
+                <div className="modal-header">
+                    <h2 className="modal-title">✨ Create New Project</h2>
+                    <button onClick={onClose} className="icon-btn text-tertiary text-2xl">✕</button>
                 </div>
 
                 {/* Form */}
-                <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <div className="modal-body flex-col gap-16">
                     {/* Name + Lane */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    <div className="grid-2 gap-12">
                         <div>
-                            <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4, display: 'block' }}>Project Name *</label>
+                            <label className="form-label">Project Name *</label>
                             <input value={name} onChange={e => setName(e.target.value)} placeholder="my-awesome-project"
-                                style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'inherit', fontSize: 13, boxSizing: 'border-box' }} />
+                                className="form-input" />
                         </div>
                         <div>
-                            <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4, display: 'block' }}>Lane *</label>
+                            <label className="form-label">Lane *</label>
                             <SearchableSelect options={laneOptions} value={lane} onChange={setLane} placeholder="Select lane..." allowCreate onCreateNew={setLane} clearable={false} />
                         </div>
                     </div>
 
                     {/* Path Preview */}
                     {name && (
-                        <div style={{ padding: '6px 12px', background: 'var(--bg-primary)', borderRadius: 6, fontSize: 11, fontFamily: 'monospace', color: 'var(--text-tertiary)' }}>
+                        <div className="font-mono text-sm text-tertiary" style={{ padding: '6px 12px', background: 'var(--bg-primary)', borderRadius: 6 }}>
                             📁 {previewPath}/PROJECT.yaml
                         </div>
                     )}
 
                     {/* Description */}
                     <div>
-                        <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4, display: 'block' }}>Description</label>
+                        <label className="form-label">Description</label>
                         <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="What does this project do?"
-                            rows={2} style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'inherit', fontSize: 13, resize: 'vertical', boxSizing: 'border-box' }} />
+                            rows={2} className="form-textarea" />
                     </div>
 
                     {/* Tier + Priority + OSS */}
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 12, alignItems: 'end' }}>
                         <div>
-                            <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4, display: 'block' }}>Tier</label>
+                            <label className="form-label">Tier</label>
                             <SearchableSelect options={tierOptions} value={tier} onChange={setTier} placeholder="Tier" clearable={false} />
                         </div>
                         <div>
-                            <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4, display: 'block' }}>Priority</label>
+                            <label className="form-label">Priority</label>
                             <SearchableSelect options={priorityOptions} value={priority} onChange={setPriority} placeholder="Priority" clearable={false} />
                         </div>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 12, padding: '8px 0' }}>
+                        <label className="flex-row gap-6 text-base" style={{ cursor: 'pointer', padding: '8px 0' }}>
                             <input type="checkbox" checked={oss} onChange={e => setOss(e.target.checked)} />
                             OSS
                         </label>
@@ -135,19 +125,19 @@ export default function CreateProjectModal({ onClose, onCreated, lanes }: Create
 
                     {/* Stack */}
                     <div>
-                        <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4, display: 'block' }}>Tech Stack</label>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 6 }}>
+                        <label className="form-label">Tech Stack</label>
+                        <div className="flex-row flex-wrap gap-4 mb-6">
                             {stack.map(t => (
                                 <span key={t} onClick={() => setStack(stack.filter(s => s !== t))}
-                                    style={{ padding: '2px 8px', borderRadius: 4, fontSize: 11, background: 'var(--accent)', color: '#fff', cursor: 'pointer' }}>
+                                    className="tag text-sm" style={{ background: 'var(--accent)', color: '#fff', cursor: 'pointer' }}>
                                     {t} ✕
                                 </span>
                             ))}
                         </div>
-                        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                        <div className="flex-row flex-wrap gap-4">
                             {COMMON_STACKS.filter(t => !stack.includes(t)).slice(0, 12).map(t => (
                                 <button key={t} onClick={() => addStack(t)}
-                                    style={{ padding: '2px 8px', borderRadius: 4, fontSize: 10, background: 'var(--bg-primary)', color: 'var(--text-secondary)', border: '1px solid var(--border)', cursor: 'pointer' }}>
+                                    className="text-xs" style={{ padding: '2px 8px', borderRadius: 4, background: 'var(--bg-primary)', color: 'var(--text-secondary)', border: '1px solid var(--border)', cursor: 'pointer' }}>
                                     + {t}
                                 </button>
                             ))}
@@ -155,29 +145,26 @@ export default function CreateProjectModal({ onClose, onCreated, lanes }: Create
                         <input value={stackInput} onChange={e => setStackInput(e.target.value)}
                             onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addStack(stackInput); } }}
                             placeholder="Custom tech..."
-                            style={{ width: '100%', padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'inherit', fontSize: 12, marginTop: 6, boxSizing: 'border-box' }} />
+                            className="form-input-sm mt-6" />
                     </div>
 
                     {/* Repo URL */}
                     <div>
-                        <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4, display: 'block' }}>Repository URL (optional)</label>
+                        <label className="form-label">Repository URL (optional)</label>
                         <input value={repo} onChange={e => setRepo(e.target.value)} placeholder="https://github.com/..."
-                            style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'inherit', fontSize: 13, boxSizing: 'border-box' }} />
+                            className="form-input" />
                     </div>
 
                     {/* Error */}
                     {error && (
-                        <div style={{ padding: '8px 12px', background: '#f8717115', borderRadius: 6, color: '#f87171', fontSize: 12 }}>
+                        <div className="text-base" style={{ padding: '8px 12px', background: '#f8717115', borderRadius: 6, color: '#f87171' }}>
                             {error}
                         </div>
                     )}
                 </div>
 
                 {/* Footer */}
-                <div style={{
-                    padding: '16px 24px', borderTop: '1px solid var(--border)',
-                    display: 'flex', justifyContent: 'flex-end', gap: 8,
-                }}>
+                <div className="modal-footer">
                     <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
                     <button className="btn btn-primary" onClick={handleSubmit} disabled={submitting || !name.trim() || !lane}>
                         {submitting ? '⏳ Creating...' : '✨ Create Project'}

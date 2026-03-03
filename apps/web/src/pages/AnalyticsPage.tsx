@@ -3,6 +3,7 @@ import { useQuery } from 'convex/react';
 import { api as convexApi } from '../../convex/_generated/api';
 import { api } from '../lib/api';
 import { useProjects } from '../hooks/useProjects';
+import { PageHeader } from '../components/ui';
 
 export default function AnalyticsPage() {
     const aiStats = useQuery(convexApi.aiLogs.getStats);
@@ -45,7 +46,7 @@ export default function AnalyticsPage() {
     const renderBar = (items: [string, number][], colors: Record<string, string>, total: number) => (
         <div>
             {/* Progress bar */}
-            <div style={{ display: 'flex', height: 8, borderRadius: 4, overflow: 'hidden', marginBottom: 12 }}>
+            <div className="flex-row mb-12" style={{ height: 8, borderRadius: 4, overflow: 'hidden' }}>
                 {items.map(([key, count]) => (
                     <div key={key} style={{
                         width: `${(count / total) * 100}%`,
@@ -54,12 +55,12 @@ export default function AnalyticsPage() {
                     }} title={`${key}: ${count}`} />
                 ))}
             </div>
-            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            <div className="flex-row flex-wrap gap-12">
                 {items.map(([key, count]) => (
-                    <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
+                    <div key={key} className="flex-row gap-6 text-base">
                         <div style={{ width: 8, height: 8, borderRadius: 2, background: colors[key] || '#6b7280' }} />
-                        <span style={{ color: 'var(--text-secondary)' }}>{key}</span>
-                        <span style={{ fontWeight: 600 }}>{count}</span>
+                        <span className="text-muted">{key}</span>
+                        <span className="font-semibold">{count}</span>
                     </div>
                 ))}
             </div>
@@ -68,13 +69,10 @@ export default function AnalyticsPage() {
 
     return (
         <div>
-            <div className="page-header">
-                <h1 className="page-title">📊 Analytics</h1>
-                <p className="page-description">Overview of AI usage, costs, projects, and activity</p>
-            </div>
+            <PageHeader title="📊 Analytics" description="Overview of AI usage, costs, projects, and activity" />
 
             {/* Top-level KPIs */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12, marginBottom: 24 }}>
+            <div className="grid-auto gap-12 mb-24">
                 <div className="stat-card">
                     <div className="stat-value">{projects.length}</div>
                     <div className="stat-label">Total Projects</div>
@@ -101,10 +99,10 @@ export default function AnalyticsPage() {
                 </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+            <div className="grid-2 gap-16">
                 {/* Projects by Tier */}
-                <div style={{ background: 'var(--bg-secondary)', borderRadius: 12, padding: 20, border: '1px solid var(--border)' }}>
-                    <h3 style={{ margin: '0 0 16px', fontSize: 14 }}>Projects by Tier</h3>
+                <div className="section-card">
+                    <h3 className="section-header">Projects by Tier</h3>
                     {renderBar(
                         Object.entries(projectsByTier).sort(([, a], [, b]) => b - a),
                         tierColors,
@@ -113,8 +111,8 @@ export default function AnalyticsPage() {
                 </div>
 
                 {/* Projects by Lane */}
-                <div style={{ background: 'var(--bg-secondary)', borderRadius: 12, padding: 20, border: '1px solid var(--border)' }}>
-                    <h3 style={{ margin: '0 0 16px', fontSize: 14 }}>Projects by Lane</h3>
+                <div className="section-card">
+                    <h3 className="section-header">Projects by Lane</h3>
                     {renderBar(
                         Object.entries(projectsByLane).sort(([, a], [, b]) => b - a),
                         laneColors,
@@ -124,8 +122,8 @@ export default function AnalyticsPage() {
 
                 {/* Task Status */}
                 {taskStats && (
-                    <div style={{ background: 'var(--bg-secondary)', borderRadius: 12, padding: 20, border: '1px solid var(--border)' }}>
-                        <h3 style={{ margin: '0 0 16px', fontSize: 14 }}>Task Status</h3>
+                    <div className="section-card">
+                        <h3 className="section-header">Task Status</h3>
                         {renderBar(
                             Object.entries(taskStats.byStatus),
                             { todo: '#60a5fa', in_progress: '#fbbf24', done: '#34d399' },
@@ -136,20 +134,20 @@ export default function AnalyticsPage() {
 
                 {/* AI Usage by Day */}
                 {aiStats && Object.keys(aiStats.byDay).length > 0 && (
-                    <div style={{ background: 'var(--bg-secondary)', borderRadius: 12, padding: 20, border: '1px solid var(--border)' }}>
-                        <h3 style={{ margin: '0 0 16px', fontSize: 14 }}>AI Calls by Day</h3>
-                        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 80 }}>
+                    <div className="section-card">
+                        <h3 className="section-header">AI Calls by Day</h3>
+                        <div className="flex-row gap-4" style={{ alignItems: 'flex-end', height: 80 }}>
                             {Object.entries(aiStats.byDay).sort().slice(-14).map(([day, count]) => {
                                 const max = Math.max(...Object.values(aiStats.byDay));
                                 return (
-                                    <div key={day} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                                    <div key={day} className="flex-col flex-center gap-4 flex-1">
                                         <div style={{
                                             width: '100%', borderRadius: 3,
                                             background: '#818cf8',
                                             height: `${((count as number) / max) * 60}px`,
                                             minHeight: 4,
                                         }} title={`${day}: ${count} calls`} />
-                                        <span style={{ fontSize: 8, color: 'var(--text-tertiary)', transform: 'rotate(-45deg)', whiteSpace: 'nowrap' }}>
+                                        <span className="text-tertiary" style={{ fontSize: 8, transform: 'rotate(-45deg)', whiteSpace: 'nowrap' }}>
                                             {day.slice(5)}
                                         </span>
                                     </div>
@@ -162,20 +160,19 @@ export default function AnalyticsPage() {
 
             {/* Top Technologies */}
             {Object.keys(techUsage).length > 0 && (
-                <div style={{ background: 'var(--bg-secondary)', borderRadius: 12, padding: 20, border: '1px solid var(--border)', marginTop: 16 }}>
-                    <h3 style={{ margin: '0 0 16px', fontSize: 14 }}>Top Technologies</h3>
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <div className="section-card mt-16">
+                    <h3 className="section-header">Top Technologies</h3>
+                    <div className="flex-row flex-wrap gap-8">
                         {Object.entries(techUsage)
                             .sort(([, a], [, b]) => b - a)
                             .slice(0, 20)
                             .map(([tech, count]) => (
-                                <div key={tech} style={{
+                                <div key={tech} className="flex-row gap-6 text-base" style={{
                                     padding: '4px 10px', borderRadius: 6,
                                     background: 'var(--bg-primary)', border: '1px solid var(--border)',
-                                    fontSize: 12, display: 'flex', alignItems: 'center', gap: 6,
                                 }}>
-                                    <span style={{ fontWeight: 500 }}>{tech}</span>
-                                    <span style={{ color: 'var(--text-tertiary)', fontSize: 10, fontWeight: 600 }}>{count}</span>
+                                    <span className="font-medium">{tech}</span>
+                                    <span className="text-tertiary text-xs font-semibold">{count}</span>
                                 </div>
                             ))}
                     </div>

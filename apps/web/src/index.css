@@ -2231,6 +2231,21 @@ a:hover {
   text-align: center;
   color: var(--text-tertiary);
   font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.ss-loading-spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  flex-shrink: 0;
 }
 
 .ss-create {
@@ -2240,6 +2255,504 @@ a:hover {
 
 .ss-create:hover {
   background: rgba(124, 58, 237, 0.1);
+}
+
+/* ─── MultiSelect Chips ──────────────────────────────────────────────────── */
+
+.ms-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  background: rgba(129, 140, 248, 0.12);
+  color: var(--text-primary);
+  border: 1px solid rgba(129, 140, 248, 0.2);
+  white-space: nowrap;
+  line-height: 1.4;
+}
+
+.ms-chip-remove {
+  background: none;
+  border: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  font-size: 9px;
+  padding: 0 1px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.ms-chip-remove:hover {
+  color: var(--error);
+}
+
+.ms-inline-input {
+  flex: 1;
+  min-width: 60px;
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 13px;
+  padding: 2px 0;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * Utility Classes
+ * ───────────────────────────────────────────────────────────────────────────── */
+
+/* ─── Layout: Grid ──────────────────────────────────────────────────────── */
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.grid-3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+}
+
+.grid-auto {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+
+.grid-auto-180 {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+}
+
+/* ─── Layout: Flex ──────────────────────────────────────────────────────── */
+.flex-row {
+  display: flex;
+  align-items: center;
+}
+
+.flex-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.flex-between {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.flex-wrap {
+  flex-wrap: wrap;
+}
+
+.flex-1 {
+  flex: 1;
+}
+
+.min-w-0 {
+  min-width: 0;
+}
+
+.flex-shrink-0 {
+  flex-shrink: 0;
+}
+
+/* ─── Spacing ───────────────────────────────────────────────────────────── */
+.gap-4 {
+  gap: 4px;
+}
+
+.gap-6 {
+  gap: 6px;
+}
+
+.gap-8 {
+  gap: 8px;
+}
+
+.gap-10 {
+  gap: 10px;
+}
+
+.gap-12 {
+  gap: 12px;
+}
+
+.gap-16 {
+  gap: 16px;
+}
+
+.gap-20 {
+  gap: 20px;
+}
+
+.gap-24 {
+  gap: 24px;
+}
+
+.mb-4 {
+  margin-bottom: 4px;
+}
+
+.mb-8 {
+  margin-bottom: 8px;
+}
+
+.mb-12 {
+  margin-bottom: 12px;
+}
+
+.mb-16 {
+  margin-bottom: 16px;
+}
+
+.mb-20 {
+  margin-bottom: 20px;
+}
+
+.mb-24 {
+  margin-bottom: 24px;
+}
+
+.mt-4 {
+  margin-top: 4px;
+}
+
+.mt-8 {
+  margin-top: 8px;
+}
+
+.mt-12 {
+  margin-top: 12px;
+}
+
+.mt-16 {
+  margin-top: 16px;
+}
+
+.mt-20 {
+  margin-top: 20px;
+}
+
+/* ─── Typography ────────────────────────────────────────────────────────── */
+.text-xs {
+  font-size: 10px;
+}
+
+.text-sm {
+  font-size: 11px;
+}
+
+.text-base {
+  font-size: 12px;
+}
+
+.text-md {
+  font-size: 13px;
+}
+
+.text-lg {
+  font-size: 14px;
+}
+
+.text-xl {
+  font-size: 16px;
+}
+
+.text-2xl {
+  font-size: 18px;
+}
+
+.text-3xl {
+  font-size: 20px;
+}
+
+.text-muted {
+  color: var(--text-secondary);
+}
+
+.text-tertiary {
+  color: var(--text-tertiary);
+}
+
+.text-accent {
+  color: var(--accent);
+}
+
+.text-error {
+  color: var(--error);
+}
+
+.text-center {
+  text-align: center;
+}
+
+.font-medium {
+  font-weight: 500;
+}
+
+.font-semibold {
+  font-weight: 600;
+}
+
+.font-bold {
+  font-weight: 700;
+}
+
+.font-mono {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+}
+
+.uppercase {
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.whitespace-pre {
+  white-space: pre-wrap;
+}
+
+.text-center {
+  text-align: center;
+}
+
+.text-muted {
+  color: var(--text-secondary);
+}
+
+.text-xl {
+  font-size: 16px;
+}
+
+.text-2xl {
+  font-size: 18px;
+}
+
+.opacity-50 {
+  opacity: 0.5;
+}
+
+.min-w-0 {
+  min-width: 0;
+}
+
+.flex-shrink-0 {
+  flex-shrink: 0;
+}
+
+/* ─── Modal ─────────────────────────────────────────────────────────────── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-content {
+  background: var(--bg-secondary);
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  width: 100%;
+  max-height: 90vh;
+  overflow: auto;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.modal-header {
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-title {
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.modal-body {
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-footer {
+  padding: 16px 24px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* ─── Section Cards ─────────────────────────────────────────────────────── */
+.section-card {
+  background: var(--bg-secondary);
+  border-radius: 12px;
+  padding: 20px;
+  border: 1px solid var(--border);
+}
+
+.section-card-sm {
+  background: var(--bg-secondary);
+  border-radius: 12px;
+  padding: 16px;
+  border: 1px solid var(--border);
+}
+
+.section-header {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 16px;
+}
+
+.section-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+  display: block;
+}
+
+.section-sublabel {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  margin: 0 0 12px;
+}
+
+/* ─── Form Elements ─────────────────────────────────────────────────────── */
+.form-input {
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-primary);
+  color: inherit;
+  font-size: 13px;
+  font-family: inherit;
+}
+
+.form-input-sm {
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-primary);
+  color: inherit;
+  font-size: 12px;
+  font-family: inherit;
+}
+
+.form-textarea {
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-primary);
+  color: inherit;
+  font-size: 13px;
+  font-family: inherit;
+  resize: vertical;
+  min-height: 60px;
+}
+
+.form-select {
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-primary);
+  color: inherit;
+  font-size: 13px;
+  font-family: inherit;
+}
+
+/* ─── List Items ────────────────────────────────────────────────────────── */
+.list-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  font-size: 13px;
+}
+
+.list-row-bordered {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.list-group-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+}
+
+/* ─── Icon Button ───────────────────────────────────────────────────────── */
+.icon-btn {
+  background: none;
+  border: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 2px 4px;
+  line-height: 1;
+  transition: color 0.15s;
+}
+
+.icon-btn:hover {
+  color: var(--text-primary);
+}
+
+/* ─── Tag / Chip ────────────────────────────────────────────────────────── */
+.tag {
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+}
+
+/* ─── Error Box ─────────────────────────────────────────────────────────── */
+.error-box {
+  padding: 10px 14px;
+  background: rgba(248, 113, 113, 0.1);
+  border-radius: 8px;
+  color: var(--error);
+  font-size: 13px;
+}
+
+/* ─── Opacity ───────────────────────────────────────────────────────────── */
+.opacity-50 {
+  opacity: 0.5;
+}
+
+.opacity-70 {
+  opacity: 0.7;
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -2830,6 +3343,189 @@ a:hover {
 
 .btn-danger:hover {
   background: #ef4444;
+}
+
+/* ─── UI Card Component ──────────────────────────────────────────────────── */
+.ui-card {
+  position: relative;
+  background: var(--bg-card);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  transition: all 0.2s;
+}
+
+.ui-card-clickable {
+  cursor: pointer;
+}
+
+.ui-card-clickable:hover {
+  border-color: var(--border-hover);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow);
+}
+
+.ui-card-accent {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  border-radius: var(--radius) var(--radius) 0 0;
+}
+
+.ui-card-body {
+  padding: 18px;
+}
+
+/* ─── Grip Icon (Drag Handle) ────────────────────────────────────────────── */
+.grip-icon {
+  color: var(--text-tertiary);
+  cursor: grab;
+  flex-shrink: 0;
+  opacity: 0.5;
+  transition: opacity 0.15s, color 0.15s;
+}
+
+.grip-icon:hover {
+  opacity: 1;
+  color: var(--text-secondary);
+}
+
+.grip-icon:active {
+  cursor: grabbing;
+}
+
+/* ─── Kanban Drag & Drop States ──────────────────────────────────────────── */
+.kanban-card.dragging {
+  opacity: 0.3;
+  border-style: dashed;
+}
+
+.kanban-card[draggable="true"] {
+  cursor: default;
+}
+
+/* Hidden clone used as custom drag image */
+.kanban-drag-ghost {
+  position: fixed;
+  top: -9999px;
+  left: -9999px;
+  transform: rotate(3deg);
+  opacity: 0.92;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+  border-radius: 8px;
+  pointer-events: none;
+  z-index: 9999;
+  max-width: 280px;
+}
+
+/* Saving indicator bar */
+.kanban-saving-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 16px;
+  font-size: 12px;
+  color: var(--accent);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 12px;
+  animation: pulse 1.5s infinite;
+}
+
+.kanban-column.drag-over {
+  background: var(--bg-glass-hover);
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.kanban-column.drag-over .kanban-cards {
+  min-height: 80px;
+}
+
+/* Task kanban drag states */
+.task-kanban-card {
+  background: var(--bg-primary);
+  border-radius: 8px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  transition: transform 0.15s, opacity 0.15s, box-shadow 0.15s;
+}
+
+.task-kanban-card.dragging {
+  opacity: 0.4;
+  transform: rotate(2deg);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+.task-kanban-column.drag-over {
+  background: var(--bg-glass-hover) !important;
+  border-color: var(--accent) !important;
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+/* ─── Dimension Picker ───────────────────────────────────────────────────── */
+.dimension-picker {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dimension-picker-label {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+
+/* Dimension group headers in grid/focus views */
+.dimension-group {
+  margin-bottom: 24px;
+}
+
+.dimension-group-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  margin-bottom: 12px;
+  border-bottom: 2px solid var(--border);
+}
+
+.dimension-group-icon {
+  font-size: 16px;
+}
+
+.dimension-group-label {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.dimension-group-count {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  background: var(--bg-glass);
+  padding: 2px 8px;
+  border-radius: 10px;
+  margin-left: auto;
+}
+
+/* Focus view toggle buttons */
+.view-toggle {
+  display: flex;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+.view-toggle .btn {
+  border-radius: 0;
+  font-size: 12px;
 }
 
 /* ─── Responsive form grid overrides ─────────────────────────────────────── */

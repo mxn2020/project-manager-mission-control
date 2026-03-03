@@ -4,6 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import { api } from '../../convex/_generated/api';
 import { getAuthHeaders, API_BASE } from '../lib/api';
 import { useAuth } from '../hooks/useAuth';
+import SearchableSelect from '../components/SearchableSelect';
 
 interface Message {
     id: string;
@@ -201,20 +202,14 @@ export default function AIPage() {
 
                 <div className="chat-settings-group">
                     <label>Model</label>
-                    <select
+                    <SearchableSelect
+                        options={[
+                            { value: '', label: 'System Default' },
+                            ...(models || []).map((m: any) => ({ value: m._id, label: `${m.displayName} (${m.provider?.name || 'Unknown'})` })),
+                        ]}
                         value={(currentSettings as any)?.defaultModelId || ''}
-                        onChange={e => updateSettings({
-                            userId: userId as any,
-                            defaultModelId: e.target.value || undefined,
-                        } as any)}
-                    >
-                        <option value="">System Default</option>
-                        {(models || []).map((m: any) => (
-                            <option key={m._id} value={m._id} disabled={!m.isEnabled}>
-                                {m.displayName} ({m.provider?.name || 'Unknown'})
-                            </option>
-                        ))}
-                    </select>
+                        onChange={v => updateSettings({ userId: userId as any, defaultModelId: v || undefined } as any)}
+                        placeholder="Model" clearable={false} />
                 </div>
 
                 <div className="chat-settings-group">

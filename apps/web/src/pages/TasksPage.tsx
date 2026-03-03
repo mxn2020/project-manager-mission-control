@@ -4,6 +4,7 @@ import { useProjects } from '../hooks/useProjects';
 import { useIsMobile } from '../hooks/useMediaQuery';
 import { api } from '../lib/api';
 import SearchableSelect, { type SelectOption } from '../components/SearchableSelect';
+import { PageHeader, GripIcon } from '../components/ui';
 
 const STATUS_COLS = [
     { key: 'todo', label: 'To Do', icon: '📋', color: '#60a5fa' },
@@ -30,6 +31,10 @@ export default function TasksPage() {
     const [showCreate, setShowCreate] = useState(false);
     const [filterPriority, setFilterPriority] = useState('');
     const [filterProject, setFilterProject] = useState('');
+
+    // DnD state
+    const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
+    const [dragOverStatus, setDragOverStatus] = useState<string | null>(null);
 
     // Create form state
     const [newTitle, setNewTitle] = useState('');
@@ -111,65 +116,122 @@ export default function TasksPage() {
         await loadTasks();
     };
 
+    // ─── DnD Handlers ───────────────────────────────────────────────────────
+    const handleDragStart = useCallback((e: React.DragEvent, taskId: string) => {
+        setDraggedTaskId(taskId);
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', taskId);
+        requestAnimationFrame(() => {
+            const el = document.querySelector(`[data-task-id="${CSS.escape(taskId)}"]`);
+            if (el) el.classList.add('dragging');
+        });
+    }, []);
+
+    const handleDragEnd = useCallback(() => {
+        document.querySelectorAll('.task-kanban-card.dragging').forEach(el => el.classList.remove('dragging'));
+        setDraggedTaskId(null);
+        setDragOverStatus(null);
+    }, []);
+
+    const handleColumnDragOver = useCallback((e: React.DragEvent, status: string) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        setDragOverStatus(status);
+    }, []);
+
+    const handleColumnDragLeave = useCallback(() => {
+        setDragOverStatus(null);
+    }, []);
+
+    const handleColumnDrop = useCallback(async (e: React.DragEvent, targetStatus: string) => {
+        e.preventDefault();
+        setDragOverStatus(null);
+
+        if (!draggedTaskId) return;
+
+        // Find the task's current status
+        const task = allTasks.find((t: any) => t.id === draggedTaskId);
+        if (!task || task.status === targetStatus) {
+            setDraggedTaskId(null);
+            return;
+        }
+
+        setDraggedTaskId(null);
+        await handleStatusChange(draggedTaskId, targetStatus);
+    }, [draggedTaskId, allTasks, handleStatusChange]);
+
     const renderKanban = () => (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginTop: 16 }}>
+        <div className="gap-16 mt-16" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)' }}>
             {STATUS_COLS.map(col => {
                 const colTasks = filtered.filter((t: any) => t.status === col.key);
                 return (
-                    <div key={col.key} style={{ background: 'var(--bg-secondary)', borderRadius: 12, padding: 16, minHeight: 300 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, paddingBottom: 12, borderBottom: `2px solid ${col.color}` }}>
+                    <div
+                        key={col.key}
+                        className={`task-kanban-column ${dragOverStatus === col.key ? 'drag-over' : ''}`}
+                        style={{ background: 'var(--bg-secondary)', borderRadius: 12, padding: 16, minHeight: 300, border: '1px solid var(--border)' }}
+                        onDragOver={(e) => handleColumnDragOver(e, col.key)}
+                        onDragLeave={handleColumnDragLeave}
+                        onDrop={(e) => handleColumnDrop(e, col.key)}
+                    >
+                        <div className="flex-row gap-8 mb-16" style={{ paddingBottom: 12, borderBottom: `2px solid ${col.color}`, alignItems: 'center' }}>
                             <span>{col.icon}</span>
-                            <span style={{ fontWeight: 600 }}>{col.label}</span>
-                            <span style={{ background: col.color + '25', color: col.color, padding: '2px 8px', borderRadius: 10, fontSize: 11, fontWeight: 600, marginLeft: 'auto' }}>
+                            <span className="font-semibold">{col.label}</span>
+                            <span className="text-sm font-semibold" style={{ background: col.color + '25', color: col.color, padding: '2px 8px', borderRadius: 10, marginLeft: 'auto' }}>
                                 {colTasks.length}
                             </span>
                         </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        <div className="flex-col gap-8">
                             {colTasks.map((task: any) => (
-                                <div key={task.id} style={{
-                                    background: 'var(--bg-primary)', borderRadius: 8, padding: 12,
-                                    border: '1px solid var(--border)', transition: 'transform 0.15s',
-                                }}>
-                                    <div style={{ fontWeight: 500, fontSize: 13, marginBottom: 6 }}>{task.title}</div>
-                                    <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-                                        <span style={{
-                                            padding: '1px 6px', borderRadius: 4, fontSize: 10, fontWeight: 600,
-                                            background: (PRIORITY_CONFIG[task.priority]?.color || '#6b7280') + '20',
-                                            color: PRIORITY_CONFIG[task.priority]?.color || '#6b7280',
-                                        }}>
-                                            {task.priority}
-                                        </span>
-                                        <span style={{ fontSize: 10, color: 'var(--text-tertiary)', fontFamily: 'monospace' }}>{task.effort}</span>
-                                        <span style={{ fontSize: 10, color: 'var(--text-tertiary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 120 }}>
-                                            {task.projectPath}
-                                        </span>
-                                    </div>
-                                    <div style={{ display: 'flex', gap: 4, marginTop: 8 }}>
-                                        {STATUS_COLS.filter(s => s.key !== task.status).map(s => (
-                                            <button
-                                                key={s.key}
-                                                onClick={() => handleStatusChange(task.id, s.key)}
-                                                style={{
-                                                    padding: '3px 8px', fontSize: 10, borderRadius: 4,
-                                                    background: 'var(--bg-secondary)', border: '1px solid var(--border)',
-                                                    color: 'var(--text-secondary)', cursor: 'pointer',
-                                                }}
-                                                title={`Move to ${s.label}`}
-                                            >
-                                                {s.icon} {s.label}
-                                            </button>
-                                        ))}
-                                        <button
-                                            onClick={() => handleDelete(task.id)}
-                                            style={{
-                                                padding: '3px 6px', fontSize: 10, borderRadius: 4,
-                                                background: 'rgba(248,113,113,0.1)', border: 'none',
-                                                color: '#f87171', cursor: 'pointer', marginLeft: 'auto',
-                                            }}
-                                            title="Delete"
-                                        >
-                                            ✕
-                                        </button>
+                                <div
+                                    key={task.id}
+                                    className="task-kanban-card"
+                                    data-task-id={task.id}
+                                    draggable
+                                    onDragStart={(e) => handleDragStart(e, task.id)}
+                                    onDragEnd={handleDragEnd}
+                                >
+                                    <div className="flex-row gap-8" style={{ alignItems: 'flex-start' }}>
+                                        <GripIcon size={14} />
+                                        <div className="flex-1 min-w-0">
+                                            <div className="font-medium text-md mb-6">{task.title}</div>
+                                            <div className="flex-row flex-wrap gap-6">
+                                                <span className="text-xs font-semibold" style={{
+                                                    padding: '1px 6px', borderRadius: 4,
+                                                    background: (PRIORITY_CONFIG[task.priority]?.color || '#6b7280') + '20',
+                                                    color: PRIORITY_CONFIG[task.priority]?.color || '#6b7280',
+                                                }}>{task.priority}</span>
+                                                <span className="text-xs text-tertiary font-mono">{task.effort}</span>
+                                                <span className="text-xs text-tertiary truncate" style={{ maxWidth: 120 }}>
+                                                    {task.projectPath}
+                                                </span>
+                                            </div>
+                                            <div className="flex-row gap-4 mt-8">
+                                                {STATUS_COLS.filter(s => s.key !== task.status).map(s => (
+                                                    <button
+                                                        key={s.key}
+                                                        onClick={() => handleStatusChange(task.id, s.key)}
+                                                        className="text-xs" style={{
+                                                            padding: '3px 8px', borderRadius: 4,
+                                                            background: 'var(--bg-secondary)', border: '1px solid var(--border)',
+                                                            color: 'var(--text-secondary)', cursor: 'pointer',
+                                                        }}
+                                                        title={`Move to ${s.label}`}
+                                                    >
+                                                        {s.icon} {s.label}
+                                                    </button>
+                                                ))}
+                                                <button
+                                                    onClick={() => handleDelete(task.id)}
+                                                    className="icon-btn text-xs" style={{
+                                                        background: 'rgba(248,113,113,0.1)',
+                                                        color: '#f87171', marginLeft: 'auto',
+                                                    }}
+                                                    title="Delete"
+                                                >
+                                                    ✕
+                                                </button>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             ))}
@@ -181,7 +243,7 @@ export default function TasksPage() {
     );
 
     const renderList = () => (
-        <div className="task-list" style={{ marginTop: 16 }}>
+        <div className="mt-16">
             {filtered.length === 0 ? (
                 <div className="empty-state">
                     <div className="empty-state-icon">📋</div>
@@ -189,42 +251,37 @@ export default function TasksPage() {
                 </div>
             ) : (
                 filtered.map((task: any) => (
-                    <div key={task.id} className="task-item" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px', borderBottom: '1px solid var(--border)' }}>
+                    <div key={task.id} className="flex-row gap-12" style={{ padding: '10px 16px', borderBottom: '1px solid var(--border)', alignItems: 'center' }}>
                         <div
-                            className={`task-checkbox ${task.status === 'done' ? 'done' : ''}`}
+                            className={`flex-center flex-shrink-0 ${task.status === 'done' ? 'done' : ''}`}
                             onClick={() => handleStatusChange(task.id, task.status === 'done' ? 'todo' : task.status === 'todo' ? 'in_progress' : 'done')}
                             style={{
                                 width: 20, height: 20, borderRadius: 4, cursor: 'pointer',
                                 border: `2px solid ${task.status === 'done' ? '#34d399' : 'var(--border)'}`,
                                 background: task.status === 'done' ? '#34d399' : 'transparent',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                color: 'white', fontSize: 12, flexShrink: 0,
+                                color: 'white', fontSize: 12,
                             }}
                         >
                             {task.status === 'done' && '✓'}
                         </div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{
-                                fontWeight: 500, fontSize: 13,
+                        <div className="flex-1 min-w-0">
+                            <div className="font-medium text-md" style={{
                                 textDecoration: task.status === 'done' ? 'line-through' : 'none',
                                 opacity: task.status === 'done' ? 0.5 : 1,
                             }}>{task.title}</div>
-                            <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>
+                            <div className="text-sm text-tertiary mt-4">
                                 {task.projectPath} · {task.taskType}
                             </div>
                         </div>
-                        <span style={{
-                            padding: '2px 8px', borderRadius: 4, fontSize: 10, fontWeight: 600,
+                        <span className="text-xs font-semibold" style={{
+                            padding: '2px 8px', borderRadius: 4,
                             background: (PRIORITY_CONFIG[task.priority]?.color || '#6b7280') + '20',
                             color: PRIORITY_CONFIG[task.priority]?.color || '#6b7280',
                         }}>
                             {task.priority}
                         </span>
-                        <span style={{ fontSize: 11, color: 'var(--text-tertiary)', fontFamily: 'monospace', width: 24, textAlign: 'center' }}>{task.effort}</span>
-                        <button
-                            onClick={() => handleDelete(task.id)}
-                            style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', fontSize: 12 }}
-                        >✕</button>
+                        <span className="text-sm text-tertiary font-mono text-center" style={{ width: 24 }}>{task.effort}</span>
+                        <button onClick={() => handleDelete(task.id)} className="icon-btn text-tertiary text-base">✕</button>
                     </div>
                 ))
             )}
@@ -233,29 +290,27 @@ export default function TasksPage() {
 
     return (
         <div>
-            <div className="page-header">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <div>
-                        <h1 className="page-title">📋 Tasks</h1>
-                        <p className="page-description">Cross-project task management · Minions-backed</p>
-                    </div>
-                    <button className="btn btn-primary" onClick={() => isMobile ? navigate('/tasks/new') : setShowCreate(!showCreate)} style={{ flexShrink: 0 }}>
+            <PageHeader
+                title="📋 Tasks"
+                description="Cross-project task management · Minions-backed"
+                actions={
+                    <button className="btn btn-primary flex-shrink-0" onClick={() => isMobile ? navigate('/tasks/new') : setShowCreate(!showCreate)}>
                         + New Task
                     </button>
-                </div>
-            </div>
+                }
+            />
 
             {/* Stats Row */}
             {stats && (
-                <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
+                <div className="flex-row flex-wrap gap-12 mb-16">
                     {STATUS_COLS.map(col => (
-                        <div key={col.key} style={{
-                            display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px',
-                            background: 'var(--bg-secondary)', borderRadius: 8, fontSize: 13,
+                        <div key={col.key} className="flex-row gap-6 text-md" style={{
+                            padding: '6px 12px', alignItems: 'center',
+                            background: 'var(--bg-secondary)', borderRadius: 8,
                         }}>
                             <span>{col.icon}</span>
-                            <span style={{ fontWeight: 600 }}>{stats.byStatus[col.key] || 0}</span>
-                            <span style={{ color: 'var(--text-tertiary)', fontSize: 11 }}>{col.label}</span>
+                            <span className="font-semibold">{stats.byStatus[col.key] || 0}</span>
+                            <span className="text-sm text-tertiary">{col.label}</span>
                         </div>
                     ))}
                 </div>
@@ -263,13 +318,13 @@ export default function TasksPage() {
 
             {/* Create Form */}
             {showCreate && (
-                <div style={{ background: 'var(--bg-secondary)', borderRadius: 12, padding: 20, marginBottom: 16, border: '1px solid var(--border)' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+                <div className="section-card mb-16">
+                    <div className="grid-2 gap-12 mb-12">
                         <input
                             placeholder="Task title *"
                             value={newTitle}
                             onChange={e => setNewTitle(e.target.value)}
-                            style={{ padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'inherit', fontSize: 13 }}
+                            className="form-input"
                         />
                         <SearchableSelect
                             options={projectOptions}
@@ -285,9 +340,9 @@ export default function TasksPage() {
                         placeholder="Description (optional)"
                         value={newDescription}
                         onChange={e => setNewDescription(e.target.value)}
-                        style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'inherit', fontSize: 13, minHeight: 60, resize: 'vertical', marginBottom: 12 }}
+                        className="form-textarea mb-12" style={{ minHeight: 60 }}
                     />
-                    <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                    <div className="flex-row gap-12">
                         <SearchableSelect
                             options={priorityOptions}
                             value={newPriority}
@@ -317,16 +372,16 @@ export default function TasksPage() {
                             clearable={false}
                             width="120px"
                         />
-                        <div style={{ flex: 1 }} />
-                        <button className="btn btn-secondary" onClick={() => setShowCreate(false)} style={{ fontSize: 12 }}>Cancel</button>
-                        <button className="btn btn-primary" onClick={handleCreate} disabled={!newTitle.trim() || !newProject.trim()} style={{ fontSize: 12 }}>Create</button>
+                        <div className="flex-1" />
+                        <button className="btn btn-secondary text-base" onClick={() => setShowCreate(false)}>Cancel</button>
+                        <button className="btn btn-primary text-base" onClick={handleCreate} disabled={!newTitle.trim() || !newProject.trim()}>Create</button>
                     </div>
                 </div>
             )}
 
             {/* View Toggle & Filters */}
-            <div className="filter-bar" style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                <div style={{ display: 'flex', borderRadius: 6, overflow: 'hidden', border: '1px solid var(--border)' }}>
+            <div className="filter-bar flex-row flex-wrap gap-8">
+                <div className="flex-row" style={{ borderRadius: 6, overflow: 'hidden', border: '1px solid var(--border)' }}>
                     <button className={view === 'kanban' ? 'btn btn-primary' : 'btn btn-secondary'} onClick={() => setView('kanban')} style={{ borderRadius: 0, fontSize: 12 }}>⊞ Kanban</button>
                     <button className={view === 'list' ? 'btn btn-primary' : 'btn btn-secondary'} onClick={() => setView('list')} style={{ borderRadius: 0, fontSize: 12 }}>☰ List</button>
                 </div>
@@ -345,7 +400,7 @@ export default function TasksPage() {
                     grouped
                     width="200px"
                 />
-                <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--text-tertiary)' }}>{filtered.length} tasks</span>
+                <span className="text-base text-tertiary" style={{ marginLeft: 'auto' }}>{filtered.length} tasks</span>
             </div>
 
             {tasks === null ? (
