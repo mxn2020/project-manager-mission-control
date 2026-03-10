@@ -272,6 +272,121 @@ http.route({
     }),
 });
 
+// ─── Vercel OAuth: Authorize ────────────────────────────────────────────
+
+http.route({
+    path: "/vercel/authorize",
+    method: "GET",
+    handler: httpAction(async (_ctx, request) => {
+        const clientId = process.env.VERCEL_CLIENT_ID;
+        if (!clientId) {
+            return jsonResponse(500, { error: "VERCEL_CLIENT_ID not configured" });
+        }
+
+        const url = new URL(request.url);
+        const sessionToken = url.searchParams.get("session");
+        if (!sessionToken) {
+            return jsonResponse(400, { error: "Missing session parameter" });
+        }
+
+        const state = btoa(sessionToken);
+
+        const vercelUrl = `https://vercel.com/integrations/${clientId}/new?state=${state}`;
+
+        return new Response(null, {
+            status: 302,
+            headers: { Location: vercelUrl },
+        });
+    }),
+});
+
+// ─── Vercel OAuth: Callback ─────────────────────────────────────────────
+
+http.route({
+    path: "/vercel/callback",
+    method: "GET",
+    handler: httpAction(async (ctx, request) => {
+        const clientId = process.env.VERCEL_CLIENT_ID;
+        const clientSecret = process.env.VERCEL_CLIENT_SECRET;
+        if (!clientId || !clientSecret) {
+            return jsonResponse(500, { error: "Vercel OAuth not configured" });
+        }
+
+        const url = new URL(request.url);
+        const code = url.searchParams.get("code");
+        const state = url.searchParams.get("state");
+
+        if (!code || !state) {
+            return jsonResponse(400, { error: "Missing code or state" });
+        }
+
+        // Decode session token from state
+        let sessionToken: string;
+        try {
+            sessionToken = atob(state);
+        } catch {
+            return jsonResponse(400, { error: "Invalid state" });
+        }
+
+        try {
+            // 1. Exchange code for access token (client_secret_post method)
+            const tokenRes = await fetch("https://api.vercel.com/v2/oauth/access_token", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/x-www-form-urlencoded",
+                },
+                body: new URLSearchParams({
+                    client_id: clientId,
+                    client_secret: clientSecret,
+                    code,
+                    redirect_uri: `${url.origin}/vercel/callback`,
+                }).toString(),
+            });
+
+            const tokenData = await tokenRes.json() as {
+                access_token?: string;
+                token_type?: string;
+                team_id?: string | null;
+                error?: string;
+                error_description?: string;
+            };
+
+            if (!tokenData.access_token) {
+                console.error("[Vercel OAuth] Token exchange failed:", tokenData);
+                return jsonResponse(400, { error: tokenData.error_description || tokenData.error || "Failed to get access token" });
+            }
+
+            // 2. Resolve session → user → org
+            console.log('[Vercel OAuth] Resolving session token:', sessionToken.slice(0, 8) + '...');
+            const session = await ctx.runQuery(internal.githubOAuth.resolveSession, {
+                token: sessionToken,
+            });
+            console.log('[Vercel OAuth] Session resolved:', session ? `orgId=${session.orgId}` : 'null');
+
+            if (!session?.orgId) {
+                return jsonResponse(401, { error: "Invalid or expired session" });
+            }
+
+            // 3. Store token on organization
+            await ctx.runMutation(internal.vercel.saveVercelTokenInternal, {
+                orgId: session.orgId as Id<"organizations">,
+                vercelToken: tokenData.access_token,
+                vercelTeamId: tokenData.team_id || undefined,
+            });
+
+            // 4. Redirect back to the app
+            const appUrl = process.env.APP_URL || "https://mission-control-app-green.vercel.app";
+            return new Response(null, {
+                status: 302,
+                headers: { Location: `${appUrl}/integrations?vercel=connected` },
+            });
+        } catch (err: unknown) {
+            console.error("Vercel OAuth callback error:", err);
+            return jsonResponse(500, { error: err instanceof Error ? err.message : String(err) || "OAuth callback failed" });
+        }
+    }),
+});
+
 // ─── Helpers ─────────────────────────────────────────────────────────────
 
 function validateWebhookAuth(request: Request): Response | null {

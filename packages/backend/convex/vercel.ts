@@ -1,4 +1,4 @@
-import { action, mutation, query, internalQuery } from "./_generated/server";
+import { action, mutation, query, internalMutation, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 
@@ -20,6 +20,21 @@ async function vercelFetch(path: string, token: string, teamId?: string, options
 // ─── Token Management ────────────────────────────────────────────────────
 
 export const saveVercelToken = mutation({
+    args: {
+        orgId: v.id("organizations"),
+        vercelToken: v.string(),
+        vercelTeamId: v.optional(v.string()),
+    },
+    handler: async (ctx, args) => {
+        await ctx.db.patch(args.orgId, {
+            vercelToken: args.vercelToken,
+            vercelTeamId: args.vercelTeamId,
+        });
+    },
+});
+
+// Internal version for OAuth callback
+export const saveVercelTokenInternal = internalMutation({
     args: {
         orgId: v.id("organizations"),
         vercelToken: v.string(),

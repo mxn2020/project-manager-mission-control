@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@mission-control/backend/convex/_generated/api';
 import { useAuth } from '../hooks/useAuth';
@@ -25,17 +25,12 @@ export default function IntegrationsPage() {
 
     // ── Vercel ────────────────────────────────────────────────────────
     const vercelConnection = useQuery(api.vercel.getVercelConnection, typedOrgId ? { orgId: typedOrgId } : 'skip');
-    const saveVercelTokenMut = useMutation(api.vercel.saveVercelToken);
     const revokeVercel = useMutation(api.vercel.revokeVercelToken);
-    const [showVercelDialog, setShowVercelDialog] = useState(false);
-    const [vercelToken, setVercelToken] = useState('');
-    const [vercelTeamId, setVercelTeamId] = useState('');
-    const [vercelSaving, setVercelSaving] = useState(false);
 
     // Check for OAuth callback redirect
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
-        if (params.get('github') === 'connected') {
+        if (params.get('github') === 'connected' || params.get('vercel') === 'connected') {
             window.history.replaceState({}, '', window.location.pathname);
         }
     }, []);
@@ -54,26 +49,10 @@ export default function IntegrationsPage() {
 
     // ── Vercel handlers ───────────────────────────────────────────────
     const connectVercel = () => {
-        setVercelToken('');
-        setVercelTeamId('');
-        setShowVercelDialog(true);
-    };
-
-    const saveVercel = async () => {
-        if (!typedOrgId || !vercelToken.trim()) return;
-        setVercelSaving(true);
-        try {
-            await saveVercelTokenMut({
-                orgId: typedOrgId,
-                vercelToken: vercelToken.trim(),
-                vercelTeamId: vercelTeamId.trim() || undefined,
-            });
-            toast.success('Vercel connected!');
-            setShowVercelDialog(false);
-        } catch (err) {
-            toast.error(getErrorMessage(err));
-        }
-        setVercelSaving(false);
+        if (!sessionToken) return;
+        const convexUrl = import.meta.env.VITE_CONVEX_URL?.replace('.cloud', '.site') || '';
+        const authorizeUrl = `${convexUrl}/vercel/authorize?session=${encodeURIComponent(sessionToken)}`;
+        window.location.href = authorizeUrl;
     };
 
     const disconnectVercel = async () => {
@@ -271,93 +250,7 @@ export default function IntegrationsPage() {
                 ))}
             </div>
 
-            {/* ── Vercel Token Dialog ────────────────────────────────── */}
-            {showVercelDialog && (
-                <div style={{
-                    position: 'fixed', inset: 0, zIndex: 9999,
-                    background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }} onClick={() => setShowVercelDialog(false)}>
-                    <div onClick={e => e.stopPropagation()} style={{
-                        background: 'var(--bg-secondary)', borderRadius: 12,
-                        border: '1px solid var(--border)', padding: 24,
-                        maxWidth: 460, width: '90%',
-                        boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
-                    }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-                            <span style={{ fontSize: 24 }}>▲</span>
-                            <h3 style={{ margin: 0 }}>Connect Vercel</h3>
-                        </div>
 
-                        <p className="text-sm text-tertiary" style={{ marginBottom: 16, lineHeight: 1.5 }}>
-                            Enter your Vercel personal access token. You can create one at{' '}
-                            <a href="https://vercel.com/account/tokens" target="_blank" rel="noreferrer"
-                                style={{ color: 'var(--accent)', textDecoration: 'none' }}>
-                                vercel.com/account/tokens
-                            </a>.
-                        </p>
-
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                            <div>
-                                <label className="text-xs font-semibold" style={{ display: 'block', marginBottom: 4 }}>
-                                    API Token *
-                                </label>
-                                <input
-                                    type="password"
-                                    value={vercelToken}
-                                    onChange={e => setVercelToken(e.target.value)}
-                                    placeholder="vercel_xxxxxxxxxxxxxxxxxxxxxxxx"
-                                    style={{
-                                        width: '100%', padding: '8px 12px', borderRadius: 6,
-                                        border: '1px solid var(--border)', background: 'var(--bg-primary)',
-                                        color: 'var(--text-primary)', fontSize: 13,
-                                        boxSizing: 'border-box', fontFamily: 'monospace',
-                                    }}
-                                />
-                            </div>
-
-                            <div>
-                                <label className="text-xs font-semibold" style={{ display: 'block', marginBottom: 4 }}>
-                                    Team ID <span className="text-tertiary">(optional)</span>
-                                </label>
-                                <input
-                                    type="text"
-                                    value={vercelTeamId}
-                                    onChange={e => setVercelTeamId(e.target.value)}
-                                    placeholder="team_xxxxxxxxxxxxxxxxxxxxxxxx"
-                                    style={{
-                                        width: '100%', padding: '8px 12px', borderRadius: 6,
-                                        border: '1px solid var(--border)', background: 'var(--bg-primary)',
-                                        color: 'var(--text-primary)', fontSize: 13,
-                                        boxSizing: 'border-box', fontFamily: 'monospace',
-                                    }}
-                                />
-                                <p className="text-xs text-tertiary" style={{ marginTop: 4 }}>
-                                    Leave empty for personal account. Find your team ID in Vercel settings.
-                                </p>
-                            </div>
-                        </div>
-
-                        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 20 }}>
-                            <button
-                                className="btn btn-secondary"
-                                onClick={() => setShowVercelDialog(false)}
-                                disabled={vercelSaving}
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                className="btn btn-primary"
-                                onClick={saveVercel}
-                                disabled={!vercelToken.trim() || vercelSaving}
-                                style={{ fontWeight: 600 }}
-                            >
-                                {vercelSaving ? '⏳ Saving...' : '▲ Connect Vercel'}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
         </div>
     );
 }
