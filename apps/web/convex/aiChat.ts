@@ -23,6 +23,7 @@ const FALLBACK_CONFIG = {
     maxTokens: 2048,
     historyLength: 10,
     toolsEnabled: true,
+    systemPrompt: null as string | null,
     costs: { input: 0, output: 0, thinking: 0 },
 };
 
@@ -42,7 +43,15 @@ export const chat = action({
         chatbotConfigId: v.optional(v.id("chatbotConfigs")),
         personaId: v.optional(v.string()),
     },
-    handler: async (ctx, args) => {
+    handler: async (ctx, args): Promise<{
+        response: string;
+        model: string;
+        provider: string;
+        tokens: { prompt: number; completion: number; total: number };
+        costCents: number;
+        durationMs: number;
+        toolCalls: string[];
+    }> => {
         const startTime = Date.now();
 
         // 1. Fetch config from Convex
@@ -96,7 +105,7 @@ export const chat = action({
                 if (!toolCall) break;
 
                 // Execute tool against Convex
-                const result = await executeToolInConvex(ctx, toolCall.name, toolCall.arguments, args.orgId);
+                const result = await executeToolInConvex(ctx as unknown as ActionCtx, toolCall.name, toolCall.arguments, args.orgId);
                 toolCallsLog.push({ name: toolCall.name, args: toolCall.arguments, result });
 
                 fullMessages.push({ role: "assistant", content: response });
@@ -355,8 +364,14 @@ export const saveChatMessage = internalMutation({
 
 // ─── Tool Execution ──────────────────────────────────────────────────────
 
+interface ActionCtx {
+    runQuery: (...args: unknown[]) => Promise<unknown>;
+    runMutation: (...args: unknown[]) => Promise<unknown>;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function executeToolInConvex(
-    ctx: any,
+    ctx: ActionCtx,
     name: string,
     args: Record<string, unknown>,
     orgId: string | undefined

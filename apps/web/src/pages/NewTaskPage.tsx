@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { useAuth } from '../hooks/useAuth';
+import type { Id } from '../lib/types';
 import { useProjects } from '../hooks/useProjects';
 import SearchableSelect, { type SelectOption } from '../components/SearchableSelect';
 
@@ -47,7 +48,7 @@ export default function NewTaskPage() {
         return (projectData?.projects ?? []).map(p => {
             const segs = p.path ? p.path.split('/') : [p.name || 'Unknown'];
             return {
-                value: p.id || p.path,
+                value: p.path,
                 label: segs[segs.length - 1] || p.path,
                 sublabel: segs.length > 1 ? segs.slice(0, -1).join('/') : undefined,
                 group: segs[0] || 'root',
@@ -64,17 +65,17 @@ export default function NewTaskPage() {
         try {
             await createTask({
                 orgId: orgId as Id<"organizations">,
-                projectId: project.trim() ? project as string : undefined,
+                projectId: (project.trim() || undefined) as unknown as Id<"projects"> | undefined,
                 title: title.trim(),
                 priority,
                 effort,
                 description: description.trim(),
-                type: type,
+                taskType: type,
                 status: 'todo',
             });
             navigate('/tasks');
         } catch (err: unknown) {
-            setError(err.message || 'Failed to create task');
+            setError(err instanceof Error ? err.message : String(err) || 'Failed to create task');
         } finally {
             setSubmitting(false);
         }

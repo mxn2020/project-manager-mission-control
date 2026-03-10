@@ -37,6 +37,7 @@ import DeleteProjectPage from './pages/DeleteProjectPage';
 import AgentRunsPage from './pages/AgentRunsPage';
 import AIPlaygroundPage from './pages/AIPlaygroundPage';
 import IntegrationsPage from './pages/IntegrationsPage';
+import type { Id } from './lib/types';
 
 function AppShell() {
   const location = useLocation();
@@ -266,7 +267,7 @@ function AppShell() {
 }
 
 function AISidebar({ userId }: { userId?: string }) {
-  const sessions = useQuery(api.chatSessions.listSessions, userId ? { userId: userId as any } : 'skip');
+  const sessions = useQuery(api.chatSessions.listSessions, userId ? { userId: userId as Id<"users"> } : 'skip');
   const createSession = useMutation(api.chatSessions.createSession);
   const deleteSess = useMutation(api.chatSessions.deleteSession);
 
@@ -301,7 +302,7 @@ function AISidebar({ userId }: { userId?: string }) {
           style={{ cursor: 'pointer', width: '100%', textAlign: 'left', border: 'none', background: 'none', color: 'inherit', font: 'inherit', padding: '6px 8px' }}
           onClick={async () => {
             if (!userId) return;
-            const id = await createSession({ userId: userId as any });
+            const id = await createSession({ userId: userId as Id<"users"> });
             navigate(id);
           }}
         >
@@ -311,7 +312,7 @@ function AISidebar({ userId }: { userId?: string }) {
       {sessions && sessions.length > 0 && (
         <div className="sidebar-section">
           <div className="sidebar-section-title">Recent</div>
-          {sessions.slice(0, 20).map((s: any) => (
+          {sessions.slice(0, 20).map((s: NonNullable<typeof sessions>[number]) => (
             <div
               key={s._id}
               className={`nav-link ${activeSession === s._id ? 'active' : ''}`}
@@ -328,7 +329,7 @@ function AISidebar({ userId }: { userId?: string }) {
                   title="Delete session"
                   onClick={async (e) => {
                     e.stopPropagation();
-                    await deleteSess({ id: s._id as any });
+                    await deleteSess({ id: s._id });
                     if (activeSession === s._id) navigate();
                   }}
                 >✕</button>

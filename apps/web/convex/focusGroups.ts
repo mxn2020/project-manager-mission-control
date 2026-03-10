@@ -108,7 +108,7 @@ export const updateDimensionsConfig = mutation({
                 orgId,
                 updatedAt: Date.now(),
                 ...clean,
-            } as any);
+            });
         }
     },
 });

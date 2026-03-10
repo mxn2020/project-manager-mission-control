@@ -18,7 +18,7 @@ interface PendingChange {
 
 const SAVE_DEBOUNCE_MS = 1500;
 
-export default function KanbanPage({ data, onRefresh }: { data: StatusData; onRefresh: () => Promise<void> }) {
+export default function KanbanPage({ data, onRefresh }: { data: StatusData; onRefresh: () => void | Promise<void> }) {
     const navigate = useNavigate();
     const { dimensions } = useDimensions(data.projects);
     const [urlFilters, setUrlFilter] = useUrlFilters({ columns: localStorage.getItem('mc-kanban-dim') || 'tier' });
@@ -163,7 +163,7 @@ export default function KanbanPage({ data, onRefresh }: { data: StatusData; onRe
             return p.name === projectName;
         });
         if (!project) return;
-        const currentValue = ((project as Record<string, unknown>)[activeDimension.field]);
+        const currentValue = ((project as unknown as Record<string, unknown>)[activeDimension.field]);
         if (currentValue === targetValue) return;
 
         // Optimistic update: apply override immediately

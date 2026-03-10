@@ -47,8 +47,10 @@ export default function FilesPage() {
     const getRepoForProject = useCallback((projectPath: string) => {
         const project = projects.find(p => p.path === projectPath || p.name === projectPath);
         if (!project) return null;
-        // Check linked repos
-        const linked = linkedRepos?.find(r => r.projectId === project._id);
+        // Check linked repos by matching repoFullName
+        const repoMatch = project.repo ? project.repo.match(/github\.com\/([^\/]+\/[^\/]+)/) : null;
+        const repoName = repoMatch ? repoMatch[1].replace(/\.git$/, '') : null;
+        const linked = repoName ? linkedRepos?.find(r => r.repoFullName === repoName) : undefined;
         if (linked) return { repoFullName: linked.repoFullName, branch: linked.defaultBranch || 'main' };
         // Fall back to repo URL in project data
         if (project.repo) {
@@ -79,7 +81,7 @@ export default function FilesPage() {
                 setFileContent({ name: result.name || subPath.split('/').pop() || '', content: result.content || '' });
             }
         } catch (err: unknown) {
-            setError(err.message);
+            setError(err instanceof Error ? err.message : String(err));
             setEntries([]);
         } finally {
             setLoading(false);
@@ -101,7 +103,7 @@ export default function FilesPage() {
             });
             setFileContent({ name: result.name, content: result.content });
         } catch (err: unknown) {
-            setError(err.message);
+            setError(err instanceof Error ? err.message : String(err));
         } finally {
             setLoading(false);
         }

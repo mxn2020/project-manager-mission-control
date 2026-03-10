@@ -5,6 +5,7 @@ import { useProjects } from '../hooks/useProjects';
 import { useAuth } from '../hooks/useAuth';
 import SearchableSelect, { type SelectOption } from '../components/SearchableSelect';
 import { PageHeader, EmptyState } from '../components/ui';
+import type { Id } from '../lib/types';
 
 const STATUS_FLOW = [
     { key: 'draft', label: 'Draft', icon: '📝', color: '#a78bfa' },

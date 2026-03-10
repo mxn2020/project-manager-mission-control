@@ -140,7 +140,7 @@ export const listPrompts = query({
         // Also get global (orgId = null) prompts
         const globalPrompts = await ctx.db
             .query("systemPrompts")
-            .withIndex("by_org", (idx) => idx.eq("orgId", undefined as any))
+            .withIndex("by_org", (idx) => idx.eq("orgId", undefined!))
             .collect();
         prompts.push(...globalPrompts);
         return prompts;
@@ -214,7 +214,7 @@ export const listTools = query({
         // Also get built-in (global) tools
         const globalTools = await ctx.db
             .query("toolDefinitions")
-            .withIndex("by_org", (idx) => idx.eq("orgId", undefined as any))
+            .withIndex("by_org", (idx) => idx.eq("orgId", undefined!))
             .collect();
         tools.push(...globalTools);
         return tools;

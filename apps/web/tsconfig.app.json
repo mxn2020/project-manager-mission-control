@@ -10,7 +10,8 @@
     ],
     "module": "ESNext",
     "types": [
-      "vite/client"
+      "vite/client",
+      "node"
     ],
     "skipLibCheck": true,
     /* Bundler mode */
@@ -23,18 +24,25 @@
     /* Linting */
     "strict": true,
     "noUnusedLocals": false,
-    "noUnusedParameters": true,
+    "noUnusedParameters": false,
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true,
     /* Monorepo path aliases */
     "paths": {
-      "@mission-control/types": ["../../packages/types/src/index.ts"],
-      "@mission-control/api": ["../../packages/api/src/index.ts"],
-      "@mission-control/hooks": ["../../packages/hooks/src/index.ts"]
+      "@mission-control/types": [
+        "../../packages/types/src/index.ts"
+      ],
+      "@mission-control/api": [
+        "../../packages/api/src/index.ts"
+      ],
+      "@mission-control/hooks": [
+        "../../packages/hooks/src/index.ts"
+      ]
     }
   },
   "include": [
-    "src"
+    "src",
+    "convex"
   ]
 }

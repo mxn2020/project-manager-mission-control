@@ -8,8 +8,20 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 export interface MinionRecord {
+    [key: string]: unknown;
     id: string;
     type: string;
+    slug?: string;
+    name?: string;
+    icon?: string;
+    title?: string;
+    status?: string;
+    priority?: string;
+    minionTypeId?: string;
+    fields?: Record<string, unknown>;
+    tags?: string[];
+    createdAt?: string;
+    updatedAt?: string;
     data: Record<string, unknown>;
 }
 

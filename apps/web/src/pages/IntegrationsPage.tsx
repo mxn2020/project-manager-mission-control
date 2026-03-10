@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { useAuth } from '../hooks/useAuth';
+import type { Id } from '../lib/types';
 
 interface IntegrationCard {
     id: string;
@@ -16,7 +17,8 @@ interface IntegrationCard {
 
 export default function IntegrationsPage() {
     const { orgId, token: sessionToken } = useAuth();
-    const githubConnection = useQuery(api.github.getGithubConnection, orgId ? { orgId } : 'skip');
+    const typedOrgId = orgId as Id<"organizations"> | undefined;
+    const githubConnection = useQuery(api.github.getGithubConnection, typedOrgId ? { orgId: typedOrgId } : 'skip');
     const revokeGithub = useMutation(api.github.revokeGithubToken);
 
     // Check for OAuth callback redirect
@@ -35,8 +37,8 @@ export default function IntegrationsPage() {
     };
 
     const disconnectGithub = async () => {
-        if (!orgId) return;
-        await revokeGithub({ orgId });
+        if (!typedOrgId) return;
+        await revokeGithub({ orgId: typedOrgId });
     };
 
     const integrations: IntegrationCard[] = [

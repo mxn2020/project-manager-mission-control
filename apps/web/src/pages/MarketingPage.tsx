@@ -6,6 +6,7 @@ import { useAuth } from '../hooks/useAuth';
 import SearchableSelect, { type SelectOption } from '../components/SearchableSelect';
 import MultiSelect from '../components/MultiSelect';
 import PromptDialog from '../components/PromptDialog';
+import type { Id } from '../lib/types';
 
 const CATEGORIES = [
     { value: 'product-launch', label: 'Product Launch', icon: '🚀' },
@@ -231,7 +232,7 @@ export default function MarketingPage() {
                                             <span>· {(plan.linkedProjects || []).length} projects</span>
                                             {plan.budget && <span>· 💰 {plan.budget}</span>}
                                             {(plan.startDate || plan.endDate) && (
-                                                <span>· {formatDate(plan.startDate)}{plan.endDate ? ` – ${formatDate(plan.endDate)}` : ''}</span>
+                                                <span>· {formatDate(plan.startDate || '')}{plan.endDate ? ` – ${formatDate(plan.endDate)}` : ''}</span>
                                             )}
                                         </div>
                                     </div>

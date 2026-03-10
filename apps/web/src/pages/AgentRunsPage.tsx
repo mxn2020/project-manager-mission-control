@@ -3,6 +3,7 @@ import { api } from '../../convex/_generated/api';
 import { useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import SearchableSelect from '../components/SearchableSelect';
+import type { Id } from '../lib/types';
 
 export default function AgentRunsPage() {
     const { user } = useAuth();

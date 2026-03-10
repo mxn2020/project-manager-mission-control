@@ -8,6 +8,7 @@ import { useUrlFilters } from '../hooks/useUrlFilters';
 import { useIsMobile } from '../hooks/useMediaQuery';
 import SearchableSelect, { type SelectOption } from '../components/SearchableSelect';
 import { PageHeader, GripIcon } from '../components/ui';
+import type { Id } from '../lib/types';
 
 const STATUS_COLS = [
     { key: 'todo', label: 'To Do', icon: '📋', color: '#60a5fa' },
@@ -97,7 +98,7 @@ export default function TasksPage() {
             orgId,
             title: newTitle.trim(),
             projectPath: newProject.trim() || '(general)',
-            projectId: projMatch?.id as Id<"projects">,
+            projectId: (projMatch?.path || newProject.trim()) as unknown as Id<"projects">,
             priority: newPriority,
             effort: newEffort,
             description: newDescription.trim(),

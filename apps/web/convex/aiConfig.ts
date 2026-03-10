@@ -111,9 +111,9 @@ export const upsertModel = mutation({
             await ctx.db.patch(id, fields);
             return id;
         }
+        const { id: _id, ...insertFields } = args;
         return await ctx.db.insert("aiModels", {
-            ...args,
-            id: undefined,
+            ...insertFields,
             createdAt: Date.now(),
         });
     },
@@ -186,28 +186,26 @@ export const updateSettings = mutation({
             .withIndex("by_user", (q) => q.eq("userId", args.userId))
             .first();
 
-        const { userId, ...updates } = args;
-        // Filter out undefined values
-        const cleanUpdates: Record<string, any> = {};
-        for (const [k, val] of Object.entries(updates)) {
-            if (val !== undefined) cleanUpdates[k] = val;
-        }
-        cleanUpdates.updatedAt = Date.now();
-
         if (existing) {
+            const { userId: _uid, ...updates } = args;
+            const cleanUpdates: Record<string, unknown> = {};
+            for (const [k, val] of Object.entries(updates)) {
+                if (val !== undefined) cleanUpdates[k] = val;
+            }
+            cleanUpdates.updatedAt = Date.now();
             await ctx.db.patch(existing._id, cleanUpdates);
             return existing._id;
         }
 
         return await ctx.db.insert("aiSettings", {
-            userId,
-            temperature: cleanUpdates.temperature ?? 0.7,
-            maxResponseTokens: cleanUpdates.maxResponseTokens ?? 2048,
-            historyLength: cleanUpdates.historyLength ?? 10,
-            toolsEnabled: cleanUpdates.toolsEnabled ?? true,
-            enabledTools: cleanUpdates.enabledTools,
-            systemPromptOverride: cleanUpdates.systemPromptOverride,
-            defaultModelId: cleanUpdates.defaultModelId,
+            userId: args.userId,
+            temperature: args.temperature ?? 0.7,
+            maxResponseTokens: args.maxResponseTokens ?? 2048,
+            historyLength: args.historyLength ?? 10,
+            toolsEnabled: args.toolsEnabled ?? true,
+            enabledTools: args.enabledTools,
+            systemPromptOverride: args.systemPromptOverride,
+            defaultModelId: args.defaultModelId,
             updatedAt: Date.now(),
         });
     },

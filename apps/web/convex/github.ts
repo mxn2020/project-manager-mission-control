@@ -96,7 +96,7 @@ export const saveGithubToken = internalMutation({
         await ctx.db.patch(args.orgId, {
             githubToken: args.githubToken,
             ...(args.githubUsername ? { githubUsername: args.githubUsername } : {}),
-        } as any);
+        });
     },
 });
 
@@ -106,8 +106,8 @@ export const getGithubConnection = query({
         const org = await ctx.db.get(args.orgId);
         if (!org) return null;
         return {
-            connected: !!(org as any).githubToken,
-            username: (org as any).githubUsername || null,
+            connected: !!org?.githubToken,
+            username: org?.githubUsername || null,
         };
     },
 });
@@ -118,7 +118,7 @@ export const revokeGithubToken = mutation({
         await ctx.db.patch(args.orgId, {
             githubToken: undefined,
             githubUsername: undefined,
-        } as any);
+        });
     },
 });
 
@@ -127,7 +127,7 @@ export const getOrgGithubToken = internalQuery({
     args: { orgId: v.id("organizations") },
     handler: async (ctx, args) => {
         const org = await ctx.db.get(args.orgId);
-        return (org as any)?.githubToken || undefined;
+        return org?.githubToken || undefined;
     },
 });
 
@@ -238,12 +238,12 @@ export const browseContents = action({
         const data = await res.json();
         if (!Array.isArray(data)) {
             // It's a single file, not a directory
-            return { type: 'file' as const, content: (data as any).content ? atob((data as any).content) : '', name: (data as any).name, size: (data as any).size };
+            return { type: 'file' as const, content: data.content ? atob(data.content) : '', name: data.name, size: data.size };
         }
 
         return {
             type: 'directory' as const,
-            entries: (data as any[]).map((item: any) => ({
+            entries: (data as Array<{ name: string; type: string; path: string; size?: number; sha?: string }>).map((item) => ({
                 name: item.name,
                 path: item.path,
                 type: item.type as 'file' | 'dir',

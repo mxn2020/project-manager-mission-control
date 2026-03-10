@@ -3,6 +3,8 @@ import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { useProjects } from '../hooks/useProjects';
 import SearchableSelect, { type SelectOption } from '../components/SearchableSelect';
+import { useAuth } from '../hooks/useAuth';
+import type { Id } from '../lib/types';
 
 import { PageHeader } from '../components/ui';
 
@@ -22,6 +24,7 @@ export default function CostPage() {
     const summary = useQuery(api.costs.getCostSummary);
     const createCost = useMutation(api.costs.createCost);
     const deleteCost = useMutation(api.costs.deleteCost);
+    const { orgId } = useAuth();
 
     const [showCreate, setShowCreate] = useState(false);
     const [groupBy, setGroupBy] = useState<'project' | 'category'>('category');
@@ -48,8 +51,9 @@ export default function CostPage() {
     const categoryOptions: SelectOption[] = CATEGORIES.map(c => ({ value: c, label: c, icon: CATEGORY_ICONS[c] || '📦' }));
 
     const handleCreate = async () => {
-        if (!newProject.trim() || !newName.trim() || !newCost) return;
+        if (!newProject.trim() || !newName.trim() || !newCost || !orgId) return;
         await createCost({
+            orgId: orgId as Id<"organizations">,
             projectPath: newProject.trim(),
             category: newCategory,
             name: newName.trim(),
@@ -63,7 +67,7 @@ export default function CostPage() {
     };
 
     // Group costs
-    const grouped: Record<string, any[]> = {};
+    const grouped: Record<string, typeof allCosts> = {};
     for (const c of allCosts) {
         const key = groupBy === 'category' ? c.category : c.projectPath;
         if (!grouped[key]) grouped[key] = [];

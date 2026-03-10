@@ -1,6 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useMinionsSDK } from '../hooks/useMinionsSDK';
-import type { Minion, MinionType } from 'minions-sdk';
+import { useMinionsSDK, type MinionRecord } from '../hooks/useMinionsSDK';
+import type { MinionType } from 'minions-sdk';
+
+// Use MinionRecord since that's what the SDK hook returns
+type Minion = MinionRecord;
 
 export default function MinionsPage() {
     const { client, list, create, remove, search, registry } = useMinionsSDK();

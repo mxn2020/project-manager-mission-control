@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { useAuth } from '../hooks/useAuth';
+import type { Id } from '../lib/types';
 import SearchableSelect, { type SelectOption } from './SearchableSelect';
 import { TIER_ORDER, PRIORITY_ORDER, TIER_CONFIG, PRIORITY_CONFIG } from '../lib/types';
 
@@ -45,7 +46,7 @@ export default function CreateProjectModal({ onClose, onCreated, lanes }: Create
     };
 
     const { user } = useAuth();
-    const orgId = (user as any)?.orgId;
+    const orgId = user?.orgId;
     const createProject = useMutation(api.projects.create);
 
     const handleSubmit = async () => {
@@ -55,7 +56,7 @@ export default function CreateProjectModal({ onClose, onCreated, lanes }: Create
         setError('');
         try {
             const newProjectId = await createProject({
-                orgId: orgId as any,
+                orgId: orgId as Id<"organizations">,
                 name: name.trim(),
                 lane,
                 tier,
@@ -67,8 +68,8 @@ export default function CreateProjectModal({ onClose, onCreated, lanes }: Create
             });
             onCreated(newProjectId as string);
             onClose();
-        } catch (err: any) {
-            setError(err.message);
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : String(err));
         } finally {
             setSubmitting(false);
         }

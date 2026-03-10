@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { StatusData, Project, Tier } from '../lib/types';
 import { TIER_CONFIG, LANE_COLORS } from '../lib/types';
-import { groupByDimension } from '../lib/dimensions';
+import { groupByDimension, type Dimension } from '../lib/dimensions';
 import { useDimensions } from '../hooks/useDimensions';
 import { useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
@@ -96,7 +96,7 @@ function AddToFocusDialog({
 
 // ─── Focus Page ───────────────────────────────────────────────────────────────
 
-export default function FocusPage({ data, onRefresh }: { data: StatusData; onRefresh: () => Promise<void> }) {
+export default function FocusPage({ data, onRefresh }: { data: StatusData; onRefresh: () => void | Promise<void> }) {
     const navigate = useNavigate();
     const { dimensions, focusGroup, loaded, addToFocus, removeFromFocus, togglePin, isPinned, saveFocusGroup } = useDimensions(data.projects);
     const [view, setView] = useState<'list' | 'grid' | 'kanban'>('list');
@@ -210,7 +210,7 @@ export default function FocusPage({ data, onRefresh }: { data: StatusData; onRef
         const projectPath = e.dataTransfer.getData('text/plain');
         if (!projectPath) return;
         const project = focusProjects.find(p => p.path === projectPath);
-        if (!project || ((project as Record<string, unknown>)[activeDimension.field]) === targetValue) return;
+        if (!project || ((project as unknown as Record<string, unknown>)[activeDimension.field]) === targetValue) return;
         setOverrides(prev => ({ ...prev, [projectPath]: { ...prev[projectPath], [activeDimension.field]: targetValue } }));
         pendingRef.current.push({ projectPath, field: activeDimension.field, newValue: targetValue });
         if (timerRef.current) clearTimeout(timerRef.current);

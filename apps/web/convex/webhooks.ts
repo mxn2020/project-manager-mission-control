@@ -142,11 +142,11 @@ export const processVoiceMemo = internalAction({
                 result: extracted,
                 durationMs: Date.now() - startTime,
             });
-        } catch (err: any) {
+        } catch (err: unknown) {
             await ctx.runMutation(internal.webhooks.updateWebhookLog, {
                 logId: args.logId,
                 status: "failed",
-                error: (err.message || String(err)).slice(0, 2000),
+                error: (err instanceof Error ? err.message : String(err) || String(err)).slice(0, 2000),
                 durationMs: Date.now() - startTime,
             });
         }
@@ -190,11 +190,11 @@ export const processTextInput = internalAction({
                 result: extracted,
                 durationMs: Date.now() - startTime,
             });
-        } catch (err: any) {
+        } catch (err: unknown) {
             await ctx.runMutation(internal.webhooks.updateWebhookLog, {
                 logId: args.logId,
                 status: "failed",
-                error: (err.message || String(err)).slice(0, 2000),
+                error: (err instanceof Error ? err.message : String(err) || String(err)).slice(0, 2000),
                 durationMs: Date.now() - startTime,
             });
         }

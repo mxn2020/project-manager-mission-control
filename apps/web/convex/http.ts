@@ -90,8 +90,8 @@ http.route({
                 webhookLogId: logId,
                 message: "Voice memo received. Processing in background.",
             });
-        } catch (err: any) {
-            return jsonResponse(500, { error: err.message || "Internal server error" });
+        } catch (err: unknown) {
+            return jsonResponse(500, { error: err instanceof Error ? err.message : String(err) || "Internal server error" });
         }
     }),
 });
@@ -146,8 +146,8 @@ http.route({
                 webhookLogId: logId,
                 message: "Text received. Processing in background.",
             });
-        } catch (err: any) {
-            return jsonResponse(500, { error: err.message || "Internal server error" });
+        } catch (err: unknown) {
+            return jsonResponse(500, { error: err instanceof Error ? err.message : String(err) || "Internal server error" });
         }
     }),
 });
@@ -265,9 +265,9 @@ http.route({
                 status: 302,
                 headers: { Location: `${appUrl}/integrations?github=connected` },
             });
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error("GitHub OAuth callback error:", err);
-            return jsonResponse(500, { error: err.message || "OAuth callback failed" });
+            return jsonResponse(500, { error: err instanceof Error ? err.message : String(err) || "OAuth callback failed" });
         }
     }),
 });

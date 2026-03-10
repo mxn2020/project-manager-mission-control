@@ -31,11 +31,11 @@ export type { Doc, Id };
  * Shape returned by `api.auth.me` query.
  */
 export interface AuthUser {
-    id: string;
+    id: Id<'users'>;
     email: string;
     name?: string;
     role?: string;
-    orgId?: string;
+    orgId?: Id<'organizations'>;
     orgName?: string;
     orgSlug?: string;
 }
@@ -55,4 +55,12 @@ export type ConvexTask = Doc<'tasks'>;
  */
 export type ConvexCostEntry = Doc<'costEntries'>;
 
-
+/**
+ * Safely extract an error message from an unknown error value.
+ * Use in `catch (err: unknown)` blocks.
+ */
+export function getErrorMessage(err: unknown): string {
+    if (err instanceof Error) return err.message;
+    if (typeof err === 'string') return err;
+    return String(err);
+}

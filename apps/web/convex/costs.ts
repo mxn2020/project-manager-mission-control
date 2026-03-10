@@ -9,9 +9,8 @@ export const listCosts = query({
     },
     handler: async (ctx, args) => {
         if (args.projectPath) {
-            return await ctx.db.query("costEntries")
-                .withIndex("by_project", (qb) => qb.eq("projectPath", args.projectPath!))
-                .collect();
+            const all = await ctx.db.query("costEntries").collect();
+            return all.filter(e => e.projectPath === args.projectPath);
         }
         return await ctx.db.query("costEntries").collect();
     },
@@ -49,6 +48,7 @@ export const getCostSummary = query({
 
 export const createCost = mutation({
     args: {
+        orgId: v.id("organizations"),
         projectPath: v.string(),
         category: v.string(),
         name: v.string(),
@@ -59,6 +59,7 @@ export const createCost = mutation({
     handler: async (ctx, args) => {
         const now = Date.now();
         return await ctx.db.insert("costEntries", {
+            orgId: args.orgId,
             projectPath: args.projectPath,
             category: args.category,
             name: args.name,
@@ -82,9 +83,16 @@ export const updateCost = mutation({
     },
     handler: async (ctx, args) => {
         const { id, ...updates } = args;
-        const clean: Record<string, any> = {};
+        const clean: Partial<{
+            category: string;
+            name: string;
+            monthlyCost: number;
+            currency: string;
+            notes: string;
+            updatedAt: number;
+        }> = {};
         for (const [k, val] of Object.entries(updates)) {
-            if (val !== undefined) clean[k] = val;
+            if (val !== undefined) (clean as Record<string, unknown>)[k] = val;
         }
         clean.updatedAt = Date.now();
         await ctx.db.patch(id, clean);

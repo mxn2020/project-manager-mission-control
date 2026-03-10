@@ -1,7 +1,42 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef } from 'react';
 import { useQuery, useAction, useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { useAuth } from '../hooks/useAuth';
+import type { Id } from '../lib/types';
+
+interface VoiceModel {
+    _id: string | Id<"voiceModels">;
+    modelId?: string;
+    name: string;
+    displayName: string;
+    type: string;
+    provider: string;
+    apiFormat?: string;
+    isEnabled?: boolean;
+    isDefault?: boolean;
+    isBuiltIn?: boolean;
+    baseUrl?: string;
+    apiKeyEnvVar?: string;
+    config?: string;
+    languages?: string[];
+}
+
+interface LLMModel {
+    _id: string | Id<"aiModels">;
+    modelId: string;
+    displayName: string;
+    isEnabled: boolean;
+    isDefault: boolean;
+    contextWindow: number;
+    maxTokens: number;
+    costPerMillionInput: number;
+    costPerMillionOutput: number;
+    provider: {
+        _id: string;
+        name: string;
+        slug: string;
+    } | null;
+}
 
 type Tab = 'chat' | 'stt' | 'tts' | 'clone';
 
@@ -39,6 +74,10 @@ function base64ToAudioUrl(base64: string, mimeType: string): string {
     return URL.createObjectURL(new Blob([bytes], { type: mimeType }));
 }
 
+function getErrorMsg(err: unknown): string {
+    return err instanceof Error ? err.message : String(err);
+}
+
 export default function AIPlaygroundPage() {
     const { user } = useAuth();
     const [activeTab, setActiveTab] = useState<Tab>('chat');
@@ -50,8 +89,8 @@ export default function AIPlaygroundPage() {
     const transcribeAction = useAction(api.aiVoice.transcribe);
     const synthesizeAction = useAction(api.aiVoice.synthesize);
 
-    const sttModels = (voiceModels || []).filter(m => m.type === 'stt');
-    const ttsModels = (voiceModels || []).filter(m => m.type === 'tts');
+    const sttModels = (voiceModels || []).filter(m => m.type === 'stt') as VoiceModel[];
+    const ttsModels = (voiceModels || []).filter(m => m.type === 'tts') as VoiceModel[];
 
     const tabs: { id: Tab; label: string; icon: string }[] = [
         { id: 'chat', label: 'Chat (LLM)', icon: '💬' },
@@ -79,7 +118,6 @@ export default function AIPlaygroundPage() {
                 ))}
             </div>
 
-            {/* Seed button if no voice models */}
             {voiceModels && voiceModels.length === 0 && (
                 <div className="playground-seed-banner">
                     <span>No voice models found in database.</span>
@@ -90,7 +128,7 @@ export default function AIPlaygroundPage() {
             )}
 
             <div className="playground-content">
-                {activeTab === 'chat' && <ChatTab models={llmModels || []} aiChat={aiChat} userId={user?.id} />}
+                {activeTab === 'chat' && <ChatTab models={(llmModels || []) as LLMModel[]} aiChat={aiChat} userId={user?.id} />}
                 {activeTab === 'stt' && <STTTab models={sttModels} transcribe={transcribeAction} />}
                 {activeTab === 'tts' && <TTSTab models={ttsModels} synthesize={synthesizeAction} />}
                 {activeTab === 'clone' && <VoiceCloningTab models={ttsModels} synthesize={synthesizeAction} />}
@@ -103,14 +141,16 @@ export default function AIPlaygroundPage() {
 // TAB 1: Chat (LLM)
 // ═══════════════════════════════════════════════════════════════════════════
 
-function ChatTab({ models, aiChat, userId }: { models: VoiceModel[]; aiChat: { send: (args: Record<string, unknown>) => Promise<{ content: string }> }; userId?: string }) {
+type ChatAction = ReturnType<typeof useAction<typeof api.aiChat.chat>>;
+
+function ChatTab({ models, aiChat, userId }: { models: LLMModel[]; aiChat: ChatAction; userId?: string }) {
     const [prompt, setPrompt] = useState('');
     const [systemPrompt, setSystemPrompt] = useState('You are a helpful assistant. Be concise.');
     const [temperature, setTemperature] = useState(0.7);
     const [selectedProvider, setSelectedProvider] = useState('');
     const [selectedModelId, setSelectedModelId] = useState('');
     const [response, setResponse] = useState('');
-    const [meta, setMeta] = useState<any>(null);
+    const [meta, setMeta] = useState<Record<string, unknown> | null>(null);
     const [loading, setLoading] = useState(false);
 
     // Provider/model grouping
@@ -118,7 +158,7 @@ function ChatTab({ models, aiChat, userId }: { models: VoiceModel[]; aiChat: { s
         models
             .filter(m => m.provider && m.isEnabled)
             .map(m => [m.provider?._id || m.provider?.slug, m.provider])
-    ).values());
+    ).values()).filter(Boolean) as NonNullable<LLMModel['provider']>[];
 
     const filteredModels = selectedProvider
         ? models.filter(m => (m.provider?._id === selectedProvider || m.provider?.slug === selectedProvider) && m.isEnabled)
@@ -149,7 +189,7 @@ function ChatTab({ models, aiChat, userId }: { models: VoiceModel[]; aiChat: { s
                 toolCalls: res.toolCalls,
             });
         } catch (err: unknown) {
-            setResponse(`❌ Error: ${err.message}`);
+            setResponse(`❌ Error: ${getErrorMsg(err)}`);
         } finally {
             setLoading(false);
         }
@@ -159,12 +199,11 @@ function ChatTab({ models, aiChat, userId }: { models: VoiceModel[]; aiChat: { s
         <div className="playground-panel">
             <div className="playground-panel-grid">
                 <div className="playground-panel-left">
-                    {/* Provider Selector */}
                     <div className="pg-field">
                         <label>Provider</label>
                         <select className="pg-select" value={selectedProvider} onChange={e => {
                             setSelectedProvider(e.target.value);
-                            setSelectedModelId(''); // Reset model when provider changes
+                            setSelectedModelId('');
                         }}>
                             <option value="">All Providers</option>
                             {providers.map(p => (
@@ -175,20 +214,18 @@ function ChatTab({ models, aiChat, userId }: { models: VoiceModel[]; aiChat: { s
                         </select>
                     </div>
 
-                    {/* Model Selector */}
                     <div className="pg-field">
                         <label>Model</label>
                         <select className="pg-select" value={selectedModelId} onChange={e => setSelectedModelId(e.target.value)}>
                             <option value="">Default (auto-select)</option>
                             {filteredModels.map(m => (
-                                <option key={m._id} value={m._id}>
+                                <option key={String(m._id)} value={String(m._id)}>
                                     {m.displayName || m.modelId}{m.isDefault ? ' ⭐' : ''}
                                 </option>
                             ))}
                         </select>
                     </div>
 
-                    {/* Model Info */}
                     {selectedModel && (
                         <div className="pg-field" style={{
                             padding: '8px 12px', borderRadius: 8,
@@ -248,11 +285,11 @@ function ChatTab({ models, aiChat, userId }: { models: VoiceModel[]; aiChat: { s
                     </div>
                     {meta && (
                         <div className="pg-meta">
-                            <span>🏷️ {meta.model}</span>
-                            <span>⏱️ {meta.durationMs ? `${(meta.durationMs / 1000).toFixed(1)}s` : '—'}</span>
-                            <span>🔢 {meta.tokens?.total || '—'} tokens</span>
-                            <span>💰 {meta.costCents ? `$${(meta.costCents / 100).toFixed(4)}` : 'Free'}</span>
-                            {meta.toolCalls?.length > 0 && <span>🔧 {meta.toolCalls.join(', ')}</span>}
+                            <span>🏷️ {String(meta.model)}</span>
+                            <span>⏱️ {meta.durationMs ? `${(Number(meta.durationMs) / 1000).toFixed(1)}s` : '—'}</span>
+                            <span>🔢 {(meta.tokens as Record<string, number>)?.total || '—'} tokens</span>
+                            <span>💰 {meta.costCents ? `$${(Number(meta.costCents) / 100).toFixed(4)}` : 'Free'}</span>
+                            {Array.isArray(meta.toolCalls) && meta.toolCalls.length > 0 && <span>🔧 {meta.toolCalls.join(', ')}</span>}
                         </div>
                     )}
                 </div>
@@ -265,7 +302,9 @@ function ChatTab({ models, aiChat, userId }: { models: VoiceModel[]; aiChat: { s
 // TAB 2: Speech-to-Text
 // ═══════════════════════════════════════════════════════════════════════════
 
-function STTTab({ models, transcribe }: { models: VoiceModel[]; transcribe: (formData: FormData) => Promise<string> }) {
+type TranscribeAction = ReturnType<typeof useAction<typeof api.aiVoice.transcribe>>;
+
+function STTTab({ models, transcribe }: { models: VoiceModel[]; transcribe: TranscribeAction }) {
     const [selectedModel, setSelectedModel] = useState('');
     const [language, setLanguage] = useState('en');
     const [results, setResults] = useState<STTResult[]>([]);
@@ -304,7 +343,7 @@ function STTTab({ models, transcribe }: { models: VoiceModel[]; transcribe: (for
             }]);
         } catch (err: unknown) {
             setResults(prev => [...prev, {
-                text: `❌ ${err.message}`,
+                text: `❌ ${getErrorMsg(err)}`,
                 model: model?.displayName || 'Error',
                 provider: model?.provider || 'unknown',
                 latencyMs: Date.now() - start,
@@ -341,7 +380,6 @@ function STTTab({ models, transcribe }: { models: VoiceModel[]; transcribe: (for
         if (fileInputRef.current) fileInputRef.current.value = '';
     };
 
-    // Compare all enabled OpenAI-format STT models
     const compareAll = async () => {
         if (!audioChunksRef.current.length) return;
         const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
@@ -360,7 +398,7 @@ function STTTab({ models, transcribe }: { models: VoiceModel[]; transcribe: (for
                         <select className="pg-select" value={selectedModel} onChange={e => setSelectedModel(e.target.value)}>
                             <option value="">Auto (first available)</option>
                             {models.map(m => (
-                                <option key={m._id || m.name} value={m._id || m.name} disabled={m.apiFormat === 'riva-grpc'}>
+                                <option key={String(m._id) || m.name} value={String(m._id) || m.name} disabled={m.apiFormat === 'riva-grpc'}>
                                     {m.displayName} {m.apiFormat === 'riva-grpc' ? '(gRPC — proxy needed)' : ''}
                                 </option>
                             ))}
@@ -426,7 +464,9 @@ function STTTab({ models, transcribe }: { models: VoiceModel[]; transcribe: (for
 // TAB 3: Text-to-Speech
 // ═══════════════════════════════════════════════════════════════════════════
 
-function TTSTab({ models, synthesize }: { models: VoiceModel[]; synthesize: (text: string, modelId: string, options?: Record<string, unknown>) => Promise<Blob> }) {
+type SynthesizeAction = ReturnType<typeof useAction<typeof api.aiVoice.synthesize>>;
+
+function TTSTab({ models, synthesize }: { models: VoiceModel[]; synthesize: SynthesizeAction }) {
     const [text, setText] = useState('Hello! This is a test of the text-to-speech system. How does this voice sound?');
     const [selectedModel, setSelectedModel] = useState('');
     const [voice, setVoice] = useState('alloy');
@@ -462,7 +502,7 @@ function TTSTab({ models, synthesize }: { models: VoiceModel[]; synthesize: (tex
         } catch (err: unknown) {
             setResults(prev => [...prev, {
                 audioUrl: '',
-                model: `❌ ${m?.displayName || 'Error'}: ${err.message}`,
+                model: `❌ ${m?.displayName || 'Error'}: ${getErrorMsg(err)}`,
                 provider: m?.provider || 'unknown',
                 latencyMs: Date.now() - start,
             }]);
@@ -479,7 +519,7 @@ function TTSTab({ models, synthesize }: { models: VoiceModel[]; synthesize: (tex
                         <label>TTS Model</label>
                         <select className="pg-select" value={selectedModel} onChange={e => setSelectedModel(e.target.value)}>
                             {models.map(m => (
-                                <option key={m._id || m.name} value={m._id || m.name} disabled={m.apiFormat === 'riva-grpc'}>
+                                <option key={String(m._id) || m.name} value={String(m._id) || m.name} disabled={m.apiFormat === 'riva-grpc'}>
                                     {m.displayName} {m.apiFormat === 'riva-grpc' ? '(gRPC — proxy needed)' : ''}
                                 </option>
                             ))}
@@ -548,7 +588,7 @@ function TTSTab({ models, synthesize }: { models: VoiceModel[]; synthesize: (tex
 // TAB 4: Voice Cloning
 // ═══════════════════════════════════════════════════════════════════════════
 
-function VoiceCloningTab({ models, synthesize }: { models: VoiceModel[]; synthesize: (text: string, modelId: string, options?: Record<string, unknown>) => Promise<Blob> }) {
+function VoiceCloningTab({ models, synthesize }: { models: VoiceModel[]; synthesize: SynthesizeAction }) {
     const [text, setText] = useState('This is a test of voice cloning. The generated speech should sound similar to the reference audio.');
     const [refAudio, setRefAudio] = useState<string | null>(null);
     const [refName, setRefName] = useState('');
@@ -615,7 +655,7 @@ function VoiceCloningTab({ models, synthesize }: { models: VoiceModel[]; synthes
         } catch (err: unknown) {
             setResults(prev => [...prev, {
                 audioUrl: '',
-                model: `❌ ${err.message}`,
+                model: `❌ ${getErrorMsg(err)}`,
                 provider: 'error',
                 latencyMs: Date.now() - start,
             }]);
@@ -633,7 +673,7 @@ function VoiceCloningTab({ models, synthesize }: { models: VoiceModel[]; synthes
                         <select className="pg-select" value={selectedModel} onChange={e => setSelectedModel(e.target.value)}>
                             {cloningModels.length === 0 && <option value="">No cloning models available</option>}
                             {cloningModels.map(m => (
-                                <option key={m._id || m.name} value={m._id || m.name} disabled={m.apiFormat === 'riva-grpc'}>
+                                <option key={String(m._id) || m.name} value={String(m._id) || m.name} disabled={m.apiFormat === 'riva-grpc'}>
                                     {m.displayName} {m.apiFormat === 'riva-grpc' ? '(proxy needed)' : ''}
                                 </option>
                             ))}

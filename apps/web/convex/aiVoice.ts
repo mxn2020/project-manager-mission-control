@@ -98,7 +98,7 @@ export const transcribe = action({
             throw new Error(`STT API error (${res.status}): ${errText.slice(0, 500)}`);
         }
 
-        const data = await res.json() as { text?: string; words?: any[]; duration?: number; language?: string };
+        const data = await res.json() as { text?: string; words?: Array<{ word: string; start: number; end: number }>; duration?: number; language?: string };
         return {
             text: data.text || "",
             words: data.words,
@@ -244,11 +244,12 @@ async function callChatterbox(
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(body),
         });
-    } catch (err: any) {
+    } catch (err: unknown) {
+        const errMsg = err instanceof Error ? err.message : String(err);
         throw new Error(
             `Chatterbox server not reachable at ${baseUrl}. ` +
             `Start it with: python scripts/chatterbox-server.py\n` +
-            `Error: ${err.message}`
+            `Error: ${errMsg}`
         );
     }
 

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { useAuth } from '../hooks/useAuth';
+import type { Id } from '../lib/types';
 import { useProjects } from '../hooks/useProjects';
 import SearchableSelect, { type SelectOption } from '../components/SearchableSelect';
 import { TIER_ORDER, PRIORITY_ORDER, TIER_CONFIG, PRIORITY_CONFIG } from '../lib/types';
@@ -65,7 +66,7 @@ export default function NewProjectPage() {
             });
             navigate('/');
         } catch (err: unknown) {
-            setError(err.message || 'Failed to create project');
+            setError(err instanceof Error ? err.message : String(err) || 'Failed to create project');
         } finally {
             setSubmitting(false);
         }

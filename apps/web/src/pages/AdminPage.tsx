@@ -1,5 +1,6 @@
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
+import type { Id, Doc } from '../lib/types';
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import SearchableSelect from '../components/SearchableSelect';

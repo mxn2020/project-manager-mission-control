@@ -24,7 +24,7 @@ export const resolveSession = internalQuery({
         // Fallback: look up user's default org
         if (!orgId) {
             const user = await ctx.db.get(session.userId);
-            orgId = (user as any)?.defaultOrgId;
+            orgId = user?.defaultOrgId;
         }
 
         // Fallback: look up first org membership

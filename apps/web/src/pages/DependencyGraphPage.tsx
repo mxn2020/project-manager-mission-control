@@ -28,6 +28,25 @@ interface DepData {
     };
 }
 
+interface AutomationStep {
+    name: string;
+    status: string;
+    projects?: number;
+    staleCount?: number;
+    staleProjects?: Array<{ name: string; tier?: string; path?: string; lastActive?: string }>;
+    dirtyCount?: number;
+    dirtyProjects?: Array<{ name: string; reason?: string; path?: string; changes?: number }>;
+    buckets?: Record<string, number>;
+    title?: string;
+    action?: string;
+}
+
+interface AutomationResult {
+    startedAt: number;
+    completedAt?: number;
+    steps: AutomationStep[];
+}
+
 const TIER_COLORS: Record<string, string> = {
     idea: '#a78bfa', prototype: '#fbbf24', building: '#34d399',
     shipped: '#60a5fa', maintaining: '#818cf8', archived: '#6b7280',
@@ -39,7 +58,7 @@ export default function DependencyGraphPage() {
     const [search, setSearch] = useState('');
     const [selectedDep, setSelectedDep] = useState<string | null>(null);
     const [view, setView] = useState<'shared' | 'projects' | 'versions'>('shared');
-    const [automationResult, setAutomationResult] = useState<any>(null);
+    const [automationResult, setAutomationResult] = useState<AutomationResult | null>(null);
     const [runningAutomation, setRunningAutomation] = useState(false);
 
     useEffect(() => {
@@ -239,7 +258,7 @@ export default function DependencyGraphPage() {
                                 {automationResult.completedAt && ` · Completed: ${new Date(automationResult.completedAt).toLocaleString()}`}
                             </div>
 
-                            {automationResult.steps?.map((step: { title?: string; action?: string; staleProjects?: Array<{ name: string; tier?: string }>; dirtyProjects?: Array<{ name: string; reason?: string }> }) => (
+                            {automationResult.steps?.map((step: AutomationStep) => (
                                 <div key={step.name} className="mb-12" style={{
                                     background: 'var(--bg-secondary)', borderRadius: 10, padding: 16,
                                     border: '1px solid var(--border)', borderLeft: `3px solid ${step.status === 'success' ? '#34d399' : '#f87171'}`,

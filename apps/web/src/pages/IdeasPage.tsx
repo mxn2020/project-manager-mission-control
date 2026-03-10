@@ -6,6 +6,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useUrlFilters } from '../hooks/useUrlFilters';
 import SearchableSelect, { type SelectOption } from '../components/SearchableSelect';
 import PromptDialog from '../components/PromptDialog';
+import type { Id, Doc } from '../lib/types';
 
 type IdeaView = 'cards' | 'pipeline' | 'list' | 'kanban' | 'canvas';
 
@@ -189,8 +190,7 @@ export default function IdeasPage() {
     const rawIdeas = useQuery(api.ideas.list, orgId ? {
         orgId,
         category: filterCat || undefined,
-        search: search || undefined,
-        archived: showArchived ? 'all' : undefined,
+        includeArchived: showArchived || undefined,
     } : "skip");
 
     const createIdea = useMutation(api.ideas.create);
@@ -243,7 +243,7 @@ export default function IdeasPage() {
     };
 
     const handlePromote = async (id: string) => {
-        await promoteIdea({ ideaId: id as Id<"ideas"> });
+        await promoteIdea({ orgId: orgId!, ideaId: id as Id<"ideas"> });
         selected.delete(id); setSelected(new Set(selected));
     };
 
@@ -254,7 +254,7 @@ export default function IdeasPage() {
 
     const handleCombineSubmit = async (title: string) => {
         const ids = [...selected];
-        await combineIdeas({ ideaIds: ids, title: title || undefined });
+        await combineIdeas({ orgId: orgId!, ideaIds: ids as Id<"ideas">[], title: title || undefined });
         setSelected(new Set());
     };
 
@@ -310,9 +310,9 @@ export default function IdeasPage() {
 
     // ─── Render Helpers ──────────────────────────
 
-    const cardProps = idea => ({
+    const cardProps = (idea: (typeof allIdeas)[number]) => ({
         idea, selected: selected.has(idea.id), onToggleSelect: () => toggleSelect(idea.id),
-        onUpdate: d => handleUpdate(idea.id, d), onArchive: () => handleArchive(idea.id, !idea.archived),
+        onUpdate: (d: Record<string, unknown>) => handleUpdate(idea.id, d), onArchive: () => handleArchive(idea.id, !idea.archived),
         onDelete: () => handleDelete(idea.id), onPromote: () => handlePromote(idea.id),
         onLinkProject: (p: string) => handleLinkProject(idea.id, p), projectOptions,
     });

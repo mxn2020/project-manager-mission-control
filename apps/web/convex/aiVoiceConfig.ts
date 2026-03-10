@@ -1,3 +1,4 @@
+import type { Id } from "./_generated/dataModel";
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
@@ -190,7 +191,7 @@ export const listVoiceModels = query({
                 .filter(m => !args.type || m.type === args.type)
                 .filter(m => !args.provider || m.provider === args.provider)
                 .map((m, i) => ({
-                    _id: `builtin_${i}` as any,
+                    _id: `builtin_${i}` as Id<"voiceModels">,
                     ...m,
                     isBuiltIn: true,
                     createdAt: Date.now(),
@@ -278,12 +279,12 @@ export const upsertVoiceModel = mutation({
             return id;
         }
 
+        const { id: _id, ...insertFields } = args;
         return await ctx.db.insert("voiceModels", {
-            ...args,
-            id: undefined,
+            ...insertFields,
             orgId: undefined,
             createdAt: now,
-        } as any);
+        });
     },
 });
 

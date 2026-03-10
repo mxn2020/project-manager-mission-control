@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
+import type { Id } from '../lib/types';
 export default function DeleteProjectPage() {
     const params = useParams<{ '*': string }>();
     const projectId = params['*'] ? decodeURIComponent(params['*']) : '';
@@ -18,7 +19,7 @@ export default function DeleteProjectPage() {
             await removeProject({ projectId: projectId as Id<"projects"> });
             navigate('/');
         } catch (err: unknown) {
-            setError(err.message || 'Failed to delete project');
+            setError(err instanceof Error ? err.message : String(err) || 'Failed to delete project');
             setDeleting(false);
         }
     };

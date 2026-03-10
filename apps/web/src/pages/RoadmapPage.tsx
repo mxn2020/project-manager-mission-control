@@ -77,7 +77,7 @@ export default function RoadmapPage() {
 
     // Group by tier for pipeline view
     const byTier = useMemo(() => {
-        const map: Record<string, any[]> = {};
+        const map: Record<string, typeof filtered> = {};
         for (const tier of TIER_ORDER) map[tier] = [];
         for (const p of filtered) {
             const t = p.tier || 'idea';
@@ -86,7 +86,7 @@ export default function RoadmapPage() {
         }
         const order: Record<string, number> = { high: 0, medium: 1, low: 2, parked: 3 };
         for (const t of Object.keys(map)) {
-            map[t].sort((a: { priority?: string }, b: { priority?: string }) => (order[a.priority] ?? 99) - (order[b.priority] ?? 99));
+            map[t].sort((a: { priority?: string }, b: { priority?: string }) => (order[a.priority ?? ''] ?? 99) - (order[b.priority ?? ''] ?? 99));
         }
         return map;
     }, [filtered]);

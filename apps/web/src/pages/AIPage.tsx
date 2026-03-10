@@ -4,6 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import { api } from '../../convex/_generated/api';
 import { useAuth } from '../hooks/useAuth';
 import SearchableSelect from '../components/SearchableSelect';
+import type { Id } from '../lib/types';
 
 interface Message {
     id: string;
@@ -145,13 +146,16 @@ export default function AIPage() {
 
     const personas: Persona[] = useMemo(() => {
         if (!chatbotConfigs || chatbotConfigs.length === 0) return DEFAULT_PERSONAS;
-        return chatbotConfigs.map((c, idx: number) => ({
-            id: c._id,
-            name: c.name || `Chatbot ${idx + 1}`,
-            icon: c.icon || DEFAULT_PERSONAS[idx % DEFAULT_PERSONAS.length]?.icon || '🤖',
-            description: c.description || '',
-            welcome: c.welcomeMessage || DEFAULT_PERSONAS[idx % DEFAULT_PERSONAS.length]?.welcome || `👋 Hi! I'm **${c.name}**.\n\nHow can I help you today?`,
-        }));
+        return chatbotConfigs.map((c, idx: number) => {
+            const cRec = c as Record<string, unknown>;
+            return {
+                id: c._id,
+                name: c.name || `Chatbot ${idx + 1}`,
+                icon: (cRec.icon as string) || DEFAULT_PERSONAS[idx % DEFAULT_PERSONAS.length]?.icon || '🤖',
+                description: c.description || '',
+                welcome: (cRec.welcomeMessage as string) || DEFAULT_PERSONAS[idx % DEFAULT_PERSONAS.length]?.welcome || `👋 Hi! I'm **${c.name}**.\n\nHow can I help you today?`,
+            };
+        });
     }, [chatbotConfigs]);
 
     // ─── Persona State ───────────────────────────────────────────────
@@ -326,7 +330,7 @@ export default function AIPage() {
             setMessages(prev => [...prev, {
                 id: `e-${Date.now()}`,
                 role: 'assistant',
-                content: `❌ Error: ${err.message}`,
+                content: `❌ Error: ${err instanceof Error ? err.message : String(err)}`,
                 timestamp: Date.now(),
             }]);
         } finally {
@@ -506,8 +510,8 @@ export default function AIPage() {
                             { value: '', label: 'System Default' },
                             ...(models || []).map(m => ({ value: m._id, label: `${m.displayName} (${m.provider?.name || 'Unknown'})` })),
                         ]}
-                        value={currentSettings?.defaultModelId || ''}
-                        onChange={v => updateSettings({ userId: userId as Id<"users">, defaultModelId: v || undefined })}
+                        value={settings && 'defaultModelId' in settings ? (settings.defaultModelId || '') : ''}
+                        onChange={v => updateSettings({ userId: userId as Id<"users">, defaultModelId: (v || undefined) as Id<"aiModels"> | undefined })}
                         placeholder="Model" clearable={false} />
                 </div>
 

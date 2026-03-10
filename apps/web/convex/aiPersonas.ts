@@ -1,5 +1,6 @@
 import { mutation, query, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
+import type { Doc, Id } from "./_generated/dataModel";
 
 // ─── Default Persona Definitions ─────────────────────────────────────────
 
@@ -109,7 +110,7 @@ export const listPersonas = query({
     args: { orgId: v.optional(v.id("organizations")) },
     handler: async (ctx, args) => {
         // Get org-specific personas
-        let personas: any[] = [];
+        let personas: Doc<"chatbotConfigs">[] = [];
         if (args.orgId) {
             personas = await ctx.db
                 .query("chatbotConfigs")
@@ -137,14 +138,14 @@ export const listPersonas = query({
             personas.map(async (p) => {
                 let systemPrompt = "";
                 if (p.systemPromptId) {
-                    const prompt = await ctx.db.get(p.systemPromptId);
+                    const prompt = await ctx.db.get(p.systemPromptId) as Doc<"systemPrompts"> | null;
                     systemPrompt = prompt?.content || "";
                 }
 
                 // Resolve tool names from toolSetIds
                 const tools: string[] = [];
                 for (const toolId of p.toolSetIds || []) {
-                    const tool = await ctx.db.get(toolId);
+                    const tool = await ctx.db.get(toolId) as Doc<"toolDefinitions"> | null;
                     if (tool) tools.push(tool.name);
                 }
 
@@ -152,7 +153,7 @@ export const listPersonas = query({
                     _id: p._id,
                     name: p.name,
                     description: p.description || "",
-                    icon: (p as any).icon || "🤖",
+                    icon: "🤖",
                     tools,
                     systemPrompt,
                     isDefault: p.isDefault,
@@ -190,29 +191,29 @@ export const getPersona = query({
         }
 
         // DB-stored persona
-        const persona = await ctx.db.get(args.id as any);
+        const persona = await ctx.db.get(args.id as Id<"chatbotConfigs">) as Doc<"chatbotConfigs"> | null;
         if (!persona) return null;
 
         let systemPrompt = "";
-        if ((persona as any).systemPromptId) {
-            const prompt = await ctx.db.get((persona as any).systemPromptId);
+        if (persona.systemPromptId) {
+            const prompt = await ctx.db.get(persona.systemPromptId) as Doc<"systemPrompts"> | null;
             systemPrompt = prompt?.content || "";
         }
 
         const tools: string[] = [];
-        for (const toolId of (persona as any).toolSetIds || []) {
-            const tool = await ctx.db.get(toolId);
+        for (const toolId of persona.toolSetIds || []) {
+            const tool = await ctx.db.get(toolId) as Doc<"toolDefinitions"> | null;
             if (tool) tools.push(tool.name);
         }
 
         return {
             _id: persona._id,
-            name: (persona as any).name,
-            description: (persona as any).description || "",
-            icon: (persona as any).icon || "🤖",
+            name: persona.name,
+            description: persona.description || "",
+            icon: "🤖",
             tools,
             systemPrompt,
-            isDefault: (persona as any).isDefault,
+            isDefault: persona.isDefault,
             isBuiltIn: false,
         };
     },

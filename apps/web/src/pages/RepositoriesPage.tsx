@@ -22,7 +22,7 @@ interface CloneStatus {
 }
 
 function hasValue(v: unknown): boolean {
-    return v && v !== 'null' && v !== 'undefined' && v !== '';
+    return !!v && v !== 'null' && v !== 'undefined' && v !== '';
 }
 
 export default function RepositoriesPage() {
@@ -162,7 +162,7 @@ export default function RepositoriesPage() {
                                 <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#34d399' }} />
                                 <div className="flex-1">
                                     <div className="font-semibold text-md">{p.name}</div>
-                                    <a href={p.deploy_url} target="_blank" rel="noreferrer"
+                                    <a href={p.deploy_url ?? undefined} target="_blank" rel="noreferrer"
                                         className="text-sm" style={{ color: 'var(--accent)', textDecoration: 'none' }}>
                                         {p.deploy_url}
                                     </a>
@@ -196,7 +196,7 @@ export default function RepositoriesPage() {
                                     <span>🐙</span>
                                     <div className="flex-1">
                                         <div className="font-medium">{p.name}</div>
-                                        <a href={p.repo} target="_blank" rel="noreferrer"
+                                        <a href={p.repo ?? undefined} target="_blank" rel="noreferrer"
                                             className="text-sm" style={{ color: 'var(--accent)', textDecoration: 'none' }}>
                                             {p.repo?.replace('https://github.com/', '')}
                                         </a>
@@ -220,7 +220,7 @@ export default function RepositoriesPage() {
                                     {getCloneStatusBadge(p.path)}
                                     {!isCloned && (
                                         <button
-                                            onClick={() => handleClone(p.path, p.repo)}
+                                            onClick={() => handleClone(p.path, p.repo ?? undefined)}
                                             disabled={isCloning}
                                             className="text-xs font-semibold" style={{
                                                 padding: '3px 10px', borderRadius: 6,
@@ -234,7 +234,7 @@ export default function RepositoriesPage() {
                                     )}
                                     {isCloned && !git && (
                                         <button
-                                            onClick={() => handleClone(p.path, p.repo)}
+                                            onClick={() => handleClone(p.path, p.repo ?? undefined)}
                                             disabled={isCloning}
                                             className="text-xs font-semibold" style={{
                                                 padding: '3px 10px', borderRadius: 6,

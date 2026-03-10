@@ -16,7 +16,8 @@ interface LoginPageProps {
  * We strip the prefix and return just "Invalid email or password."
  */
 function parseErrorMessage(err: unknown): string {
-    const raw = err?.message || err?.data?.message || 'Authentication failed';
+    const errObj = err as Record<string, unknown> | null | undefined;
+    const raw = (errObj?.message as string) || ((errObj?.data as Record<string, unknown>)?.message as string) || 'Authentication failed';
 
     // Try to extract message after "Uncaught Error: " or "Server Error: "
     const uncaughtMatch = raw.match(/Uncaught Error:\s*(.+)/);

@@ -5,6 +5,7 @@ import { api } from '../../convex/_generated/api';
 import type { Tier, Priority, Project } from '../lib/types';
 import { TIER_CONFIG, PRIORITY_CONFIG, LANE_COLORS } from '../lib/types';
 import SearchableSelect from '../components/SearchableSelect';
+import type { ConvexProject } from '../lib/types';
 
 const LANES = ['ai-agents', 'web-apps', 'mobile-apps', 'developer-tools', 'templates', 'infrastructure', 'learning', 'uncategorized'];
 

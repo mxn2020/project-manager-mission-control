@@ -152,7 +152,7 @@ export default function AILogsPage() {
                                                             {(() => {
                                                                 try {
                                                                     const msgs = JSON.parse(log.promptMessages);
-                                                                    return msgs.map(m => `[${m.role}] ${m.content}`).join('\n\n');
+                                                                    return msgs.map((m: { role: string; content: string }) => `[${m.role}] ${m.content}`).join('\n\n');
                                                                 } catch { return log.promptMessages; }
                                                             })()}
                                                         </pre>
