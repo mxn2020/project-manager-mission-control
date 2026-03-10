@@ -155,6 +155,65 @@ export const syncRepo = action({
     },
 });
 
+// ─── Browse Repo Contents (Action — calls GitHub API) ───────────────────
+
+export const browseContents = action({
+    args: {
+        repoFullName: v.string(),
+        path: v.optional(v.string()),
+        branch: v.optional(v.string()),
+        githubToken: v.string(),
+    },
+    handler: async (_ctx, args) => {
+        const path = args.path || '';
+        const branch = args.branch || 'main';
+        const url = `https://api.github.com/repos/${args.repoFullName}/contents/${path}?ref=${branch}`;
+        const res = await fetch(url, {
+            headers: {
+                Authorization: `Bearer ${args.githubToken}`,
+                Accept: 'application/vnd.github.v3+json',
+                'User-Agent': 'MissionControl/1.0',
+            },
+        });
+
+        if (!res.ok) {
+            const text = await res.text();
+            throw new Error(`GitHub API error (${res.status}): ${text}`);
+        }
+
+        const data = await res.json();
+        if (!Array.isArray(data)) {
+            // It's a single file, not a directory
+            return { type: 'file' as const, content: (data as any).content ? atob((data as any).content) : '', name: (data as any).name, size: (data as any).size };
+        }
+
+        return {
+            type: 'directory' as const,
+            entries: (data as any[]).map((item: any) => ({
+                name: item.name,
+                path: item.path,
+                type: item.type as 'file' | 'dir',
+                size: item.size,
+                sha: item.sha,
+            })),
+        };
+    },
+});
+
+export const fetchFileContent = action({
+    args: {
+        repoFullName: v.string(),
+        path: v.string(),
+        branch: v.optional(v.string()),
+        githubToken: v.string(),
+    },
+    handler: async (_ctx, args) => {
+        const branch = args.branch || 'main';
+        const content = await fetchFileFromGitHub(args.repoFullName, args.path, branch, args.githubToken);
+        return { content: content || '', path: args.path, name: args.path.split('/').pop() || '' };
+    },
+});
+
 // ─── Internal query helper ───────────────────────────────────────────────
 
 export const getRepoById = query({
