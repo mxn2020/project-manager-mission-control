@@ -23,7 +23,7 @@ import CostPage from './pages/CostPage';
 import AnalyticsPage from './pages/AnalyticsPage';
 import AdminPage from './pages/AdminPage';
 import RoadmapPage from './pages/RoadmapPage';
-import IntegrationsPage from './pages/IntegrationsPage';
+import RepositoriesPage from './pages/RepositoriesPage';
 import FilesPage from './pages/FilesPage';
 import DependencyGraphPage from './pages/DependencyGraphPage';
 import WorkflowsPage from './pages/WorkflowsPage';
@@ -75,7 +75,7 @@ function AppShell() {
     if (p.startsWith('/analytics')) return WORKSPACES.find(ws => ws.id === 'analytics')!;
     if (p.startsWith('/admin')) return WORKSPACES.find(ws => ws.id === 'admin')!;
     if (p.startsWith('/roadmap')) return WORKSPACES.find(ws => ws.id === 'roadmap')!;
-    if (p.startsWith('/integrations')) return WORKSPACES.find(ws => ws.id === 'integrations')!;
+    if (p.startsWith('/repositories')) return WORKSPACES.find(ws => ws.id === 'repositories')!;
     if (p.startsWith('/files')) return WORKSPACES.find(ws => ws.id === 'files')!;
     if (p.startsWith('/dependencies')) return WORKSPACES.find(ws => ws.id === 'dependencies')!;
     if (p.startsWith('/workflows')) return WORKSPACES.find(ws => ws.id === 'workflows')!;
@@ -104,7 +104,7 @@ function AppShell() {
             { label: '📋 Work', ids: ['tasks', 'workflows', 'marketing', 'content', 'ideas'] },
             { label: '📖 Knowledge', ids: ['wiki', 'roadmap', 'files'] },
             { label: '📦 Data', ids: ['minions', 'analytics', 'costs', 'dependencies'] },
-            { label: '⚙️ System', ids: ['ai', 'playground', 'agents', 'integrations', 'admin'] },
+            { label: '⚙️ System', ids: ['ai', 'playground', 'agents', 'repositories', 'admin'] },
           ].map(group => {
             const items = group.ids.map(id => WORKSPACES.find(w => w.id === id)!).filter(Boolean);
             const isGroupActive = items.some(ws => ws.id === activeWs.id);
@@ -224,7 +224,7 @@ function AppShell() {
             <Route path="/admin" element={<AdminPage />} />
             <Route path="/admin/logs" element={<AILogsPage />} />
             <Route path="/roadmap" element={<RoadmapPage />} />
-            <Route path="/integrations" element={<IntegrationsPage />} />
+            <Route path="/repositories" element={<RepositoriesPage />} />
             <Route path="/dependencies" element={<DependencyGraphPage />} />
             <Route path="/workflows" element={<WorkflowsPage />} />
             <Route path="/marketing" element={<MarketingPage />} />

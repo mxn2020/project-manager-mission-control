@@ -9,6 +9,7 @@ export const list = query({
         lane: v.optional(v.string()),
         tier: v.optional(v.string()),
         priority: v.optional(v.string()),
+        scope: v.optional(v.string()), // "main" | "child" | undefined (all)
     },
     handler: async (ctx, args) => {
         let q;
@@ -24,17 +25,27 @@ export const list = query({
                 .withIndex("by_org_tier", (idx) =>
                     idx.eq("orgId", args.orgId).eq("tier", args.tier!)
                 );
+        } else if (args.scope) {
+            q = ctx.db
+                .query("projects")
+                .withIndex("by_org_scope", (idx) =>
+                    idx.eq("orgId", args.orgId).eq("projectScope", args.scope!)
+                );
         } else {
             q = ctx.db
                 .query("projects")
                 .withIndex("by_org", (idx) => idx.eq("orgId", args.orgId));
         }
 
-        const projects = await q.collect();
+        let projects = await q.collect();
 
         // Filter by priority if specified
         if (args.priority) {
-            return projects.filter((p) => p.priority === args.priority);
+            projects = projects.filter((p) => p.priority === args.priority);
+        }
+        // Filter by scope if used with lane/tier index
+        if (args.scope && (args.lane || args.tier)) {
+            projects = projects.filter((p) => p.projectScope === args.scope);
         }
         return projects;
     },

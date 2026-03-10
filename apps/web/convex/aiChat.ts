@@ -279,7 +279,7 @@ export const getActiveChatConfig = internalQuery({
             const tools: string[] = [];
             for (const toolId of chatbotConfig.toolSetIds || []) {
                 const tool = await ctx.db.get(toolId);
-                if (tool) tools.push((tool as any).name);
+                if (tool) tools.push(tool.name);
             }
             if (tools.length > 0) personaTools = tools;
         }

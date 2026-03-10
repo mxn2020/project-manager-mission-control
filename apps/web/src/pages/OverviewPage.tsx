@@ -223,7 +223,7 @@ export default function OverviewPage({ data, onNavigate }: { data: StatusData; o
                 {[
                     { icon: '🗺️', label: 'Roadmap', desc: 'Pipeline view', path: '/roadmap' },
                     { icon: '📋', label: 'Tasks', desc: 'Track work', path: '/tasks' },
-                    { icon: '🔗', label: 'Integrations', desc: 'Repos & deploy', path: '/integrations' },
+                    { icon: '📦', label: 'Repositories', desc: 'Repos & deploy', path: '/repositories' },
                     { icon: '📊', label: 'Analytics', desc: 'Usage & stats', path: '/analytics' },
                     { icon: '📂', label: 'Files', desc: 'Browse sources', path: '/files' },
                     { icon: '🔧', label: 'Admin', desc: 'Configuration', path: '/admin' },

@@ -24,7 +24,7 @@ function hasValue(v: any): boolean {
     return v && v !== 'null' && v !== 'undefined' && v !== '';
 }
 
-export default function IntegrationsPage() {
+export default function RepositoriesPage() {
     const { data } = useProjects();
     const projects = data?.projects || [];
     const [gitStatuses, setGitStatuses] = useState<Record<string, GitStatus>>({});
@@ -93,7 +93,7 @@ export default function IntegrationsPage() {
             <div className="page-header">
                 <div className="flex-between">
                     <div>
-                        <h1 className="page-title">🔗 Integrations</h1>
+                        <h1 className="page-title">📦 Repositories</h1>
                         <p className="page-description">GitHub repos, deployment status, and sync overview</p>
                     </div>
                     <div className="flex-row gap-8">

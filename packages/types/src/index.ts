@@ -124,7 +124,7 @@ export const WORKSPACES: Workspace[] = [
     { id: 'admin', label: 'Admin', icon: '🔧', path: '/admin' },
     { id: 'agents', label: 'Agents', icon: '🕵️', path: '/agents' },
     { id: 'roadmap', label: 'Roadmap', icon: '🗺️', path: '/roadmap' },
-    { id: 'integrations', label: 'Integrations', icon: '🔗', path: '/integrations' },
+    { id: 'repositories', label: 'Repositories', icon: '📦', path: '/repositories' },
     { id: 'files', label: 'Files', icon: '📂', path: '/files' },
     { id: 'playground', label: 'Playground', icon: '🧪', path: '/playground' },
 ];

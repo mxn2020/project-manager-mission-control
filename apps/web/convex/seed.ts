@@ -122,6 +122,11 @@ export const bulkImportProjects = mutation({
                 deployUrl: v.optional(v.string()),
                 tags: v.array(v.string()),
                 notes: v.optional(v.string()),
+                // New fields
+                projectScope: v.optional(v.string()),
+                projectType: v.optional(v.string()),
+                childType: v.optional(v.string()),
+                parentProject: v.optional(v.string()),
             })
         ),
     },
@@ -160,6 +165,11 @@ export const bulkImportProjects = mutation({
                 healthScore: 0,
                 syncStatus: "synced",
                 lastSyncedAt: now,
+                // New fields
+                projectScope: p.projectScope || "main",
+                projectType: p.projectType || undefined,
+                childType: p.childType || undefined,
+                parentProject: p.parentProject || undefined,
                 createdAt: now,
                 updatedAt: now,
             });
@@ -169,3 +179,23 @@ export const bulkImportProjects = mutation({
         return { created, skipped };
     },
 });
+
+// ─── Clear All Projects (for reseed) ────────────────────────────────────
+
+export const clearAllProjects = mutation({
+    args: { orgId: v.id("organizations") },
+    handler: async (ctx, args) => {
+        const projects = await ctx.db
+            .query("projects")
+            .withIndex("by_org", (idx) => idx.eq("orgId", args.orgId))
+            .collect();
+
+        let deleted = 0;
+        for (const p of projects) {
+            await ctx.db.delete(p._id);
+            deleted++;
+        }
+        return { deleted };
+    },
+});
+

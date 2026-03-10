@@ -4,21 +4,23 @@
  * Seed Convex DB from local PROJECT.yaml files.
  *
  * Usage:
- *   node scripts/seed-from-yaml.mjs
+ *   node scripts/seed-from-yaml.mjs                # import all (main + child)
+ *   node scripts/seed-from-yaml.mjs --clear        # clear existing projects first
  *
  * Requires: npx convex (configured for dev deployment)
  */
 
 import { execSync } from "child_process";
 import { readFileSync, readdirSync, statSync } from "fs";
-import { join } from "path";
+import { join, relative, dirname, basename } from "path";
 
 const ROOT = "/Users/mehdinabhani/Projects/antigravity";
 const CONVEX_DIR = "/Users/mehdinabhani/Projects/antigravity/claw_ecosystem/mission-control-app/apps/web";
-const MAX_DEPTH = 5;
-const BATCH_SIZE = 50; // Convex mutation limit
+const MAX_DEPTH = 6;
+const BATCH_SIZE = 50;
+const CLEAR_FIRST = process.argv.includes("--clear");
 
-// ─── Simple YAML parser (enough for our PROJECT.yaml format) ─────────────
+// ─── Simple YAML parser ─────────────────────────────────────────────────
 
 function parseYaml(content) {
     const result = {};
@@ -27,36 +29,16 @@ function parseYaml(content) {
         if (!match) continue;
         const [, key, rawVal] = match;
         let val = rawVal.trim();
-
-        // Remove surrounding quotes
-        if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+        if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'")))
             val = val.slice(1, -1);
-        }
-
-        // Array: [item1, item2]
         if (val.startsWith("[") && val.endsWith("]")) {
             const inner = val.slice(1, -1).trim();
-            if (!inner) {
-                result[key] = [];
-            } else {
-                result[key] = inner.split(",").map((s) => {
-                    s = s.trim();
-                    if ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith("'") && s.endsWith("'"))) {
-                        s = s.slice(1, -1);
-                    }
-                    return s;
-                });
-            }
+            result[key] = inner ? inner.split(",").map(s => s.trim().replace(/^['"]|['"]$/g, "")) : [];
             continue;
         }
-
-        // Boolean
         if (val === "true") { result[key] = true; continue; }
         if (val === "false") { result[key] = false; continue; }
-
-        // Null
         if (val === "null" || val === "~" || val === "") { result[key] = null; continue; }
-
         result[key] = val;
     }
     return result;
@@ -73,14 +55,11 @@ function findYamlFiles(dir, depth = 0) {
             const full = join(dir, entry);
             try {
                 const stat = statSync(full);
-                if (stat.isDirectory()) {
-                    files.push(...findYamlFiles(full, depth + 1));
-                } else if (entry === "PROJECT.yaml") {
-                    files.push(full);
-                }
-            } catch { /* skip inaccessible */ }
+                if (stat.isDirectory()) files.push(...findYamlFiles(full, depth + 1));
+                else if (entry === "PROJECT.yaml") files.push(full);
+            } catch { }
         }
-    } catch { /* skip inaccessible dirs */ }
+    } catch { }
     return files;
 }
 
@@ -89,28 +68,20 @@ function findYamlFiles(dir, depth = 0) {
 function convexRun(fn, args) {
     const cmd = `npx convex run "${fn}" '${JSON.stringify(args)}'`;
     const result = execSync(cmd, { cwd: CONVEX_DIR, encoding: "utf-8", maxBuffer: 10 * 1024 * 1024 });
-    // Convex run output may have warnings before the JSON result.
-    // The JSON result can span multiple lines. Try to extract it.
-    const lines = result.trim().split("\n");
-
-    // Strategy 1: Try parsing from the first { to the last }
     const fullText = result.trim();
     const firstBrace = fullText.indexOf("{");
     const lastBrace = fullText.lastIndexOf("}");
     if (firstBrace !== -1 && lastBrace > firstBrace) {
-        try {
-            return JSON.parse(fullText.substring(firstBrace, lastBrace + 1));
-        } catch { /* not valid JSON block */ }
+        try { return JSON.parse(fullText.substring(firstBrace, lastBrace + 1)); } catch { }
     }
-
-    // Strategy 2: Try each line
+    const lines = fullText.split("\n");
     for (let i = lines.length - 1; i >= 0; i--) {
         const line = lines[i].trim();
         if (line.startsWith("{") || line.startsWith("\"")) {
-            try { return JSON.parse(line); } catch { /* not JSON */ }
+            try { return JSON.parse(line); } catch { }
         }
     }
-    return result.trim();
+    return fullText;
 }
 
 // ─── Main ────────────────────────────────────────────────────────────────
@@ -158,15 +129,22 @@ async function main() {
                 stack: Array.isArray(data.stack) ? data.stack : [],
                 repo: data.repo && data.repo !== "null" ? data.repo : undefined,
                 deployUrl: data.deploy_url && data.deploy_url !== "null" ? data.deploy_url : undefined,
-                tags: Array.isArray(data.tags) ? data.tags : [],
+                tags: Array.isArray(data.tags) ? data.tags.filter(t => t && t !== "null") : [],
                 notes: data.notes && data.notes !== "null" ? data.notes : undefined,
+                // New fields
+                projectScope: data.project_scope || "main",
+                projectType: data.project_type || undefined,
+                childType: data.child_type || undefined,
+                parentProject: data.parent_project || undefined,
             });
         } catch (err) {
             console.log(`   ❌ Error parsing ${file}: ${err.message}`);
         }
     }
 
-    console.log(`📦 Parsed ${projects.length} projects (skipped ${skippedTemplates.length} templates)\n`);
+    const mainCount = projects.filter(p => p.projectScope === "main").length;
+    const childCount = projects.filter(p => p.projectScope === "child").length;
+    console.log(`📦 Parsed ${projects.length} projects (${mainCount} main, ${childCount} child, skipped ${skippedTemplates.length} templates)\n`);
 
     // Step 1: Create org + admin user
     console.log("🏢 Creating organization...");
@@ -185,6 +163,13 @@ async function main() {
         process.exit(1);
     }
     console.log(`   ✅ Org ID: ${orgId}\n`);
+
+    // Step 1.5: Clear existing projects if --clear flag is set
+    if (CLEAR_FIRST) {
+        console.log("🗑️  Clearing existing projects...");
+        const clearResult = convexRun("seed:clearAllProjects", { orgId });
+        console.log(`   ✅ Deleted: ${clearResult.deleted || 0}\n`);
+    }
 
     // Step 2: Import projects in batches
     console.log(`📥 Importing ${projects.length} projects in batches of ${BATCH_SIZE}...`);

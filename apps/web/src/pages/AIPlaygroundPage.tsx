@@ -107,9 +107,24 @@ function ChatTab({ models, aiChat, userId }: { models: any[]; aiChat: any; userI
     const [prompt, setPrompt] = useState('');
     const [systemPrompt, setSystemPrompt] = useState('You are a helpful assistant. Be concise.');
     const [temperature, setTemperature] = useState(0.7);
+    const [selectedProvider, setSelectedProvider] = useState('');
+    const [selectedModelId, setSelectedModelId] = useState('');
     const [response, setResponse] = useState('');
     const [meta, setMeta] = useState<any>(null);
     const [loading, setLoading] = useState(false);
+
+    // Provider/model grouping
+    const providers = Array.from(new Map(
+        models
+            .filter((m: any) => m.provider && m.isEnabled)
+            .map((m: any) => [m.provider?._id || m.provider?.slug, m.provider])
+    ).values());
+
+    const filteredModels = selectedProvider
+        ? models.filter((m: any) => (m.provider?._id === selectedProvider || m.provider?.slug === selectedProvider) && m.isEnabled)
+        : models.filter((m: any) => m.isEnabled);
+
+    const selectedModel = models.find((m: any) => m._id === selectedModelId || m.modelId === selectedModelId);
 
     const handleSend = async () => {
         if (!prompt.trim() || loading) return;
@@ -144,6 +159,55 @@ function ChatTab({ models, aiChat, userId }: { models: any[]; aiChat: any; userI
         <div className="playground-panel">
             <div className="playground-panel-grid">
                 <div className="playground-panel-left">
+                    {/* Provider Selector */}
+                    <div className="pg-field">
+                        <label>Provider</label>
+                        <select className="pg-select" value={selectedProvider} onChange={e => {
+                            setSelectedProvider(e.target.value);
+                            setSelectedModelId(''); // Reset model when provider changes
+                        }}>
+                            <option value="">All Providers</option>
+                            {providers.map((p: any) => (
+                                <option key={p._id || p.slug} value={p._id || p.slug}>
+                                    {p.name}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+
+                    {/* Model Selector */}
+                    <div className="pg-field">
+                        <label>Model</label>
+                        <select className="pg-select" value={selectedModelId} onChange={e => setSelectedModelId(e.target.value)}>
+                            <option value="">Default (auto-select)</option>
+                            {filteredModels.map((m: any) => (
+                                <option key={m._id} value={m._id}>
+                                    {m.displayName || m.modelId}{m.isDefault ? ' ⭐' : ''}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+
+                    {/* Model Info */}
+                    {selectedModel && (
+                        <div className="pg-field" style={{
+                            padding: '8px 12px', borderRadius: 8,
+                            background: 'rgba(129, 140, 248, 0.08)',
+                            border: '1px solid rgba(129, 140, 248, 0.15)',
+                            fontSize: 12, color: 'var(--text-secondary)',
+                        }}>
+                            <div style={{ fontWeight: 600, marginBottom: 4 }}>
+                                {selectedModel.displayName}
+                                {selectedModel.isDefault && <span style={{ color: '#fbbf24', marginLeft: 6 }}>⭐ Default</span>}
+                            </div>
+                            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                                <span>📐 Context: {((selectedModel.contextWindow || 0) / 1000).toFixed(0)}k</span>
+                                <span>📝 Max: {((selectedModel.maxTokens || 0) / 1000).toFixed(0)}k tokens</span>
+                                <span>💰 ${((selectedModel.costPerMillionInput || 0) / 100).toFixed(2)}/M in</span>
+                            </div>
+                        </div>
+                    )}
+
                     <div className="pg-field">
                         <label>System Prompt</label>
                         <textarea

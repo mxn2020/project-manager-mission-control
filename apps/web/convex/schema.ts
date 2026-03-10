@@ -62,12 +62,18 @@ export default defineSchema({
         healthScore: v.optional(v.number()),
         syncStatus: v.string(), // synced | stale | error
         lastSyncedAt: v.optional(v.number()),
+        // ── New fields for main/child differentiation ────────────────────
+        projectScope: v.optional(v.string()), // "main" | "child"
+        projectType: v.optional(v.string()), // "standalone" | "monorepo" | "package" | "library"
+        childType: v.optional(v.string()),   // "web-app" | "mobile-app" | "docs" | "blog" | "cli" | "sdk" | "package" | "api" | "shared"
+        parentProject: v.optional(v.string()), // parent project name (for children)
         createdAt: v.number(),
         updatedAt: v.number(),
     })
         .index("by_org", ["orgId"])
         .index("by_org_lane", ["orgId", "lane"])
-        .index("by_org_tier", ["orgId", "tier"]),
+        .index("by_org_tier", ["orgId", "tier"])
+        .index("by_org_scope", ["orgId", "projectScope"]),
 
     // ─── GitHub Repo Links ───────────────────────────────────────────────
     githubRepos: defineTable({

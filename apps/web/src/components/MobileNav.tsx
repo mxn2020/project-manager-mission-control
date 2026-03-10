@@ -35,7 +35,7 @@ const NAV_GROUPS = [
     },
     {
         title: 'System',
-        items: WORKSPACES.filter(ws => ['ai', 'integrations', 'admin'].includes(ws.id)),
+        items: WORKSPACES.filter(ws => ['ai', 'repositories', 'admin'].includes(ws.id)),
     },
 ];
 

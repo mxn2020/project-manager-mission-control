@@ -1,14 +1,25 @@
 import { useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
-import type { StatusData, Project } from '../lib/types';
+import type { StatusData } from '../lib/types';
 import { useAuth } from './useAuth';
 
-export function useProjects() {
-    const { user } = useAuth();
-    const orgId = (user as any)?.orgId;
+interface AuthUser {
+    orgId?: string;
+    [key: string]: unknown;
+}
 
-    const projectsList = useQuery(api.projects.list, orgId ? { orgId } : "skip");
-    const projectStats = useQuery(api.projects.getStats, orgId ? { orgId } : "skip");
+export function useProjects(scope: 'main' | 'child' | 'all' = 'main') {
+    const { user } = useAuth();
+    const orgId = (user as AuthUser | undefined)?.orgId;
+
+    const queryArgs = orgId
+        ? scope === 'all'
+            ? { orgId: orgId as any }
+            : { orgId: orgId as any, scope }
+        : "skip" as const;
+
+    const projectsList = useQuery(api.projects.list, queryArgs);
+    const projectStats = useQuery(api.projects.getStats, orgId ? { orgId: orgId as any } : "skip");
 
     const loading = projectsList === undefined || projectStats === undefined;
     const error = null;
@@ -25,9 +36,8 @@ export function useProjects() {
                 by_priority: projectStats.byPriority,
                 by_stack: projectStats.byStack,
             },
-            // Map Convex _id to id, and ensure other properties match Project interface
-            projects: projectsList.map((p: any) => ({
-                id: p._id,
+            projects: projectsList.map((p) => ({
+                id: (p as any)._id,
                 name: p.name,
                 description: p.description || '',
                 tier: p.tier,
@@ -40,14 +50,18 @@ export function useProjects() {
                 last_active: p.lastActive ? new Date(p.lastActive).toISOString() : null,
                 tags: p.tags || [],
                 notes: p.notes || '',
-                path: p.repo || '', // Fallback since we moved from FS
+                path: p.repo || '',
                 yaml_path: p.repo ? `${p.repo}/PROJECT.yaml` : '',
                 health_score: p.healthScore || 0,
+                // New fields
+                project_scope: p.projectScope || 'main',
+                project_type: p.projectType || undefined,
+                child_type: p.childType || undefined,
+                parent_project: p.parentProject || undefined,
             })),
         };
     }
 
-    // runScan is a placeholder now since scanning filesystem is obsolete
     const runScan = async () => {
         console.log('Filesystem scanning is disabled in SaaS mode. Projects are synced from GitHub.');
     };
