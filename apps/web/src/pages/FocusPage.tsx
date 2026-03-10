@@ -5,7 +5,7 @@ import { TIER_CONFIG, LANE_COLORS } from '../lib/types';
 import { groupByDimension, type Dimension } from '../lib/dimensions';
 import { useDimensions } from '../hooks/useDimensions';
 import { useMutation } from 'convex/react';
-import { api } from '../../convex/_generated/api';
+import { api } from '@mission-control/backend/convex/_generated/api';
 import { PageHeader, Card, Badge, EmptyState, GripIcon, DimensionPicker } from '../components/ui';
 import Dialog from '../components/Dialog';
 

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useQuery, useMutation } from 'convex/react';
-import { api } from '../../convex/_generated/api';
+import { api } from '@mission-control/backend/convex/_generated/api';
 import { useAuth } from './useAuth';
 import { DEFAULT_DIMENSIONS, enrichLaneDimension, type Dimension } from '../lib/dimensions';
 import type { Project, Id } from '../lib/types';

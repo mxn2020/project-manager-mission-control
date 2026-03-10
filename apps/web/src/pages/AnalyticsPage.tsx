@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from 'convex/react';
-import { api as convexApi } from '../../convex/_generated/api';
+import { api as convexApi } from '@mission-control/backend/convex/_generated/api';
 import { useProjects } from '../hooks/useProjects';
 import { PageHeader } from '../components/ui';
 

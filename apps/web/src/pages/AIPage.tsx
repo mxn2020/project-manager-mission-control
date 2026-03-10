@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useQuery, useMutation, useAction } from 'convex/react';
 import { useSearchParams } from 'react-router-dom';
-import { api } from '../../convex/_generated/api';
+import { api } from '@mission-control/backend/convex/_generated/api';
 import { useAuth } from '../hooks/useAuth';
 import SearchableSelect from '../components/SearchableSelect';
 import type { Id } from '../lib/types';

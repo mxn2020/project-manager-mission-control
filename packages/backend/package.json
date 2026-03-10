@@ -1,0 +1,21 @@
+{
+  "name": "@mission-control/backend",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./convex/*": "./convex/*"
+  },
+  "main": "./convex/schema.ts",
+  "scripts": {
+    "dev": "convex dev",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@convex-dev/auth": "^0.0.91",
+    "convex": "^1.32.0"
+  },
+  "devDependencies": {
+    "typescript": "~5.9.3"
+  }
+}

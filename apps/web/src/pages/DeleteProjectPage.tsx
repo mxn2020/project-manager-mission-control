@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useMutation } from 'convex/react';
-import { api } from '../../convex/_generated/api';
+import { api } from '@mission-control/backend/convex/_generated/api';
 import type { Id } from '../lib/types';
 export default function DeleteProjectPage() {
     const params = useParams<{ '*': string }>();

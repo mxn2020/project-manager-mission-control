@@ -5,7 +5,7 @@ import { LANE_COLORS } from '../lib/types';
 import { groupByDimension } from '../lib/dimensions';
 import { useDimensions } from '../hooks/useDimensions';
 import { useMutation } from 'convex/react';
-import { api } from '../../convex/_generated/api';
+import { api } from '@mission-control/backend/convex/_generated/api';
 import { PageHeader, Badge, GripIcon, DimensionPicker } from '../components/ui';
 import { useUrlFilters } from '../hooks/useUrlFilters';
 

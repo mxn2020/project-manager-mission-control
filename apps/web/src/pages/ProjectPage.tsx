@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation } from 'convex/react';
-import { api } from '../../convex/_generated/api';
+import { api } from '@mission-control/backend/convex/_generated/api';
 import type { Tier, Priority, Project } from '../lib/types';
 import { TIER_CONFIG, PRIORITY_CONFIG, LANE_COLORS } from '../lib/types';
 import SearchableSelect from '../components/SearchableSelect';

@@ -1,5 +1,5 @@
 import { useQuery } from 'convex/react';
-import { api } from '../../convex/_generated/api';
+import { api } from '@mission-control/backend/convex/_generated/api';
 import type { StatusData, Id } from '../lib/types';
 import { useAuth } from './useAuth';
 

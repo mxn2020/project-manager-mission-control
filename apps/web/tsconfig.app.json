@@ -38,11 +38,13 @@
       ],
       "@mission-control/hooks": [
         "../../packages/hooks/src/index.ts"
+      ],
+      "@mission-control/backend/*": [
+        "../../packages/backend/*"
       ]
     }
   },
   "include": [
-    "src",
-    "convex"
+    "src"
   ]
 }

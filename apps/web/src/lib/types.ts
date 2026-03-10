@@ -24,7 +24,7 @@ export {
 
 // ─── Convex-specific types ───────────────────────────────────────────────────
 
-import type { Doc, Id } from '../../convex/_generated/dataModel';
+import type { Doc, Id } from '@mission-control/backend/convex/_generated/dataModel';
 export type { Doc, Id };
 
 /**

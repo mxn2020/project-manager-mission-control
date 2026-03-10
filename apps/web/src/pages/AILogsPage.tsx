@@ -1,5 +1,5 @@
 import { useQuery } from 'convex/react';
-import { api } from '../../convex/_generated/api';
+import { api } from '@mission-control/backend/convex/_generated/api';
 import { useState } from 'react';
 import { PageHeader } from '../components/ui';
 
