@@ -289,9 +289,11 @@ http.route({
             return jsonResponse(400, { error: "Missing session parameter" });
         }
 
+        const redirectUri = `${url.origin}/vercel/callback`;
         const state = btoa(sessionToken);
+        const scope = "openid email offline_access";
 
-        const vercelUrl = `https://vercel.com/integrations/${clientId}/new?state=${state}`;
+        const vercelUrl = `https://vercel.com/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scope)}&state=${state}`;
 
         return new Response(null, {
             status: 302,
@@ -330,7 +332,7 @@ http.route({
 
         try {
             // 1. Exchange code for access token (client_secret_post method)
-            const tokenRes = await fetch("https://api.vercel.com/v2/oauth/access_token", {
+            const tokenRes = await fetch("https://api.vercel.com/login/oauth/token", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/x-www-form-urlencoded",
