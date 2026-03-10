@@ -46,8 +46,9 @@ function AddToFocusDialog({
     onClose: () => void; allProjects: Project[]; focusGroup: string[]; onAdd: (path: string) => void;
 }) {
     const [search, setSearch] = useState('');
+    const focusSet = useMemo(() => new Set(focusGroup), [focusGroup]);
     const filtered = allProjects.filter(p => {
-        if (focusGroup.includes(p.path)) return false;
+        if (focusSet.has(p.path)) return false;
         if (search && !p.name.toLowerCase().includes(search.toLowerCase())) return false;
         return true;
     });
@@ -97,7 +98,7 @@ function AddToFocusDialog({
 
 export default function FocusPage({ data, onRefresh }: { data: StatusData; onRefresh: () => Promise<void> }) {
     const navigate = useNavigate();
-    const { dimensions, focusGroup, loaded, addToFocus, removeFromFocus, togglePin, isPinned } = useDimensions(data.projects);
+    const { dimensions, focusGroup, loaded, addToFocus, removeFromFocus, togglePin, isPinned, saveFocusGroup } = useDimensions(data.projects);
     const [view, setView] = useState<'list' | 'grid' | 'kanban'>('list');
     const [groupDimension, setGroupDimension] = useState('priority');
     const [showAddDialog, setShowAddDialog] = useState(false);
@@ -142,10 +143,20 @@ export default function FocusPage({ data, onRefresh }: { data: StatusData; onRef
         if (pendingRef.current.length > 0) flushSaves();
     }, [flushSaves]);
 
-    // Focus projects = only manually pinned projects
+    // Auto-clean stale focus entries (old Convex IDs or paths that no longer match any project)
+    const allPaths = useMemo(() => new Set(data.projects.map(p => p.path)), [data.projects]);
+    useEffect(() => {
+        if (!loaded || focusGroup.length === 0) return;
+        const stale = focusGroup.filter(id => !allPaths.has(id));
+        if (stale.length > 0) {
+            const clean = focusGroup.filter(id => allPaths.has(id));
+            saveFocusGroup(clean);
+        }
+    }, [loaded, focusGroup, allPaths, saveFocusGroup]);
+
+    // Focus projects = only manually added projects
     const focusProjects = useMemo(() => {
         const pinned = new Set(focusGroup);
-        // Apply overrides
         const allProjects = data.projects.map(p => {
             const o = overrides[p.path];
             return o ? { ...p, ...o } as Project : p;

@@ -24,7 +24,10 @@ export default function MinionsPage() {
             const data = searchQuery.trim()
                 ? await search(searchQuery)
                 : await list();
-            setMinions(data);
+            setMinions(Array.isArray(data) ? data : []);
+        } catch (err) {
+            console.warn('Minions SDK not connected:', err);
+            setMinions([]);
         } finally {
             setLoading(false);
         }
@@ -35,7 +38,8 @@ export default function MinionsPage() {
     }, [refresh]);
 
     // Group minions by minionTypeId
-    const allTypes = registry.list();
+    let allTypes: any[] = [];
+    try { allTypes = registry.list() || []; } catch { allTypes = []; }
     const grouped: Record<string, Minion[]> = {};
     for (const m of minions) {
         const key = m.minionTypeId || '_unknown';
@@ -44,7 +48,7 @@ export default function MinionsPage() {
     }
 
     const typeSlugToInfo = (slug: string): { name: string; icon: string } => {
-        const t = allTypes.find((t) => t.slug === slug);
+        const t = allTypes.find((t: any) => t.slug === slug);
         return { name: t?.name ?? slug, icon: t?.icon ?? '📦' };
     };
 

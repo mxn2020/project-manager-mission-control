@@ -6,7 +6,7 @@ import CreateProjectModal from '../components/CreateProjectModal';
 import { TIER_CONFIG, TIER_ORDER, type Tier } from '../lib/types';
 import { PageHeader, Badge, EmptyState } from '../components/ui';
 
-type RoadmapView = 'pipeline' | 'list' | 'compact';
+type RoadmapView = 'pipeline' | 'list' | 'compact' | 'kanban';
 
 const FILTER_DEFAULTS = { view: 'pipeline', lane: '', priority: '', category: '', subcategory: '' };
 
@@ -194,18 +194,49 @@ export default function RoadmapPage() {
     );
 
     const renderCompact = () => (
-        <div className="grid-auto-180 gap-6 mt-16">
-            {filtered.map((p: any) => {
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: 12 }}>
+            {filtered.map(p => {
                 const cfg = TIER_CONFIG[p.tier as Tier];
                 return (
-                    <div key={p.path} className="section-card-sm" style={{
-                        borderLeft: `3px solid ${cfg?.color || 'var(--border)'}`,
+                    <div key={p.path} style={{
+                        padding: 10, borderRadius: 8, background: 'var(--bg-secondary)',
+                        border: `1px solid ${cfg?.color || 'var(--border)'}22`, cursor: 'pointer',
                     }}>
-                        <div className="font-semibold text-base truncate">{p.name}</div>
-                        <div className="flex-row gap-6 text-tertiary text-sm mt-4">
-                            <span>{cfg?.emoji}</span>
-                            <span>{p.lane}</span>
-                            <span style={{ marginLeft: 'auto' }}>{p.priority}</span>
+                        <div className="font-semibold text-md">{cfg?.emoji} {p.name}</div>
+                        <div className="text-sm text-tertiary">{p.lane} · {p.priority}</div>
+                    </div>
+                );
+            })}
+        </div>
+    );
+
+    const renderKanban = () => (
+        <div className="kanban-board">
+            {TIER_ORDER.map(tier => {
+                const cfg = TIER_CONFIG[tier as Tier];
+                const items = byTier[tier] || [];
+                return (
+                    <div key={tier} className="kanban-column">
+                        <div className="kanban-column-header">
+                            <div className="kanban-column-title" style={{ color: cfg?.color || 'var(--text-primary)' }}>
+                                {cfg?.emoji} {cfg?.label || tier}
+                            </div>
+                            <span className="kanban-count">{items.length}</span>
+                        </div>
+                        <div className="kanban-cards">
+                            {items.map(p => (
+                                <div key={p.path} className="kanban-card" style={{ borderLeft: `3px solid ${cfg?.color || 'var(--border)'}` }}>
+                                    <div className="kanban-card-name">{p.name}</div>
+                                    <div className="kanban-card-lane" style={{ color: 'var(--text-tertiary)' }}>{p.lane}</div>
+                                    <div className="flex-row gap-4 mt-4">
+                                        <Badge variant="priority" priority={p.priority} />
+                                        {p.oss && <Badge variant="oss" />}
+                                    </div>
+                                </div>
+                            ))}
+                            {items.length === 0 && (
+                                <div style={{ textAlign: 'center', padding: 30, color: 'var(--text-tertiary)', fontSize: 12 }}>No projects</div>
+                            )}
                         </div>
                     </div>
                 );
@@ -232,6 +263,7 @@ export default function RoadmapPage() {
                     <button className={`btn ${view === 'pipeline' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setFilter('view', 'pipeline')}>🔀 Pipeline</button>
                     <button className={`btn ${view === 'list' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setFilter('view', 'list')}>☰ List</button>
                     <button className={`btn ${view === 'compact' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setFilter('view', 'compact')}>⊞ Compact</button>
+                    <button className={`btn ${view === 'kanban' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setFilter('view', 'kanban')}>🏗️ Kanban</button>
                 </div>
                 <SearchableSelect options={categoryOptions} value={filterCategory} onChange={(v) => { setFilter('category', v); setFilter('subcategory', ''); }} placeholder="All Categories" width="170px" />
                 {subcategoryOptions.length > 0 && (
@@ -243,7 +275,7 @@ export default function RoadmapPage() {
 
             {!data ? (
                 <div className="loading"><div className="loading-spinner" /> Loading roadmap...</div>
-            ) : view === 'pipeline' ? renderPipeline() : view === 'list' ? renderList() : renderCompact()}
+            ) : view === 'pipeline' ? renderPipeline() : view === 'list' ? renderList() : view === 'kanban' ? renderKanban() : renderCompact()}
 
             {showCreate && (
                 <CreateProjectModal
