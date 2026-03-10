@@ -289,11 +289,23 @@ http.route({
             return jsonResponse(400, { error: "Missing session parameter" });
         }
 
+        // Generate PKCE code_verifier
+        const verifierBytes = new Uint8Array(32);
+        crypto.getRandomValues(verifierBytes);
+        const codeVerifier = base64UrlEncode(verifierBytes);
+
+        // Compute code_challenge = base64url(SHA-256(code_verifier))
+        const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(codeVerifier));
+        const codeChallenge = base64UrlEncode(new Uint8Array(digest));
+
+        // Encode session token + code_verifier in state
+        const statePayload = JSON.stringify({ s: sessionToken, v: codeVerifier });
+        const state = btoa(statePayload);
+
         const redirectUri = `${url.origin}/vercel/callback`;
-        const state = btoa(sessionToken);
         const scope = "openid email offline_access";
 
-        const vercelUrl = `https://vercel.com/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scope)}&state=${state}`;
+        const vercelUrl = `https://vercel.com/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scope)}&state=${encodeURIComponent(state)}&code_challenge=${codeChallenge}&code_challenge_method=S256`;
 
         return new Response(null, {
             status: 302,
@@ -322,16 +334,20 @@ http.route({
             return jsonResponse(400, { error: "Missing code or state" });
         }
 
-        // Decode session token from state
+        // Decode session token + code_verifier from state
         let sessionToken: string;
+        let codeVerifier: string;
         try {
-            sessionToken = atob(state);
+            const decoded = atob(decodeURIComponent(state));
+            const payload = JSON.parse(decoded) as { s: string; v: string };
+            sessionToken = payload.s;
+            codeVerifier = payload.v;
         } catch {
             return jsonResponse(400, { error: "Invalid state" });
         }
 
         try {
-            // 1. Exchange code for access token (client_secret_post method)
+            // 1. Exchange code for access token with PKCE code_verifier
             const tokenRes = await fetch("https://api.vercel.com/login/oauth/token", {
                 method: "POST",
                 headers: {
@@ -343,6 +359,7 @@ http.route({
                     client_secret: clientSecret,
                     code,
                     redirect_uri: `${url.origin}/vercel/callback`,
+                    code_verifier: codeVerifier,
                 }).toString(),
             });
 
@@ -391,6 +408,12 @@ http.route({
 });
 
 // ─── Helpers ─────────────────────────────────────────────────────────────
+
+function base64UrlEncode(bytes: Uint8Array): string {
+    let binary = "";
+    for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+    return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
 
 function validateWebhookAuth(request: Request): Response | null {
     const expectedSecret = process.env.WEBHOOK_SECRET;
