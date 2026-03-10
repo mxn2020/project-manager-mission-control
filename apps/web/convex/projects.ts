@@ -189,3 +189,47 @@ export const search = query({
         );
     },
 });
+
+// ─── Bulk Sync Repos from PROJECT.yaml ───────────────────────────────────
+
+export const bulkSyncRepos = mutation({
+    args: {
+        orgId: v.id("organizations"),
+        entries: v.array(
+            v.object({
+                name: v.string(),
+                repo: v.string(),
+            })
+        ),
+    },
+    handler: async (ctx, args) => {
+        const projects = await ctx.db
+            .query("projects")
+            .withIndex("by_org", (idx) => idx.eq("orgId", args.orgId))
+            .collect();
+
+        const nameMap = new Map(projects.map((p) => [p.name.toLowerCase(), p]));
+        let updated = 0;
+        let skipped = 0;
+        const unmatched: string[] = [];
+
+        for (const entry of args.entries) {
+            const project = nameMap.get(entry.name.toLowerCase());
+            if (project) {
+                if (project.repo !== entry.repo) {
+                    await ctx.db.patch(project._id, {
+                        repo: entry.repo,
+                        updatedAt: Date.now(),
+                    });
+                    updated++;
+                } else {
+                    skipped++;
+                }
+            } else {
+                unmatched.push(entry.name);
+            }
+        }
+
+        return { updated, skipped, unmatched };
+    },
+});

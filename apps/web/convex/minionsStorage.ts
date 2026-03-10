@@ -17,7 +17,7 @@ export const get = query({
     handler: async (ctx, { id }) => {
         return await ctx.db
             .query("minions")
-            .withIndex("by_id", (q) => q.eq("id", id))
+            .withIndex("by_minion_id", (q) => q.eq("id", id))
             .unique();
     },
 });
@@ -48,7 +48,7 @@ export const set = mutation({
     handler: async (ctx, { id, data, orgId }) => {
         const existing = await ctx.db
             .query("minions")
-            .withIndex("by_id", (q) => q.eq("id", id))
+            .withIndex("by_minion_id", (q) => q.eq("id", id))
             .unique();
 
         if (existing) {
@@ -66,7 +66,7 @@ export const remove = mutation({
     handler: async (ctx, { id }) => {
         const existing = await ctx.db
             .query("minions")
-            .withIndex("by_id", (q) => q.eq("id", id))
+            .withIndex("by_minion_id", (q) => q.eq("id", id))
             .unique();
         if (existing) await ctx.db.delete(existing._id);
     },

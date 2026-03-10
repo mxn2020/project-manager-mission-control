@@ -415,7 +415,7 @@ export default defineSchema({
         data: v.string(),                            // JSON-serialised Minion object
         orgId: v.optional(v.id("organizations")),    // tenant scope
     })
-        .index("by_id", ["id"])
+        .index("by_minion_id", ["id"])
         .index("by_org", ["orgId"]),
 
     // ─── Voice Models (STT/TTS) ──────────────────────────────────────────
