@@ -37,6 +37,7 @@ import DeleteProjectPage from './pages/DeleteProjectPage';
 import AgentRunsPage from './pages/AgentRunsPage';
 import AIPlaygroundPage from './pages/AIPlaygroundPage';
 import IntegrationsPage from './pages/IntegrationsPage';
+import CompliancePage from './pages/CompliancePage';
 import type { Id } from './lib/types';
 
 function AppShell() {
@@ -87,6 +88,7 @@ function AppShell() {
     if (p.startsWith('/wiki')) return WORKSPACES.find(ws => ws.id === 'wiki')!;
     if (p.startsWith('/agents')) return WORKSPACES.find(ws => ws.id === 'agents')!;
     if (p.startsWith('/playground')) return WORKSPACES.find(ws => ws.id === 'playground')!;
+    if (p.startsWith('/compliance')) return WORKSPACES.find(ws => ws.id === 'compliance')!;
     return WORKSPACES[0];
   };
   const activeWs = getActiveWorkspace();
@@ -106,7 +108,7 @@ function AppShell() {
           {[
             { label: '📋 Work', ids: ['tasks', 'workflows', 'marketing', 'content', 'ideas'] },
             { label: '📖 Knowledge', ids: ['wiki', 'roadmap', 'files'] },
-            { label: '📦 Data', ids: ['minions', 'analytics', 'costs', 'dependencies'] },
+            { label: '📦 Data', ids: ['minions', 'analytics', 'costs', 'dependencies', 'compliance'] },
             { label: '⚙️ System', ids: ['ai', 'playground', 'agents', 'repositories', 'admin'] },
           ].map(group => {
             const items = group.ids.map(id => WORKSPACES.find(w => w.id === id)!).filter(Boolean);
@@ -238,6 +240,7 @@ function AppShell() {
             <Route path="/files" element={<FilesPage />} />
             <Route path="/agents" element={<AgentRunsPage />} />
             <Route path="/playground" element={<AIPlaygroundPage />} />
+            <Route path="/compliance" element={<CompliancePage />} />
           </Routes>
         </div>
       </div>

@@ -11,6 +11,8 @@ export default defineSchema({
         settings: v.optional(v.string()), // JSON settings
         githubToken: v.optional(v.string()), // OAuth access token
         githubUsername: v.optional(v.string()), // Connected GitHub username
+        vercelToken: v.optional(v.string()), // Vercel API token
+        vercelTeamId: v.optional(v.string()), // Vercel team/scope ID
         createdAt: v.number(),
     })
         .index("by_slug", ["slug"])
@@ -68,6 +70,7 @@ export default defineSchema({
         projectType: v.optional(v.string()), // "standalone" | "monorepo" | "package" | "library"
         childType: v.optional(v.string()),   // "web-app" | "mobile-app" | "docs" | "blog" | "cli" | "sdk" | "package" | "api" | "shared"
         parentProject: v.optional(v.string()), // parent project name (for children)
+        vercelProjectId: v.optional(v.string()), // linked Vercel project ID
         createdAt: v.number(),
         updatedAt: v.number(),
     })
@@ -460,4 +463,19 @@ export default defineSchema({
     })
         .index("by_org", ["orgId"])
         .index("by_status", ["status"]),
+
+    // ─── Compliance Scans ─────────────────────────────────────────────────
+    complianceScans: defineTable({
+        orgId: v.id("organizations"),
+        projectId: v.id("projects"),
+        repoFullName: v.optional(v.string()),
+        results: v.string(), // JSON: Record<metricId, { pass: boolean; detail: string }>
+        passCount: v.number(),
+        totalCount: v.number(),
+        score: v.number(), // 0-100
+        scannedAt: v.number(),
+    })
+        .index("by_org", ["orgId"])
+        .index("by_project", ["projectId"])
+        .index("by_org_scanned", ["orgId", "scannedAt"]),
 });
