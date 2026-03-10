@@ -1,8 +1,11 @@
-import { useState, useEffect, useCallback } from 'react';
-import { api } from '../lib/api';
+import { useState, useMemo } from 'react';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '../../convex/_generated/api';
 import { useProjects } from '../hooks/useProjects';
+import { useAuth } from '../hooks/useAuth';
 import SearchableSelect, { type SelectOption } from '../components/SearchableSelect';
 import MultiSelect from '../components/MultiSelect';
+import PromptDialog from '../components/PromptDialog';
 
 const CATEGORIES = [
     { value: 'project-setup', label: 'Project Setup', icon: '🏗️' },
@@ -22,11 +25,16 @@ const CAT_COLORS: Record<string, string> = {
 interface Step { id: string; title: string; description: string; order: number; done: boolean }
 
 export default function WorkflowsPage() {
-    const [workflows, setWorkflows] = useState<any[] | null>(null);
+    const { orgId } = useAuth() as any;
+
     const [filter, setFilter] = useState('');
     const [showCreate, setShowCreate] = useState(false);
     const [expanded, setExpanded] = useState<string | null>(null);
     const { data: projectData } = useProjects();
+
+    // Prompt dialog state for adding steps
+    const [promptOpen, setPromptOpen] = useState(false);
+    const [promptWfId, setPromptWfId] = useState<string>('');
 
     // Create form
     const [newTitle, setNewTitle] = useState('');
@@ -35,58 +43,59 @@ export default function WorkflowsPage() {
     const [newProjects, setNewProjects] = useState<string[]>([]);
     const [newIsTemplate, setNewIsTemplate] = useState(false);
 
-    const load = useCallback(async () => {
-        try { setWorkflows(await api.workflows.list(filter ? { category: filter } : undefined)); }
-        catch { setWorkflows([]); }
-    }, [filter]);
+    // Convex hooks
+    const rawWorkflows = useQuery(api.workflows.list, orgId ? { orgId } : "skip");
 
-    useEffect(() => { load(); }, [load]);
+    const createWorkflow = useMutation(api.workflows.create);
+    const updateWorkflow = useMutation(api.workflows.update);
+    const deleteWorkflow = useMutation(api.workflows.remove);
+    const addStep = useMutation(api.workflows.addStep);
+    const toggleStepObj = useMutation(api.workflows.toggleStep);
+    const removeStep = useMutation(api.workflows.removeStep);
 
-    const projectOptions: SelectOption[] = (projectData?.projects || []).map(p => {
-        const segs = p.path.split('/');
-        return { value: p.path, label: segs[segs.length - 1] || p.path, group: segs[0], icon: '📁' };
-    });
+    const workflows = rawWorkflows ? rawWorkflows.map(w => ({ ...w, id: w._id })) : null;
+
+    const projectOptions: SelectOption[] = useMemo(() =>
+        (projectData?.projects || []).map(p => {
+            const segs = p.path.split('/');
+            return { value: p.path, label: segs[segs.length - 1] || p.path, group: segs[0], icon: '📁' };
+        }), [projectData]);
 
     const handleCreate = async () => {
-        if (!newTitle.trim()) return;
-        await api.workflows.create({
+        if (!newTitle.trim() || !orgId) return;
+        await createWorkflow({
+            orgId,
             title: newTitle.trim(), description: newDesc.trim(),
             category: newCat, linkedProjects: newProjects, isTemplate: newIsTemplate,
-            steps: [],
         });
         setShowCreate(false); setNewTitle(''); setNewDesc(''); setNewProjects([]);
-        await load();
     };
 
-    const handleAddStep = async (wfId: string, wf: any) => {
-        const title = prompt('Step title:');
-        if (!title) return;
-        const steps: Step[] = [...(wf.steps || []), {
-            id: `step_${Date.now()}`, title, description: '', order: (wf.steps || []).length, done: false,
-        }];
-        await api.workflows.update(wfId, { steps });
-        await load();
+    const openAddStep = (wfId: string) => {
+        setPromptWfId(wfId);
+        setPromptOpen(true);
     };
 
-    const handleToggleStep = async (wfId: string, wf: any, stepId: string) => {
-        const steps = (wf.steps || []).map((s: Step) => s.id === stepId ? { ...s, done: !s.done } : s);
-        await api.workflows.update(wfId, { steps });
-        await load();
+    const handleAddStep = async (title: string) => {
+        await addStep({ workflowId: promptWfId as any, stepTitle: title, stepDescription: '' });
     };
 
-    const handleDeleteStep = async (wfId: string, wf: any, stepId: string) => {
-        const steps = (wf.steps || []).filter((s: Step) => s.id !== stepId);
-        await api.workflows.update(wfId, { steps });
-        await load();
+    const handleToggleStep = async (wfId: string, stepId: string) => {
+        await toggleStepObj({ workflowId: wfId as any, stepId });
+    };
+
+    const handleDeleteStep = async (wfId: string, stepId: string) => {
+        await removeStep({ workflowId: wfId as any, stepId });
     };
 
     const handleDelete = async (id: string) => {
-        await api.workflows.delete(id);
-        if (expanded === id) setExpanded(null);
-        await load();
+        if (confirm("Delete this workflow?")) {
+            await deleteWorkflow({ workflowId: id as any });
+            if (expanded === id) setExpanded(null);
+        }
     };
 
-    const allWorkflows = workflows || [];
+    const allWorkflows = (workflows || []).filter(w => !filter || w.category === filter);
     const completedSteps = (wf: any) => (wf.steps || []).filter((s: Step) => s.done).length;
     const totalSteps = (wf: any) => (wf.steps || []).length;
 
@@ -192,8 +201,7 @@ export default function WorkflowsPage() {
                                                 options={projectOptions}
                                                 value={wf.linkedProjects || []}
                                                 onChange={async (newProjects) => {
-                                                    await api.workflows.update(wf.id, { linkedProjects: newProjects });
-                                                    await load();
+                                                    await updateWorkflow({ workflowId: wf.id as any, linkedProjects: newProjects });
                                                 }}
                                                 placeholder="Link projects..."
                                                 grouped
@@ -210,7 +218,7 @@ export default function WorkflowsPage() {
                                                 background: 'var(--bg-primary)', borderRadius: 8,
                                                 border: '1px solid var(--border)', opacity: step.done ? 0.5 : 1,
                                             }}>
-                                                <div onClick={() => handleToggleStep(wf.id, wf, step.id)}
+                                                <div onClick={() => handleToggleStep(wf.id, step.id)}
                                                     className="flex-center flex-shrink-0" style={{
                                                         width: 20, height: 20, borderRadius: 4, cursor: 'pointer',
                                                         border: `2px solid ${step.done ? '#34d399' : 'var(--border)'}`,
@@ -221,10 +229,10 @@ export default function WorkflowsPage() {
                                                 </div>
                                                 <span className="text-sm text-tertiary font-mono" style={{ width: 20 }}>{i + 1}</span>
                                                 <span className="text-md flex-1" style={{ textDecoration: step.done ? 'line-through' : 'none' }}>{step.title}</span>
-                                                <button onClick={() => handleDeleteStep(wf.id, wf, step.id)} className="icon-btn text-tertiary text-xs">✕</button>
+                                                <button onClick={() => handleDeleteStep(wf.id, step.id)} className="icon-btn text-tertiary text-xs">✕</button>
                                             </div>
                                         ))}
-                                        <button onClick={() => handleAddStep(wf.id, wf)}
+                                        <button onClick={() => openAddStep(wf.id)}
                                             className="btn btn-secondary text-sm mt-8" style={{ padding: '4px 12px' }}>
                                             + Add Step
                                         </button>
@@ -235,6 +243,13 @@ export default function WorkflowsPage() {
                     })
                 )}
             </div>
+            <PromptDialog
+                open={promptOpen}
+                onClose={() => setPromptOpen(false)}
+                onSubmit={handleAddStep}
+                title="Step Title"
+                placeholder="Enter step title…"
+            />
         </div>
     );
 }

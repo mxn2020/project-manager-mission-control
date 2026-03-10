@@ -34,3 +34,7 @@ apps/mobile/ios
 *.njsproj
 *.sln
 *.sw?
+
+# Added by AI Agent
+.env.*
+!.env.example

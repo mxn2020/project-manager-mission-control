@@ -1,21 +1,20 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from 'convex/react';
 import { api as convexApi } from '../../convex/_generated/api';
-import { api } from '../lib/api';
 import { useProjects } from '../hooks/useProjects';
 import { PageHeader } from '../components/ui';
 
+import { useAuth } from '../hooks/useAuth';
+
 export default function AnalyticsPage() {
+    const { orgId } = useAuth() as any;
+
     const aiStats = useQuery(convexApi.aiLogs.getStats);
     const costSummary = useQuery(convexApi.costs.getCostSummary);
-    const [taskStats, setTaskStats] = useState<any>(null);
-    const [contentStats, setContentStats] = useState<any>(null);
-    const { data: projectData } = useProjects();
+    const taskStats = useQuery(convexApi.tasks.getStats, orgId ? { orgId } : "skip");
+    const contentStats = useQuery(convexApi.content.getContentStats);
 
-    useEffect(() => {
-        api.tasks.stats().then(setTaskStats).catch(() => { });
-        api.content.stats().then(setContentStats).catch(() => { });
-    }, []);
+    const { data: projectData } = useProjects();
 
     const projects = projectData?.projects || [];
 

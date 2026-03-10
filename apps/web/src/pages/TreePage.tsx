@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { StatusData, Project, Tier } from '../lib/types';
 import { TIER_CONFIG, TIER_ORDER, LANE_COLORS } from '../lib/types';
@@ -9,11 +9,24 @@ import { PageHeader, FilterBar, Badge, EmptyState, DimensionPicker } from '../co
 // ─── Tree Node Component ──────────────────────────────────────────────────────
 
 function TreeNode({
-    label, icon, count, color, defaultExpanded = true, children,
+    label, icon, count, color, defaultExpanded = true, storageKey, children,
 }: {
-    label: string; icon?: string; count: number; color?: string; defaultExpanded?: boolean; children: React.ReactNode;
+    label: string; icon?: string; count: number; color?: string; defaultExpanded?: boolean; storageKey?: string; children: React.ReactNode;
 }) {
-    const [expanded, setExpanded] = useState(defaultExpanded);
+    const [expanded, setExpanded] = useState(() => {
+        if (storageKey) {
+            const saved = localStorage.getItem(`mc-tree:${storageKey}`);
+            if (saved !== null) return saved === '1';
+        }
+        return defaultExpanded;
+    });
+
+    useEffect(() => {
+        if (storageKey) {
+            localStorage.setItem(`mc-tree:${storageKey}`, expanded ? '1' : '0');
+        }
+    }, [expanded, storageKey]);
+
     return (
         <div className="tree-node">
             <div className={`tree-node-header ${expanded ? 'expanded' : ''}`} onClick={() => setExpanded(e => !e)}>
@@ -82,9 +95,9 @@ export default function TreePage({ data }: { data: StatusData }) {
                 const withProjects = groups.filter(g => g.projects.length > 0);
                 if (withProjects.length === 0) return null;
                 return (
-                    <TreeNode key={dim.id} label={dim.label} icon={dim.icon} count={filtered.length} color="var(--accent)">
+                    <TreeNode key={dim.id} label={dim.label} icon={dim.icon} count={filtered.length} color="var(--accent)" storageKey={`all:${dim.id}`}>
                         {withProjects.map(g => (
-                            <TreeNode key={g.key} label={g.sub.label} icon={g.sub.icon} count={g.projects.length} color={g.sub.color}>
+                            <TreeNode key={g.key} label={g.sub.label} icon={g.sub.icon} count={g.projects.length} color={g.sub.color} storageKey={`all:${dim.id}:${g.key}`}>
                                 {g.projects.map(p => <TreeLeaf key={p.path} project={p} onClick={() => handleProjectClick(p.path)} />)}
                             </TreeNode>
                         ))}
@@ -100,7 +113,7 @@ export default function TreePage({ data }: { data: StatusData }) {
         return (
             <div className="tree-container">
                 {groups.filter(g => g.projects.length > 0).map(g => (
-                    <TreeNode key={g.key} label={g.sub.label} icon={g.sub.icon} count={g.projects.length} color={g.sub.color}>
+                    <TreeNode key={g.key} label={g.sub.label} icon={g.sub.icon} count={g.projects.length} color={g.sub.color} storageKey={`${dim.id}:${g.key}`}>
                         {g.projects.map(p => <TreeLeaf key={p.path} project={p} onClick={() => handleProjectClick(p.path)} />)}
                     </TreeNode>
                 ))}

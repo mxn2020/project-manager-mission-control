@@ -4,3 +4,11 @@
 
 expo-env.d.ts
 # @end expo-cli
+
+# Added by AI Agent
+node_modules
+dist
+.env
+.env.*
+!.env.example
+.DS_Store

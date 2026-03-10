@@ -34,6 +34,8 @@ import LoginPage from './pages/LoginPage';
 import NewTaskPage from './pages/NewTaskPage';
 import NewProjectPage from './pages/NewProjectPage';
 import DeleteProjectPage from './pages/DeleteProjectPage';
+import AgentRunsPage from './pages/AgentRunsPage';
+import AIPlaygroundPage from './pages/AIPlaygroundPage';
 
 function AppShell() {
   const location = useLocation();
@@ -80,6 +82,8 @@ function AppShell() {
     if (p.startsWith('/marketing')) return WORKSPACES.find(ws => ws.id === 'marketing')!;
     if (p.startsWith('/ideas')) return WORKSPACES.find(ws => ws.id === 'ideas')!;
     if (p.startsWith('/wiki')) return WORKSPACES.find(ws => ws.id === 'wiki')!;
+    if (p.startsWith('/agents')) return WORKSPACES.find(ws => ws.id === 'agents')!;
+    if (p.startsWith('/playground')) return WORKSPACES.find(ws => ws.id === 'playground')!;
     return WORKSPACES[0];
   };
   const activeWs = getActiveWorkspace();
@@ -100,7 +104,7 @@ function AppShell() {
             { label: '📋 Work', ids: ['tasks', 'workflows', 'marketing', 'content', 'ideas'] },
             { label: '📖 Knowledge', ids: ['wiki', 'roadmap', 'files'] },
             { label: '📦 Data', ids: ['minions', 'analytics', 'costs', 'dependencies'] },
-            { label: '⚙️ System', ids: ['ai', 'integrations', 'admin'] },
+            { label: '⚙️ System', ids: ['ai', 'playground', 'agents', 'integrations', 'admin'] },
           ].map(group => {
             const items = group.ids.map(id => WORKSPACES.find(w => w.id === id)!).filter(Boolean);
             const isGroupActive = items.some(ws => ws.id === activeWs.id);
@@ -227,6 +231,8 @@ function AppShell() {
             <Route path="/ideas" element={<IdeasPage />} />
             <Route path="/wiki" element={<WikiPage />} />
             <Route path="/files" element={<FilesPage />} />
+            <Route path="/agents" element={<AgentRunsPage />} />
+            <Route path="/playground" element={<AIPlaygroundPage />} />
           </Routes>
         </div>
       </div>

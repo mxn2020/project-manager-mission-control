@@ -1,6 +1,8 @@
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo } from 'react';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '../../convex/_generated/api';
 import { useProjects } from '../hooks/useProjects';
-import { api } from '../lib/api';
+import { useAuth } from '../hooks/useAuth';
 import SearchableSelect, { type SelectOption } from '../components/SearchableSelect';
 import { PageHeader, EmptyState } from '../components/ui';
 
@@ -15,9 +17,8 @@ const STATUS_FLOW = [
 const PLATFORMS = ['twitter', 'reddit', 'youtube', 'linkedin', 'devto', 'github'];
 
 export default function ContentPage() {
+    const { orgId } = useAuth() as any;
     const { data: projectData } = useProjects();
-    const [plans, setPlans] = useState<any[] | null>(null);
-    const [stats, setStats] = useState<any>(null);
 
     const [filter, setFilter] = useState('all');
     const [showCreate, setShowCreate] = useState(false);
@@ -31,18 +32,21 @@ export default function ContentPage() {
     const [newTitle, setNewTitle] = useState('');
     const [newNotes, setNewNotes] = useState('');
 
-    const loadPlans = useCallback(async () => {
-        try {
-            const [p, s] = await Promise.all([api.content.list(), api.content.stats()]);
-            setPlans(p);
-            setStats(s);
-        } catch (err) {
-            console.error('Failed to load content plans:', err);
-            setPlans([]);
-        }
-    }, []);
+    // Convex queries and mutations
+    const rawPlans = useQuery(api.content.listPlans, orgId ? {} : "skip");
+    const stats = useQuery(api.content.getContentStats, orgId ? {} : "skip");
 
-    useEffect(() => { loadPlans(); }, [loadPlans]);
+    const createPlan = useMutation(api.content.createPlan);
+    const updatePlan = useMutation(api.content.updatePlan);
+    const deletePlan = useMutation(api.content.deletePlan);
+    const addItem = useMutation(api.content.addItem);
+    const updateItem = useMutation(api.content.updateItem);
+
+    const plans = rawPlans ? rawPlans.map(p => ({ ...p, id: p._id })) : null;
+
+    // Use full plan data when expanded
+    const rawExpandedDetail = useQuery(api.content.getPlan, expandedPlan ? { id: expandedPlan as any } : "skip");
+    const expandedDetail = rawExpandedDetail ? { ...rawExpandedDetail, id: rawExpandedDetail._id } : null;
 
     const allPlans = plans || [];
     const filtered = allPlans.filter((p: any) => filter === 'all' || p.status === filter);
@@ -64,8 +68,8 @@ export default function ContentPage() {
     const platformOptions: SelectOption[] = PLATFORMS.map(p => ({ value: p, label: p, icon: platformIcons[p] || '📄' }));
 
     const handleCreate = async () => {
-        if (!newProject.trim() || !newTag.trim()) return;
-        const plan = await api.content.create({
+        if (!newProject.trim() || !newTag.trim() || !orgId) return;
+        const planId = await createPlan({
             projectPath: newProject.trim(),
             releaseTag: newTag.trim(),
             releaseTitle: newTitle.trim() || undefined,
@@ -76,37 +80,33 @@ export default function ContentPage() {
         setNewTag('');
         setNewTitle('');
         setNewNotes('');
-        setExpandedPlan(plan.id);
-        await loadPlans();
+        setExpandedPlan(planId as any);
     };
 
     const handleUpdatePlan = async (id: string, updates: Record<string, unknown>) => {
-        await api.content.update(id, updates);
-        await loadPlans();
+        await updatePlan({ id: id as any, ...updates });
     };
 
     const handleDeletePlan = async (id: string) => {
-        await api.content.delete(id);
-        if (expandedPlan === id) setExpandedPlan(null);
-        await loadPlans();
+        if (confirm("Delete this content plan?")) {
+            await deletePlan({ id: id as any });
+            if (expandedPlan === id) setExpandedPlan(null);
+        }
     };
 
     const handleAddItem = async () => {
         if (!expandedPlan || !newItemContent.trim()) return;
-        await api.content.addItem(expandedPlan, {
+        await addItem({
+            planId: expandedPlan as any,
             platform: newItemPlatform,
             content: newItemContent.trim(),
         });
         setNewItemContent('');
-        await loadPlans();
     };
 
-    const handleUpdateItem = async (planId: string, itemId: string, updates: Record<string, unknown>) => {
-        await api.content.updateItem(planId, itemId, updates);
-        await loadPlans();
+    const handleUpdateItem = async (itemId: string, updates: Record<string, unknown>) => {
+        await updateItem({ id: itemId as any, ...updates });
     };
-
-    const expandedDetail = expandedPlan ? allPlans.find((p: any) => p.id === expandedPlan) : null;
 
     return (
         <div>
@@ -230,7 +230,7 @@ export default function ContentPage() {
                                                     <SearchableSelect
                                                         options={[{ value: 'draft', label: 'Draft' }, { value: 'scheduled', label: 'Scheduled' }, { value: 'posted', label: 'Posted' }]}
                                                         value={item.status}
-                                                        onChange={v => handleUpdateItem(plan.id, item._id, { status: v })}
+                                                        onChange={v => handleUpdateItem(item._id, { status: v })}
                                                         placeholder="Status" clearable={false} width="120px" />
                                                 </div>
                                             </div>

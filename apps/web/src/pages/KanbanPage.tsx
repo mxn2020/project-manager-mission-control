@@ -4,7 +4,8 @@ import type { StatusData, Project } from '../lib/types';
 import { LANE_COLORS } from '../lib/types';
 import { groupByDimension } from '../lib/dimensions';
 import { useDimensions } from '../hooks/useDimensions';
-import { api } from '../lib/api';
+import { useMutation } from 'convex/react';
+import { api } from '../../convex/_generated/api';
 import { PageHeader, Badge, GripIcon, DimensionPicker } from '../components/ui';
 
 /** Pending change queued for batch save */
@@ -46,6 +47,8 @@ export default function KanbanPage({ data, onRefresh }: { data: StatusData; onRe
         return groupByDimension(projects, activeDimension);
     }, [projects, activeDimension]);
 
+    const updateProject = useMutation(api.projects.update);
+
     // ── Debounced batch save ─────────────────────────────────────────────
     const flushSaves = useCallback(async () => {
         const changes = [...pendingRef.current];
@@ -59,12 +62,12 @@ export default function KanbanPage({ data, onRefresh }: { data: StatusData; onRe
             const byProject = new Map<string, PendingChange>();
             for (const c of changes) byProject.set(c.projectPath, c);
 
-            // Save each project's YAML
+            // Save each project
             for (const [, change] of byProject) {
-                const { raw_yaml } = await api.projects.get(change.projectPath);
-                const regex = new RegExp(`^${change.field}:\\s*.*`, 'm');
-                const updatedYaml = raw_yaml.replace(regex, `${change.field}: ${change.newValue}`);
-                await api.projects.update(change.projectPath, updatedYaml);
+                await updateProject({
+                    projectId: change.projectPath as any,
+                    [change.field]: change.newValue,
+                });
             }
 
             // Refresh data from server (background, non-blocking)
@@ -77,7 +80,7 @@ export default function KanbanPage({ data, onRefresh }: { data: StatusData; onRe
         } finally {
             setSaving(false);
         }
-    }, [onRefresh]);
+    }, [onRefresh, updateProject]);
 
     const queueSave = useCallback((change: PendingChange) => {
         pendingRef.current.push(change);

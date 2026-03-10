@@ -1,67 +1,83 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
-// ─── Queries ─────────────────────────────────────────────────────────────────
+// ─── List Tasks ──────────────────────────────────────────────────────────
 
-export const listTasks = query({
+export const list = query({
     args: {
+        orgId: v.id("organizations"),
         status: v.optional(v.string()),
         priority: v.optional(v.string()),
         projectPath: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
         let tasks;
-
         if (args.status) {
-            tasks = await ctx.db.query("tasks")
-                .withIndex("by_status", (qb) => qb.eq("status", args.status!))
-                .collect();
-        } else if (args.priority) {
-            tasks = await ctx.db.query("tasks")
-                .withIndex("by_priority", (qb) => qb.eq("priority", args.priority!))
+            tasks = await ctx.db
+                .query("tasks")
+                .withIndex("by_org_status", (idx) =>
+                    idx.eq("orgId", args.orgId).eq("status", args.status!)
+                )
                 .collect();
         } else if (args.projectPath) {
-            tasks = await ctx.db.query("tasks")
-                .withIndex("by_project", (qb) => qb.eq("projectPath", args.projectPath!))
+            tasks = await ctx.db
+                .query("tasks")
+                .withIndex("by_org_project", (idx) =>
+                    idx.eq("orgId", args.orgId).eq("projectPath", args.projectPath!)
+                )
                 .collect();
         } else {
-            tasks = await ctx.db.query("tasks").collect();
+            tasks = await ctx.db
+                .query("tasks")
+                .withIndex("by_org", (idx) => idx.eq("orgId", args.orgId))
+                .collect();
         }
 
+        if (args.priority) {
+            tasks = tasks.filter((t) => t.priority === args.priority);
+        }
         return tasks.sort((a, b) => b.updatedAt - a.updatedAt);
     },
 });
 
-export const getTask = query({
-    args: { id: v.id("tasks") },
+export const get = query({
+    args: { taskId: v.id("tasks") },
     handler: async (ctx, args) => {
-        return await ctx.db.get(args.id);
+        return await ctx.db.get(args.taskId);
     },
 });
 
-export const getTaskStats = query({
-    args: {},
-    handler: async (ctx) => {
-        const all = await ctx.db.query("tasks").collect();
+// ─── Task Stats ──────────────────────────────────────────────────────────
+
+export const getStats = query({
+    args: { orgId: v.id("organizations") },
+    handler: async (ctx, args) => {
+        const tasks = await ctx.db
+            .query("tasks")
+            .withIndex("by_org", (idx) => idx.eq("orgId", args.orgId))
+            .collect();
+
         const byStatus: Record<string, number> = {};
         const byPriority: Record<string, number> = {};
         const byProject: Record<string, number> = {};
 
-        for (const t of all) {
+        for (const t of tasks) {
             byStatus[t.status] = (byStatus[t.status] || 0) + 1;
             byPriority[t.priority] = (byPriority[t.priority] || 0) + 1;
-            byProject[t.projectPath] = (byProject[t.projectPath] || 0) + 1;
+            const proj = t.projectPath || "(none)";
+            byProject[proj] = (byProject[proj] || 0) + 1;
         }
-
-        return { total: all.length, byStatus, byPriority, byProject };
+        return { total: tasks.length, byStatus, byPriority, byProject };
     },
 });
 
-// ─── Mutations ───────────────────────────────────────────────────────────────
+// ─── Create Task ─────────────────────────────────────────────────────────
 
-export const createTask = mutation({
+export const create = mutation({
     args: {
-        projectPath: v.string(),
+        orgId: v.id("organizations"),
+        projectId: v.optional(v.id("projects")),
+        projectPath: v.optional(v.string()),
         title: v.string(),
         description: v.optional(v.string()),
         taskType: v.optional(v.string()),
@@ -69,19 +85,23 @@ export const createTask = mutation({
         priority: v.optional(v.string()),
         effort: v.optional(v.string()),
         dueDate: v.optional(v.number()),
+        githubIssueUrl: v.optional(v.string()),
         tags: v.optional(v.array(v.string())),
     },
     handler: async (ctx, args) => {
         const now = Date.now();
         return await ctx.db.insert("tasks", {
-            projectPath: args.projectPath,
+            orgId: args.orgId,
+            projectId: args.projectId,
+            projectPath: args.projectPath || "",
             title: args.title,
-            description: args.description || "",
+            description: args.description,
             taskType: args.taskType || "feature",
             status: args.status || "todo",
             priority: args.priority || "medium",
-            effort: args.effort || "M",
+            effort: args.effort,
             dueDate: args.dueDate,
+            githubIssueUrl: args.githubIssueUrl,
             tags: args.tags || [],
             createdAt: now,
             updatedAt: now,
@@ -89,9 +109,11 @@ export const createTask = mutation({
     },
 });
 
-export const updateTask = mutation({
+// ─── Update Task ─────────────────────────────────────────────────────────
+
+export const update = mutation({
     args: {
-        id: v.id("tasks"),
+        taskId: v.id("tasks"),
         title: v.optional(v.string()),
         description: v.optional(v.string()),
         taskType: v.optional(v.string()),
@@ -99,42 +121,27 @@ export const updateTask = mutation({
         priority: v.optional(v.string()),
         effort: v.optional(v.string()),
         dueDate: v.optional(v.number()),
-        tags: v.optional(v.array(v.string())),
         githubIssueUrl: v.optional(v.string()),
+        tags: v.optional(v.array(v.string())),
+        projectPath: v.optional(v.string()),
+        projectId: v.optional(v.id("projects")),
     },
     handler: async (ctx, args) => {
-        const { id, ...updates } = args;
-        const clean: Record<string, any> = {};
-        for (const [k, val] of Object.entries(updates)) {
+        const { taskId, ...rest } = args;
+        const clean: Record<string, unknown> = { updatedAt: Date.now() };
+        for (const [k, val] of Object.entries(rest)) {
             if (val !== undefined) clean[k] = val;
         }
-        clean.updatedAt = Date.now();
-        await ctx.db.patch(id, clean);
+        await ctx.db.patch(taskId, clean);
+        return taskId;
     },
 });
 
-export const deleteTask = mutation({
-    args: { id: v.id("tasks") },
-    handler: async (ctx, args) => {
-        // Delete relations
-        const rels = await ctx.db
-            .query("taskRelations")
-            .withIndex("by_source", (q) => q.eq("sourceTaskId", args.id))
-            .collect();
-        for (const r of rels) await ctx.db.delete(r._id);
-        await ctx.db.delete(args.id);
-    },
-});
+// ─── Delete Task ─────────────────────────────────────────────────────────
 
-export const bulkUpdateStatus = mutation({
-    args: {
-        ids: v.array(v.id("tasks")),
-        status: v.string(),
-    },
+export const remove = mutation({
+    args: { taskId: v.id("tasks") },
     handler: async (ctx, args) => {
-        const now = Date.now();
-        for (const id of args.ids) {
-            await ctx.db.patch(id, { status: args.status, updatedAt: now });
-        }
+        await ctx.db.delete(args.taskId);
     },
 });

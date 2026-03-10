@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getAuthHeaders, API_BASE } from '../lib/api';
+import { useMutation } from 'convex/react';
+import { api } from '../../convex/_generated/api';
+import { useAuth } from '../hooks/useAuth';
 import { useProjects } from '../hooks/useProjects';
 import SearchableSelect, { type SelectOption } from '../components/SearchableSelect';
 import { TIER_ORDER, PRIORITY_ORDER, TIER_CONFIG, PRIORITY_CONFIG } from '../lib/types';
@@ -14,6 +16,9 @@ const COMMON_STACKS = [
 export default function NewProjectPage() {
     const navigate = useNavigate();
     const { data } = useProjects();
+    const { user } = useAuth();
+    const orgId = (user as any)?.orgId;
+    const createProject = useMutation(api.projects.create);
 
     const lanes = [...new Set((data?.projects ?? []).map(p => p.lane).filter(Boolean))].sort();
     const laneOptions: SelectOption[] = lanes.map(l => ({ value: l, label: l }));
@@ -43,19 +48,24 @@ export default function NewProjectPage() {
 
     const handleSubmit = async () => {
         if (!name.trim() || !lane) { setError('Name and lane are required'); return; }
+        if (!orgId) { setError('Organization ID not found. Ensure you are logged in correctly.'); return; }
         setSubmitting(true);
         setError('');
         try {
-            const res = await fetch(`${API_BASE}/api/projects`, {
-                method: 'POST',
-                headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: name.trim(), lane, tier, priority, description: description.trim(), stack, oss, repo: repo.trim() || null }),
+            await createProject({
+                orgId: orgId as any,
+                name: name.trim(),
+                lane,
+                tier,
+                priority,
+                description: description.trim(),
+                stack,
+                oss,
+                repo: repo.trim() || undefined,
             });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error || 'Failed to create project');
             navigate('/');
-        } catch (err: unknown) {
-            setError(err instanceof Error ? err.message : 'Failed to create project');
+        } catch (err: any) {
+            setError(err.message || 'Failed to create project');
         } finally {
             setSubmitting(false);
         }

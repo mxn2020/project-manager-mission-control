@@ -1,18 +1,10 @@
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { useState, useEffect } from 'react';
-import { getAuthHeaders, API_BASE } from '../lib/api';
 import SearchableSelect from '../components/SearchableSelect';
 import { useDimensions } from '../hooks/useDimensions';
 import { DEFAULT_DIMENSIONS, type Dimension, type SubDimension } from '../lib/dimensions';
-
-interface ScannerConfig {
-    yamlFilenames: string[];
-    maxScanDepth: number;
-    ignorePatterns: string[];
-    scanSubfolders: boolean;
-    scanSubfolderName: string;
-}
+import { useAuth } from '../hooks/useAuth';
 
 export default function AdminPage() {
     const providers = useQuery(api.aiConfig.listProviders);
@@ -22,7 +14,7 @@ export default function AdminPage() {
     const toggleProvider = useMutation(api.aiConfig.toggleProvider);
     const toggleModel = useMutation(api.aiConfig.toggleModel);
 
-    const [tab, setTab] = useState<'providers' | 'models' | 'datasources' | 'dimensions' | 'system'>('providers');
+    const [tab, setTab] = useState<'providers' | 'models' | 'datasources' | 'dimensions' | 'chatbots' | 'system'>('providers');
     const { dimensions, saveDimensions } = useDimensions();
     const [newDimName, setNewDimName] = useState('');
     const [newDimField, setNewDimField] = useState('');
@@ -30,6 +22,16 @@ export default function AdminPage() {
     const [newSubKey, setNewSubKey] = useState<Record<string, string>>({});
     const [showAddProvider, setShowAddProvider] = useState(false);
     const [showAddModel, setShowAddModel] = useState(false);
+    const [showAddChatbot, setShowAddChatbot] = useState(false);
+
+    const { user } = useAuth();
+    const orgId = (user as any)?.orgId;
+
+    const chatbots = useQuery(api.chatbots.listConfigs, orgId ? { orgId } : "skip");
+    const systemPrompts = useQuery(api.chatbots.listPrompts, orgId ? { orgId } : "skip");
+    const createChatbot = useMutation(api.chatbots.createConfig);
+    const deleteChatbot = useMutation(api.chatbots.deleteConfig);
+    const updateChatbot = useMutation(api.chatbots.updateConfig);
 
     // Add provider form
     const [pName, setPName] = useState('');
@@ -46,52 +48,11 @@ export default function AdminPage() {
     const [mCostInput, setMCostInput] = useState('0');
     const [mCostOutput, setMCostOutput] = useState('0');
 
-    // Scanner config
-    const [config, setConfig] = useState<ScannerConfig | null>(null);
-    const [configLoading, setConfigLoading] = useState(false);
-    const [configSaved, setConfigSaved] = useState(false);
-    const [newYamlFile, setNewYamlFile] = useState('');
-    const [newIgnore, setNewIgnore] = useState('');
-
-    useEffect(() => {
-        if (tab === 'datasources' && !config) fetchConfig();
-    }, [tab]);
-
-    const fetchConfig = async () => {
-        setConfigLoading(true);
-        try {
-            const res = await fetch(`${API_BASE}/api/config`, { headers: getAuthHeaders() });
-            if (res.ok) setConfig(await res.json());
-        } catch { } finally { setConfigLoading(false); }
-    };
-
-    const saveConfig = async (updates: Partial<ScannerConfig>) => {
-        try {
-            const res = await fetch(`${API_BASE}/api/config`, {
-                method: 'PUT',
-                headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
-                body: JSON.stringify(updates),
-            });
-            if (res.ok) {
-                setConfig(await res.json());
-                setConfigSaved(true);
-                setTimeout(() => setConfigSaved(false), 2000);
-            }
-        } catch { }
-    };
-
-    const resetConfig = async () => {
-        try {
-            const res = await fetch(`${API_BASE}/api/config/reset`, {
-                method: 'POST', headers: getAuthHeaders(),
-            });
-            if (res.ok) {
-                setConfig(await res.json());
-                setConfigSaved(true);
-                setTimeout(() => setConfigSaved(false), 2000);
-            }
-        } catch { }
-    };
+    // Add chatbot form
+    const [cName, setCName] = useState('');
+    const [cDesc, setCDesc] = useState('');
+    const [cPrompt, setCPrompt] = useState('');
+    const [cModel, setCModel] = useState('');
 
     const handleAddProvider = async () => {
         if (!pName || !pSlug || !pUrl || !pKey) return;
@@ -117,6 +78,20 @@ export default function AdminPage() {
         setShowAddModel(false);
     };
 
+    const handleAddChatbot = async () => {
+        if (!cName || !orgId) return;
+        await createChatbot({
+            orgId,
+            name: cName,
+            description: cDesc,
+            systemPromptId: cPrompt ? (cPrompt as any) : undefined,
+            modelId: cModel ? (cModel as any) : undefined,
+            isDefault: chatbots?.length === 0,
+        });
+        setCName(''); setCDesc(''); setCPrompt(''); setCModel('');
+        setShowAddChatbot(false);
+    };
+
     return (
         <div>
             <div className="page-header">
@@ -126,9 +101,9 @@ export default function AdminPage() {
 
             {/* Tabs */}
             <div className="filter-bar mb-20">
-                {(['providers', 'models', 'datasources', 'dimensions', 'system'] as const).map(t => (
+                {(['providers', 'models', 'datasources', 'dimensions', 'chatbots', 'system'] as const).map(t => (
                     <button key={t} className={`btn ${tab === t ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setTab(t)} style={{ textTransform: 'capitalize' }}>
-                        {t === 'providers' ? '🔌 ' : t === 'models' ? '🤖 ' : t === 'datasources' ? '📂 ' : t === 'dimensions' ? '📐 ' : '⚙️ '}
+                        {t === 'providers' ? '🔌 ' : t === 'models' ? '🤖 ' : t === 'datasources' ? '📂 ' : t === 'dimensions' ? '📐 ' : t === 'chatbots' ? '💬 ' : '⚙️ '}
                         {t === 'datasources' ? 'Data Sources' : t}
                     </button>
                 ))}
@@ -240,111 +215,12 @@ export default function AdminPage() {
                 <div>
                     <div className="flex-between mb-16" style={{ alignItems: 'center' }}>
                         <h3 className="section-header" style={{ margin: 0 }}>📂 Data Sources Configuration</h3>
-                        <div className="flex-row gap-8">
-                            {configSaved && <span className="text-base" style={{ color: '#34d399' }}>✓ Saved</span>}
-                            <button className="btn btn-secondary text-base" onClick={resetConfig}>↩ Reset Defaults</button>
-                        </div>
                     </div>
 
-                    {configLoading || !config ? (
-                        <div className="loading"><div className="loading-spinner" /></div>
-                    ) : (
-                        <div className="flex-col gap-20">
-                            {/* YAML Filenames */}
-                            <div className="section-card-sm">
-                                <h4 className="font-semibold text-md mb-8" style={{ margin: 0 }}>YAML Filenames</h4>
-                                <p className="section-sublabel">
-                                    Which YAML files to scan for in each project directory. The scanner checks them in order and uses the first match.
-                                </p>
-                                <div className="flex-row flex-wrap gap-6 mb-8">
-                                    {config.yamlFilenames.map(f => (
-                                        <span key={f} className="flex-row gap-4 text-base font-mono" style={{
-                                            padding: '4px 10px', borderRadius: 6,
-                                            background: 'var(--bg-primary)', border: '1px solid var(--border)',
-                                        }}>
-                                            {f}
-                                            <button onClick={() => {
-                                                const nf = config.yamlFilenames.filter(x => x !== f);
-                                                if (nf.length > 0) saveConfig({ yamlFilenames: nf });
-                                            }} className="icon-btn" style={{ color: '#f87171' }}>✕</button>
-                                        </span>
-                                    ))}
-                                </div>
-                                <div className="flex-row gap-8">
-                                    <input value={newYamlFile} onChange={e => setNewYamlFile(e.target.value)}
-                                        onKeyDown={e => { if (e.key === 'Enter' && newYamlFile.trim()) { saveConfig({ yamlFilenames: [...config.yamlFilenames, newYamlFile.trim()] }); setNewYamlFile(''); } }}
-                                        placeholder="e.g. GITHUB.yaml" className="form-input flex-1" />
-                                    <button className="btn btn-primary text-base"
-                                        onClick={() => { if (newYamlFile.trim()) { saveConfig({ yamlFilenames: [...config.yamlFilenames, newYamlFile.trim()] }); setNewYamlFile(''); } }}>
-                                        + Add
-                                    </button>
-                                </div>
-                            </div>
-
-                            {/* Scan Depth */}
-                            <div className="section-card-sm">
-                                <h4 className="font-semibold text-md mb-8" style={{ margin: 0 }}>Scan Depth</h4>
-                                <p className="section-sublabel">
-                                    Maximum folder depth to scan for YAML files (1-20).
-                                </p>
-                                <div className="flex-row gap-12">
-                                    <input type="range" min="1" max="20" value={config.maxScanDepth}
-                                        onChange={e => saveConfig({ maxScanDepth: parseInt(e.target.value) })}
-                                        className="flex-1" />
-                                    <span className="text-lg font-semibold font-mono" style={{ minWidth: 30 }}>{config.maxScanDepth}</span>
-                                </div>
-                            </div>
-
-                            {/* Subfolder Scanning */}
-                            <div className="section-card-sm">
-                                <h4 className="font-semibold text-md mb-8" style={{ margin: 0 }}>Subfolder Scanning</h4>
-                                <p className="section-sublabel">
-                                    Also look for YAML files inside a subfolder (e.g. .meta/PROJECT.yaml).
-                                </p>
-                                <div className="flex-row gap-12">
-                                    <label className="flex-row gap-6 text-md" style={{ cursor: 'pointer' }}>
-                                        <input type="checkbox" checked={config.scanSubfolders}
-                                            onChange={e => saveConfig({ scanSubfolders: e.target.checked })} />
-                                        Enable subfolder scanning
-                                    </label>
-                                    {config.scanSubfolders && (
-                                        <input value={config.scanSubfolderName}
-                                            onChange={e => saveConfig({ scanSubfolderName: e.target.value })}
-                                            placeholder=".meta" className="form-input" style={{ width: 120 }} />
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* Ignore Patterns */}
-                            <div className="section-card-sm">
-                                <h4 className="font-semibold text-md mb-8" style={{ margin: 0 }}>Ignore Patterns</h4>
-                                <p className="section-sublabel">
-                                    Directory names to skip during scanning. These directories and their contents will be ignored.
-                                </p>
-                                <div className="flex-row flex-wrap gap-4 mb-8">
-                                    {config.ignorePatterns.map(p => (
-                                        <span key={p} className="flex-row gap-4 text-sm font-mono" style={{
-                                            padding: '3px 8px', borderRadius: 4,
-                                            background: 'var(--bg-primary)', border: '1px solid var(--border)',
-                                        }}>
-                                            {p}
-                                            <button onClick={() => saveConfig({ ignorePatterns: config.ignorePatterns.filter(x => x !== p) })}
-                                                className="icon-btn text-sm" style={{ color: '#f87171' }}>✕</button>
-                                        </span>
-                                    ))}
-                                </div>
-                                <div className="flex-row gap-8">
-                                    <input value={newIgnore} onChange={e => setNewIgnore(e.target.value)}
-                                        onKeyDown={e => { if (e.key === 'Enter' && newIgnore.trim()) { saveConfig({ ignorePatterns: [...config.ignorePatterns, newIgnore.trim()] }); setNewIgnore(''); } }}
-                                        placeholder="e.g. vendor" className="form-input flex-1" />
-                                    <button className="btn btn-primary text-base"
-                                        onClick={() => { if (newIgnore.trim()) { saveConfig({ ignorePatterns: [...config.ignorePatterns, newIgnore.trim()] }); setNewIgnore(''); } }}>
-                                        + Add
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
+                    <div className="section-card-sm text-tertiary">
+                        This section has been deprecated as we migrate to a GitHub-backed sync system.
+                        Local file scanning config will be replaced by the GitHub repo sync configuration shortly.
+                    </div>
                 </div>
             )}
 
@@ -451,6 +327,70 @@ export default function AdminPage() {
                                 }}>Create Dimension</button>
                         </div>
                     </div>
+                </div>
+            )}
+
+            {/* Chatbots Tab */}
+            {tab === 'chatbots' && (
+                <div>
+                    <div className="flex-between mb-16" style={{ alignItems: 'center' }}>
+                        <h3 className="section-header" style={{ margin: 0 }}>💬 Chatbot Profiles</h3>
+                        <button className="btn btn-primary text-base" onClick={() => setShowAddChatbot(!showAddChatbot)}>+ Add Profile</button>
+                    </div>
+
+                    {showAddChatbot && (
+                        <div className="section-card-sm mb-16">
+                            <div className="grid-2 gap-12 mb-12">
+                                <input placeholder="Profile Name (e.g. Code Assistant)" value={cName} onChange={e => setCName(e.target.value)} className="form-input" />
+                                <input placeholder="Description (Optional)" value={cDesc} onChange={e => setCDesc(e.target.value)} className="form-input" />
+
+                                <SearchableSelect
+                                    options={[{ value: '', label: 'Select Model (Global Default)' }, ...(models as any[] || []).map((m: any) => ({ value: m._id, label: m.displayName }))]}
+                                    value={cModel} onChange={setCModel} placeholder="AI Model" clearable={false} />
+
+                                <SearchableSelect
+                                    options={[{ value: '', label: 'Select System Prompt (Blank)' }, ...(systemPrompts || []).map((p: any) => ({ value: p._id, label: p.name + ` (v${p.version})` }))]}
+                                    value={cPrompt} onChange={setCPrompt} placeholder="System Prompt" clearable={false} />
+                            </div>
+                            <div className="flex-row gap-8" style={{ justifyContent: 'flex-end' }}>
+                                <button className="btn btn-secondary" onClick={() => setShowAddChatbot(false)}>Cancel</button>
+                                <button className="btn btn-primary" onClick={handleAddChatbot}>Create Profile</button>
+                            </div>
+                        </div>
+                    )}
+
+                    {!chatbots ? <div className="loading"><div className="loading-spinner" /></div> : (
+                        chatbots.map((c: any) => (
+                            <div key={c._id} className="flex-row gap-16 mb-8" style={{
+                                padding: '14px 16px',
+                                background: 'var(--bg-secondary)', borderRadius: 8, border: '1px solid var(--border)',
+                            }}>
+                                <div style={{ width: 10, height: 10, borderRadius: '50%', background: c.isDefault ? '#3b82f6' : '#6b7280' }} />
+                                <div className="flex-1">
+                                    <div className="font-semibold text-lg">
+                                        {c.name}
+                                        {c.isDefault && <span className="tag" style={{ marginLeft: 8, background: '#3b82f630', color: '#60a5fa', border: 'none' }}>DEFAULT</span>}
+                                        {c.isAgentic && <span className="tag" style={{ marginLeft: 8, background: '#a855f730', color: '#c084fc', border: 'none' }}>AGENT</span>}
+                                    </div>
+                                    <div className="text-sm text-tertiary">{c.description || 'No description'}</div>
+                                </div>
+                                <div className="flex-col text-sm text-tertiary" style={{ alignItems: 'flex-end' }}>
+                                    <span>Model: {c.modelId ? (models as any[])?.find(m => m._id === c.modelId)?.displayName || c.modelId : 'Global Default'}</span>
+                                    <span>Prompt: {c.systemPromptId ? systemPrompts?.find(p => p._id === c.systemPromptId)?.name || 'Default' : 'Blank'}</span>
+                                </div>
+                                <div className="flex-col gap-4">
+                                    {!c.isDefault && (
+                                        <button className="btn btn-secondary text-sm" onClick={() => updateChatbot({ configId: c._id, isDefault: true })} style={{ padding: '4px 8px' }}>
+                                            Set Default
+                                        </button>
+                                    )}
+                                    <button className="btn btn-secondary text-sm text-error" onClick={() => deleteChatbot({ configId: c._id })} style={{ padding: '4px 8px' }}>
+                                        Delete
+                                    </button>
+                                </div>
+                            </div>
+                        ))
+                    )}
                 </div>
             )}
 

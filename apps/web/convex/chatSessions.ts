@@ -6,12 +6,16 @@ import { v } from "convex/values";
 export const createSession = mutation({
     args: {
         userId: v.id("users"),
+        orgId: v.optional(v.id("organizations")),
+        chatbotConfigId: v.optional(v.id("chatbotConfigs")),
         title: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
         const now = Date.now();
         return await ctx.db.insert("chatSessions", {
             userId: args.userId,
+            orgId: args.orgId,
+            chatbotConfigId: args.chatbotConfigId,
             title: args.title ?? "New Chat",
             createdAt: now,
             updatedAt: now,

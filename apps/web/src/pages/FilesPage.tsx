@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { getAuthHeaders, API_BASE } from '../lib/api';
+
 import { useProjects } from '../hooks/useProjects';
 import SearchableSelect, { type SelectOption } from '../components/SearchableSelect';
 
@@ -22,45 +22,19 @@ export default function FilesPage() {
     const [error, setError] = useState<string | null>(null);
 
     const fetchDir = async (projectPath: string, subPath: string = '') => {
-        setLoading(true);
-        setError(null);
-        setFileContent(null);
-        try {
-            const fullPath = subPath ? `${projectPath}/${subPath}` : projectPath;
-            const res = await fetch(`${API_BASE}/api/files/${encodeURIComponent(fullPath)}`, {
-                headers: getAuthHeaders(),
-            });
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const data = await res.json();
-            setEntries(data.entries || []);
-        } catch (err: any) {
-            setError(err.message);
-            setEntries([]);
-        } finally {
-            setLoading(false);
-        }
+        setLoading(false);
+        setError("Local File Explorer has been deprecated in favor of GitHub integration.");
+        setEntries([]);
     };
 
     const fetchFile = async (filePath: string) => {
-        setLoading(true);
-        try {
-            const res = await fetch(`${API_BASE}/api/files/${encodeURIComponent(filePath)}?content=true`, {
-                headers: getAuthHeaders(),
-            });
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const data = await res.json();
-            setFileContent({ name: filePath.split('/').pop() || '', content: data.content || '' });
-        } catch (err: any) {
-            setError(err.message);
-        } finally {
-            setLoading(false);
-        }
+        setLoading(false);
+        setError("Local File Explorer has been deprecated in favor of GitHub integration.");
     };
 
     useEffect(() => {
         if (selectedProject) {
-            const sub = currentPath.join('/');
-            fetchDir(selectedProject, sub);
+            setError("Local File Explorer has been deprecated in favor of GitHub integration.");
         }
     }, [selectedProject, currentPath.join('/')]);
 
@@ -145,15 +119,12 @@ export default function FilesPage() {
                 </div>
             )}
 
-            {/* Error */}
-            {error && (
+            {/* Deprecation Error */}
+            {selectedProject && (
                 <div className="mb-12" style={{ padding: 16, background: 'rgba(251,191,36,0.1)', borderRadius: 8, border: '1px solid rgba(251,191,36,0.3)' }}>
-                    <div className="font-semibold text-md mb-4" style={{ color: '#fbbf24' }}>🔒 Files not available</div>
+                    <div className="font-semibold text-md mb-4" style={{ color: '#fbbf24' }}>🔒 Local File Explorer Deprecated</div>
                     <div className="text-base text-muted">
-                        This project needs to be <strong>cloned locally</strong> to browse files. The File Explorer requires the Express server to be running with access to cloned repositories.
-                    </div>
-                    <div className="text-sm text-tertiary mt-8">
-                        Error: {error}
+                        This feature is being rewritten to integrate directly with GitHub. Local file scanning via the Express API is no longer supported.
                     </div>
                 </div>
             )}

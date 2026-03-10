@@ -1,8 +1,10 @@
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '../../convex/_generated/api';
 import { useProjects } from '../hooks/useProjects';
+import { useAuth } from '../hooks/useAuth';
 import { useIsMobile } from '../hooks/useMediaQuery';
-import { api } from '../lib/api';
 import SearchableSelect, { type SelectOption } from '../components/SearchableSelect';
 import { PageHeader, GripIcon } from '../components/ui';
 
@@ -21,8 +23,7 @@ const PRIORITY_CONFIG: Record<string, { label: string; color: string }> = {
 const EFFORT_OPTIONS = ['XS', 'S', 'M', 'L', 'XL'];
 
 export default function TasksPage() {
-    const [tasks, setTasks] = useState<any[] | null>(null);
-    const [stats, setStats] = useState<any>(null);
+    const { orgId } = useAuth() as any;
     const { data: projectData } = useProjects();
     const navigate = useNavigate();
     const isMobile = useIsMobile();
@@ -31,6 +32,16 @@ export default function TasksPage() {
     const [showCreate, setShowCreate] = useState(false);
     const [filterPriority, setFilterPriority] = useState('');
     const [filterProject, setFilterProject] = useState('');
+
+    // Convex queries & mutations
+    const rawTasks = useQuery(api.tasks.list, orgId ? { orgId, status: undefined, priority: undefined, projectPath: undefined } : "skip");
+    const stats = useQuery(api.tasks.getStats, orgId ? { orgId } : "skip");
+    const createTask = useMutation(api.tasks.create);
+    const updateTask = useMutation(api.tasks.update);
+    const deleteTask = useMutation(api.tasks.remove);
+
+    const tasks = rawTasks ? rawTasks.map(t => ({ ...t, id: t._id })) : null;
+    const allTasks = tasks || [];
 
     // DnD state
     const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
@@ -43,21 +54,6 @@ export default function TasksPage() {
     const [newEffort, setNewEffort] = useState('M');
     const [newDescription, setNewDescription] = useState('');
     const [newType, setNewType] = useState('feature');
-
-    const loadTasks = useCallback(async () => {
-        try {
-            const [t, s] = await Promise.all([api.tasks.list(), api.tasks.stats()]);
-            setTasks(t);
-            setStats(s);
-        } catch (err) {
-            console.error('Failed to load tasks:', err);
-            setTasks([]);
-        }
-    }, []);
-
-    useEffect(() => { loadTasks(); }, [loadTasks]);
-
-    const allTasks = tasks || [];
 
     // Build project options from ALL projects
     const projectOptions: SelectOption[] = useMemo(() => {
@@ -90,10 +86,16 @@ export default function TasksPage() {
     });
 
     const handleCreate = async () => {
-        if (!newTitle.trim() || !newProject.trim()) return;
-        await api.tasks.create({
+        if (!newTitle.trim() || !newProject.trim() || !orgId) return;
+
+        // Find if projectPath exists in projectData to get projectId
+        const projMatch = projectData?.projects.find(p => p.path === newProject.trim());
+
+        await createTask({
+            orgId,
             title: newTitle.trim(),
             projectPath: newProject.trim(),
+            projectId: projMatch?.id as any,
             priority: newPriority,
             effort: newEffort,
             description: newDescription.trim(),
@@ -103,17 +105,16 @@ export default function TasksPage() {
         setNewProject('');
         setNewDescription('');
         setShowCreate(false);
-        await loadTasks();
     };
 
     const handleStatusChange = async (id: string, status: string) => {
-        await api.tasks.update(id, { status });
-        await loadTasks();
+        await updateTask({ taskId: id as any, status });
     };
 
     const handleDelete = async (id: string) => {
-        await api.tasks.delete(id);
-        await loadTasks();
+        if (confirm('Delete this task?')) {
+            await deleteTask({ taskId: id as any });
+        }
     };
 
     // ─── DnD Handlers ───────────────────────────────────────────────────────
@@ -292,7 +293,7 @@ export default function TasksPage() {
         <div>
             <PageHeader
                 title="📋 Tasks"
-                description="Cross-project task management · Minions-backed"
+                description="Cross-project task management · Powered by Convex"
                 actions={
                     <button className="btn btn-primary flex-shrink-0" onClick={() => isMobile ? navigate('/tasks/new') : setShowCreate(!showCreate)}>
                         + New Task

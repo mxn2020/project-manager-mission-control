@@ -1,8 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { useQuery, useMutation } from 'convex/react';
+import { useQuery, useMutation, useAction } from 'convex/react';
 import { useSearchParams } from 'react-router-dom';
 import { api } from '../../convex/_generated/api';
-import { getAuthHeaders, API_BASE } from '../lib/api';
 import { useAuth } from '../hooks/useAuth';
 import SearchableSelect from '../components/SearchableSelect';
 
@@ -24,20 +23,114 @@ interface ChatMeta {
     toolCalls?: string[];
 }
 
-const WELCOME_MSG: Message = {
-    id: 'welcome',
-    role: 'assistant',
-    content: `👋 Hi! I'm your **Mission Control AI** assistant, powered by Llama 3.1 with direct access to your Minions database.
+// ─── Persona Definitions (matches aiPersonas.ts defaults) ────────────────
 
-I can query, create, and update your project data. Try asking me:
+interface Persona {
+    id: string;
+    name: string;
+    icon: string;
+    description: string;
+    welcome: string;
+}
+
+const DEFAULT_PERSONAS: Persona[] = [
+    {
+        id: 'default_0',
+        name: 'Mission Control',
+        icon: '🤖',
+        description: 'Full access to all features',
+        welcome: `👋 Hi! I'm your **Mission Control AI** assistant with full access to your portfolio.
+
+I can manage projects, tasks, ideas, workflows, marketing plans, wiki articles, and more. Try asking:
 
 • *"How many shipped projects do I have?"*
-• *"List all projects using React"*
-• *"What's the health score of mega-claw?"*
 • *"Create a task for mission-control: fix auth issues"*
+• *"What are my focus group projects?"*
 • *"Give me a portfolio summary"*`,
-    timestamp: Date.now(),
-};
+    },
+    {
+        id: 'default_1',
+        name: 'Project Manager',
+        icon: '📊',
+        description: 'Projects, tasks & focus groups',
+        welcome: `📊 Hi! I'm your **Project Manager** — focused on project tracking and task management.
+
+I can help you with:
+
+• *"List all high-priority projects"*
+• *"Create a task: review deployment pipeline"*
+• *"Which projects are in the focus group?"*
+• *"Run a health check on all projects"*`,
+    },
+    {
+        id: 'default_2',
+        name: 'Ideas Lab',
+        icon: '💡',
+        description: 'Brainstorming & ideation',
+        welcome: `💡 Welcome to the **Ideas Lab**! I'm your creative partner for brainstorming.
+
+I can help you:
+
+• *"List all my ideas"*
+• *"Create an idea: AI-powered code review tool"*
+• *"Combine these ideas into one"*
+• *"Promote my top idea to a task"*`,
+    },
+    {
+        id: 'default_3',
+        name: 'Marketing Strategist',
+        icon: '📣',
+        description: 'Marketing, content & wiki',
+        welcome: `📣 Hi! I'm your **Marketing Strategist** — focused on growth and content.
+
+I specialize in:
+
+• *"Create a marketing plan for the product launch"*
+• *"List all content plans"*
+• *"Write a wiki article about our deployment process"*
+• *"What marketing plans do we have?"*`,
+    },
+    {
+        id: 'default_4',
+        name: 'DevOps Engineer',
+        icon: '🔧',
+        description: 'Workflows & automation',
+        welcome: `🔧 Hi! I'm your **DevOps Engineer** — focused on workflows and automation.
+
+I can help with:
+
+• *"List all workflows"*
+• *"Create a deployment workflow"*
+• *"Run automation: check for stale projects"*
+• *"Show me all project health scores"*`,
+    },
+];
+
+// ─── Helpers ─────────────────────────────────────────────────────────────
+
+function blobToBase64(blob: Blob): Promise<string> {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            const dataUrl = reader.result as string;
+            // Strip "data:...;base64," prefix
+            const base64 = dataUrl.split(',')[1];
+            resolve(base64);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+    });
+}
+
+function base64ToAudioUrl(base64: string, mimeType: string): string {
+    const binaryStr = atob(base64);
+    const bytes = new Uint8Array(binaryStr.length);
+    for (let i = 0; i < binaryStr.length; i++) {
+        bytes[i] = binaryStr.charCodeAt(i);
+    }
+    const blob = new Blob([bytes], { type: mimeType });
+    return URL.createObjectURL(blob);
+}
 
 export default function AIPage() {
     const { user } = useAuth();
@@ -47,14 +140,42 @@ export default function AIPage() {
     // ─── Session from URL ────────────────────────────────────────────
     const sessionIdFromUrl = searchParams.get('session');
 
+    // ─── Persona State ───────────────────────────────────────────────
+    const [selectedPersona, setSelectedPersona] = useState<Persona>(DEFAULT_PERSONAS[0]);
+
+    const getWelcomeMsg = (persona: Persona): Message => ({
+        id: 'welcome',
+        role: 'assistant',
+        content: persona.welcome,
+        timestamp: Date.now(),
+    });
+
     // ─── Local State ─────────────────────────────────────────────────
-    const [messages, setMessages] = useState<Message[]>([WELCOME_MSG]);
+    const [messages, setMessages] = useState<Message[]>([getWelcomeMsg(DEFAULT_PERSONAS[0])]);
     const [input, setInput] = useState('');
     const [sending, setSending] = useState(false);
     const [lastMeta, setLastMeta] = useState<ChatMeta | null>(null);
     const [showSettings, setShowSettings] = useState(false);
     const scrollRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
+
+    // ─── Voice State ─────────────────────────────────────────────────
+    const [isRecording, setIsRecording] = useState(false);
+    const [isTranscribing, setIsTranscribing] = useState(false);
+    const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+    const audioChunksRef = useRef<Blob[]>([]);
+
+    // ─── TTS State ───────────────────────────────────────────────────
+    const [playingMsgId, setPlayingMsgId] = useState<string | null>(null);
+    const audioRef = useRef<HTMLAudioElement | null>(null);
+
+    // ─── Conversation Mode ───────────────────────────────────────────
+    const [conversationMode, setConversationMode] = useState(false);
+    const conversationModeRef = useRef(false);
+
+    // ─── File Upload State ───────────────────────────────────────────
+    const [attachedFiles, setAttachedFiles] = useState<{ name: string; content: string; type: string }[]>([]);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     // ─── Convex Queries ──────────────────────────────────────────────
     const sessionMessages = useQuery(
@@ -64,14 +185,20 @@ export default function AIPage() {
     const settings = useQuery(api.aiConfig.getSettings, userId ? { userId: userId as any } : 'skip');
     const models = useQuery(api.aiConfig.listModels);
 
-    // ─── Convex Mutations ────────────────────────────────────────────
+    // ─── Convex Mutations & Actions ──────────────────────────────────
     const createSession = useMutation(api.chatSessions.createSession);
     const updateSettings = useMutation(api.aiConfig.updateSettings);
+    const aiChat = useAction(api.aiChat.chat);
+    const transcribeAction = useAction(api.aiVoice.transcribe);
+    const synthesizeAction = useAction(api.aiVoice.synthesize);
+
+    // ─── Keep ref in sync ────────────────────────────────────────────
+    useEffect(() => { conversationModeRef.current = conversationMode; }, [conversationMode]);
 
     // ─── Load session messages from Convex ────────────────────────────
     useEffect(() => {
         if (!sessionIdFromUrl) {
-            setMessages([WELCOME_MSG]);
+            setMessages([getWelcomeMsg(selectedPersona)]);
             setLastMeta(null);
             return;
         }
@@ -86,7 +213,7 @@ export default function AIPage() {
             }));
             setMessages(loaded);
         } else if (sessionIdFromUrl && sessionMessages && sessionMessages.length === 0) {
-            setMessages([WELCOME_MSG]);
+            setMessages([getWelcomeMsg(selectedPersona)]);
         }
     }, [sessionMessages, sessionIdFromUrl]);
 
@@ -95,22 +222,41 @@ export default function AIPage() {
         scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
     }, [messages, sending]);
 
-    // ─── Send message ────────────────────────────────────────────────
-    const handleSend = useCallback(async () => {
-        const text = input.trim();
-        if (!text || sending) return;
+    // ─── Persona switch ──────────────────────────────────────────────
+    const handlePersonaSwitch = (persona: Persona) => {
+        setSelectedPersona(persona);
+        if (!sessionIdFromUrl) {
+            setMessages([getWelcomeMsg(persona)]);
+            setLastMeta(null);
+        }
+    };
 
-        // Auto-create session if none active
+    // ─── Send message ────────────────────────────────────────────────
+    const handleSend = useCallback(async (overrideText?: string) => {
+        const text = (overrideText || input).trim();
+        if (!text && attachedFiles.length === 0) return;
+        if (sending) return;
+
         let sessionId = sessionIdFromUrl;
         if (!sessionId && userId) {
             sessionId = await createSession({ userId: userId as any });
             setSearchParams({ session: sessionId }, { replace: true });
         }
 
+        // Build message content with file context
+        let messageContent = text;
+        if (attachedFiles.length > 0) {
+            const fileContext = attachedFiles.map(f =>
+                `📎 **${f.name}** (${f.type}):\n\`\`\`\n${f.content.slice(0, 4000)}\n\`\`\``
+            ).join('\n\n');
+            messageContent = fileContext + (text ? '\n\n' + text : '');
+            setAttachedFiles([]);
+        }
+
         const userMsg: Message = {
             id: `u-${Date.now()}`,
             role: 'user',
-            content: text,
+            content: messageContent,
             timestamp: Date.now(),
         };
 
@@ -124,36 +270,37 @@ export default function AIPage() {
                 .slice(-(settings?.historyLength || 10))
                 .map(m => ({ role: m.role, content: m.content }));
 
-            const res = await fetch(`${API_BASE}/api/ai/chat`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-                body: JSON.stringify({ messages: history, sessionId }),
+            const res = await aiChat({
+                messages: history,
+                sessionId: sessionId as any,
+                userId: userId as any,
+                orgId: (user as any)?.orgId as any,
+                personaId: selectedPersona.id,
             });
 
-            if (!res.ok) {
-                const err = await res.json().catch(() => ({ error: 'Request failed' }));
-                throw new Error(err.error || `HTTP ${res.status}`);
-            }
-
-            const data = await res.json();
             setLastMeta({
-                model: data.model,
-                provider: data.provider,
-                tokens: data.tokens,
-                costCents: data.costCents,
-                durationMs: data.durationMs,
-                toolCalls: data.toolCalls,
+                model: res.model,
+                provider: res.provider,
+                tokens: res.tokens,
+                costCents: res.costCents,
+                durationMs: res.durationMs,
+                toolCalls: res.toolCalls,
             });
 
             const reply: Message = {
                 id: `a-${Date.now()}`,
                 role: 'assistant',
-                content: data.response,
+                content: res.response,
                 timestamp: Date.now(),
-                toolCalls: data.toolCalls,
-                tokens: data.tokens?.total,
+                toolCalls: res.toolCalls,
+                tokens: res.tokens?.total,
             };
             setMessages(prev => [...prev, reply]);
+
+            // Conversation mode: auto-speak the response
+            if (conversationModeRef.current) {
+                handleTTS(reply.id, res.response);
+            }
         } catch (err: any) {
             setMessages(prev => [...prev, {
                 id: `e-${Date.now()}`,
@@ -164,7 +311,138 @@ export default function AIPage() {
         } finally {
             setSending(false);
         }
-    }, [input, sending, sessionIdFromUrl, userId, messages, settings, createSession, setSearchParams]);
+    }, [input, sending, sessionIdFromUrl, userId, messages, settings, createSession, setSearchParams, selectedPersona, attachedFiles]);
+
+    // ─── Voice Recording ─────────────────────────────────────────────
+    const startRecording = async () => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+            audioChunksRef.current = [];
+
+            mediaRecorder.ondataavailable = (e) => {
+                if (e.data.size > 0) audioChunksRef.current.push(e.data);
+            };
+
+            mediaRecorder.onstop = async () => {
+                stream.getTracks().forEach(t => t.stop());
+                const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+                await transcribeAudio(audioBlob);
+            };
+
+            mediaRecorderRef.current = mediaRecorder;
+            mediaRecorder.start();
+            setIsRecording(true);
+        } catch (err) {
+            console.error('Microphone access denied:', err);
+        }
+    };
+
+    const stopRecording = () => {
+        if (mediaRecorderRef.current && isRecording) {
+            mediaRecorderRef.current.stop();
+            setIsRecording(false);
+        }
+    };
+
+    const toggleRecording = () => {
+        if (isRecording) stopRecording();
+        else startRecording();
+    };
+
+    const transcribeAudio = async (blob: Blob) => {
+        setIsTranscribing(true);
+        try {
+            const base64 = await blobToBase64(blob);
+            const result = await transcribeAction({
+                audioBase64: base64,
+                mimeType: 'audio/webm',
+            });
+            if (result.text) {
+                if (conversationModeRef.current) {
+                    // In conversation mode, send immediately
+                    handleSend(result.text);
+                } else {
+                    setInput(prev => prev + (prev ? ' ' : '') + result.text);
+                }
+            }
+        } catch (err) {
+            console.error('Transcription failed:', err);
+        } finally {
+            setIsTranscribing(false);
+        }
+    };
+
+    // ─── TTS Playback ────────────────────────────────────────────────
+    const handleTTS = async (msgId: string, text: string) => {
+        if (playingMsgId === msgId) {
+            audioRef.current?.pause();
+            setPlayingMsgId(null);
+            return;
+        }
+
+        setPlayingMsgId(msgId);
+        try {
+            const result = await synthesizeAction({
+                text: text.replace(/[*#`_~\[\]]/g, '').slice(0, 4096),
+            });
+
+            const url = base64ToAudioUrl(result.audioBase64, result.mimeType);
+            const audio = new Audio(url);
+            audioRef.current = audio;
+
+            audio.onended = () => {
+                setPlayingMsgId(null);
+                URL.revokeObjectURL(url);
+                // Conversation mode: start recording again after playback
+                if (conversationModeRef.current) {
+                    startRecording();
+                }
+            };
+
+            audio.play();
+        } catch (err) {
+            console.error('TTS error:', err);
+            setPlayingMsgId(null);
+            // In conversation mode, still restart recording even if TTS fails
+            if (conversationModeRef.current) {
+                startRecording();
+            }
+        }
+    };
+
+    // ─── File Upload ─────────────────────────────────────────────────
+    const handleFileAttach = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = e.target.files;
+        if (!files) return;
+
+        for (const file of Array.from(files)) {
+            try {
+                if (file.type.startsWith('audio/')) {
+                    setIsTranscribing(true);
+                    const base64 = await blobToBase64(file);
+                    const result = await transcribeAction({
+                        audioBase64: base64,
+                        mimeType: file.type,
+                    });
+                    setIsTranscribing(false);
+                    if (result.text) {
+                        setAttachedFiles(prev => [...prev, { name: file.name, content: result.text, type: '🎵 Transcribed Audio' }]);
+                    }
+                } else if (file.type.startsWith('image/')) {
+                    const base64 = await blobToBase64(file);
+                    setAttachedFiles(prev => [...prev, { name: file.name, content: `[Image: ${file.name}]`, type: '🖼️ Image' }]);
+                } else {
+                    const content = await file.text();
+                    setAttachedFiles(prev => [...prev, { name: file.name, content, type: '📄 File' }]);
+                }
+            } catch (err) {
+                console.error('File processing error:', err);
+                setIsTranscribing(false);
+            }
+        }
+        if (fileInputRef.current) fileInputRef.current.value = '';
+    };
 
     // ─── Format message content (basic markdown) ─────────────────────
     const formatContent = (text: string) => {
@@ -282,34 +560,66 @@ export default function AIPage() {
 
     return (
         <div className="chat-container">
+            {/* Persona Selector Bar */}
+            <div className="persona-bar">
+                {DEFAULT_PERSONAS.map(p => (
+                    <button
+                        key={p.id}
+                        className={`persona-pill ${selectedPersona.id === p.id ? 'active' : ''}`}
+                        onClick={() => handlePersonaSwitch(p)}
+                        title={p.description}
+                    >
+                        <span className="persona-icon">{p.icon}</span>
+                        <span className="persona-name">{p.name}</span>
+                    </button>
+                ))}
+                {conversationMode && (
+                    <div className="conversation-indicator">
+                        <span className="conversation-dot" />
+                        Voice Mode
+                    </div>
+                )}
+            </div>
+
             {renderSettings()}
 
             <div className="chat-messages" ref={scrollRef}>
                 {messages.map(msg => (
                     <div key={msg.id} className={`chat-message ${msg.role}`}>
                         <div className="chat-message-avatar">
-                            {msg.role === 'assistant' ? '🤖' : '👤'}
+                            {msg.role === 'assistant' ? selectedPersona.icon : '👤'}
                         </div>
                         <div className="chat-message-body">
                             <div className="chat-message-content">
                                 {formatContent(msg.content)}
                             </div>
-                            {msg.toolCalls && msg.toolCalls.length > 0 && (
-                                <div className="chat-message-tools">
-                                    🔧 {msg.toolCalls.join(', ')}
-                                </div>
-                            )}
+                            <div className="chat-message-actions">
+                                {msg.role === 'assistant' && msg.id !== 'welcome' && (
+                                    <button
+                                        className={`chat-action-btn ${playingMsgId === msg.id ? 'active' : ''}`}
+                                        onClick={() => handleTTS(msg.id, msg.content)}
+                                        title={playingMsgId === msg.id ? 'Stop playback' : 'Listen to response'}
+                                    >
+                                        {playingMsgId === msg.id ? '⏹️' : '🔊'}
+                                    </button>
+                                )}
+                                {msg.toolCalls && msg.toolCalls.length > 0 && (
+                                    <span className="chat-message-tools">
+                                        🔧 {msg.toolCalls.join(', ')}
+                                    </span>
+                                )}
+                            </div>
                         </div>
                     </div>
                 ))}
-                {sending && (
+                {(sending || isTranscribing) && (
                     <div className="chat-message assistant">
-                        <div className="chat-message-avatar">🤖</div>
+                        <div className="chat-message-avatar">{selectedPersona.icon}</div>
                         <div className="chat-message-body">
                             <div className="chat-message-content">
                                 <div className="chat-thinking">
                                     <div className="chat-dots"><span /><span /><span /></div>
-                                    Thinking...
+                                    {isTranscribing ? 'Transcribing...' : 'Thinking...'}
                                 </div>
                             </div>
                         </div>
@@ -317,16 +627,66 @@ export default function AIPage() {
                 )}
             </div>
 
+            {/* Attached files preview */}
+            {attachedFiles.length > 0 && (
+                <div className="chat-attachments">
+                    {attachedFiles.map((f, i) => (
+                        <div key={i} className="chat-attachment">
+                            <span>{f.type} {f.name}</span>
+                            <button onClick={() => setAttachedFiles(prev => prev.filter((_, j) => j !== i))}>✕</button>
+                        </div>
+                    ))}
+                </div>
+            )}
+
             <div className="chat-input-area">
                 <button
                     className="chat-settings-btn"
                     onClick={() => setShowSettings(!showSettings)}
                     title="Settings"
                 >⚙️</button>
+
+                {/* File attach */}
+                <input
+                    ref={fileInputRef}
+                    type="file"
+                    multiple
+                    accept=".txt,.md,.json,.csv,.yaml,.yml,.png,.jpg,.jpeg,.gif,.webp,.mp3,.wav,.m4a,.ogg,.webm"
+                    style={{ display: 'none' }}
+                    onChange={handleFileAttach}
+                />
+                <button
+                    className="chat-action-btn"
+                    onClick={() => fileInputRef.current?.click()}
+                    title="Attach file"
+                >📎</button>
+
+                {/* Voice record */}
+                <button
+                    className={`chat-action-btn ${isRecording ? 'recording' : ''}`}
+                    onClick={toggleRecording}
+                    title={isRecording ? 'Stop recording' : 'Record voice'}
+                    disabled={isTranscribing}
+                >
+                    {isTranscribing ? '⏳' : isRecording ? '⏹️' : '🎤'}
+                </button>
+
+                {/* Conversation mode toggle */}
+                <button
+                    className={`chat-action-btn ${conversationMode ? 'active' : ''}`}
+                    onClick={() => {
+                        const next = !conversationMode;
+                        setConversationMode(next);
+                        if (next) startRecording();
+                        else stopRecording();
+                    }}
+                    title={conversationMode ? 'Exit conversation mode' : 'Start conversation mode (voice ↔ voice)'}
+                >🗣️</button>
+
                 <textarea
                     ref={inputRef}
                     className="chat-input"
-                    placeholder="Ask about your projects, create tasks, get insights..."
+                    placeholder={isRecording ? '🔴 Recording... speak now' : 'Ask about your projects, create tasks, get insights...'}
                     value={input}
                     onChange={e => setInput(e.target.value)}
                     onKeyDown={e => {
@@ -339,7 +699,7 @@ export default function AIPage() {
                         t.style.height = Math.min(t.scrollHeight, 150) + 'px';
                     }}
                 />
-                <button className="chat-send" onClick={handleSend} disabled={sending || !input.trim()}>↑</button>
+                <button className="chat-send" onClick={() => handleSend()} disabled={sending || (!input.trim() && attachedFiles.length === 0)}>↑</button>
             </div>
         </div>
     );

@@ -38,6 +38,7 @@ export default function LoginPage({ needsSetup, onLogin, onRegister }: LoginPage
     const [isSetup, setIsSetup] = useState(needsSetup);
     const [email, setEmail] = useState('');
     const [name, setName] = useState('');
+    const [orgName, setOrgName] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
@@ -48,7 +49,8 @@ export default function LoginPage({ needsSetup, onLogin, onRegister }: LoginPage
         setLoading(true);
         try {
             if (isSetup) {
-                await onRegister(email, name, password);
+                // Determine if onRegister takes an optional 4th parameter based on type, but we pass it anyway
+                await (onRegister as any)(email, name, password, orgName || undefined);
             } else {
                 await onLogin(email, password);
             }
@@ -72,18 +74,30 @@ export default function LoginPage({ needsSetup, onLogin, onRegister }: LoginPage
 
                 <form onSubmit={handleSubmit} className="login-form">
                     {isSetup && (
-                        <div className="form-group">
-                            <label className="form-label">Name</label>
-                            <input
-                                type="text"
-                                className="form-input"
-                                value={name}
-                                onChange={e => setName(e.target.value)}
-                                placeholder="Your name"
-                                required
-                                autoFocus
-                            />
-                        </div>
+                        <>
+                            <div className="form-group">
+                                <label className="form-label">Name</label>
+                                <input
+                                    type="text"
+                                    className="form-input"
+                                    value={name}
+                                    onChange={e => setName(e.target.value)}
+                                    placeholder="Your name"
+                                    required
+                                    autoFocus
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Organization Name (Optional)</label>
+                                <input
+                                    type="text"
+                                    className="form-input"
+                                    value={orgName}
+                                    onChange={e => setOrgName(e.target.value)}
+                                    placeholder="My Team Workspace"
+                                />
+                            </div>
+                        </>
                     )}
 
                     <div className="form-group">
@@ -122,10 +136,11 @@ export default function LoginPage({ needsSetup, onLogin, onRegister }: LoginPage
                 {!needsSetup && (
                     <div className="login-footer">
                         <button
+                            type="button"
                             className="login-toggle"
                             onClick={() => { setIsSetup(!isSetup); setError(''); }}
                         >
-                            {isSetup ? 'Already have an account? Sign in' : ''}
+                            {isSetup ? 'Already have an account? Sign in' : 'No account? Create one'}
                         </button>
                     </div>
                 )}

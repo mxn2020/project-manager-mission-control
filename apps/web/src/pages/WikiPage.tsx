@@ -1,5 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
-import { api } from '../lib/api';
+import { useState } from 'react';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '../../convex/_generated/api';
+import { useAuth } from '../hooks/useAuth';
 import SearchableSelect from '../components/SearchableSelect';
 
 const CATEGORIES = [
@@ -24,7 +26,8 @@ const SCOPE_MAP = Object.fromEntries(SCOPES.map(s => [s.value, s]));
 const CAT_MAP = Object.fromEntries(CATEGORIES.map(c => [c.value, c]));
 
 export default function WikiPage() {
-    const [articles, setArticles] = useState<any[] | null>(null);
+    const { orgId } = useAuth() as any;
+
     const [search, setSearch] = useState('');
     const [filterCat, setFilterCat] = useState('');
     const [filterScope, setFilterScope] = useState('');
@@ -40,18 +43,19 @@ export default function WikiPage() {
     const [newScope, setNewScope] = useState('general');
     const [newTags, setNewTags] = useState('');
 
-    const load = useCallback(async () => {
-        try {
-            setArticles(await api.wiki.list({
-                category: filterCat || undefined,
-                scope: filterScope || undefined,
-                search: search || undefined,
-            }));
-        } catch { setArticles([]); }
-    }, [filterCat, filterScope, search]);
+    // Convex queries and mutations
+    const rawArticles = useQuery(api.wiki.list, orgId ? {
+        orgId,
+        category: filterCat || undefined,
+        scope: filterScope || undefined,
+        search: search || undefined,
+    } : "skip");
 
-    useEffect(() => { load(); }, [load]);
+    const createArticle = useMutation(api.wiki.create);
+    const updateArticle = useMutation(api.wiki.update);
+    const deleteArticle = useMutation(api.wiki.remove);
 
+    const articles = rawArticles ? rawArticles.map(a => ({ ...a, id: a._id })) : null;
     const all = articles || [];
     const selectedArticle = selected ? all.find(a => a.id === selected) : null;
 
@@ -60,28 +64,30 @@ export default function WikiPage() {
     for (const a of all) catCounts[a.category] = (catCounts[a.category] || 0) + 1;
 
     const handleCreate = async () => {
-        if (!newTitle.trim()) return;
-        const article = await api.wiki.create({
-            title: newTitle.trim(), body: newBody,
-            category: newCat, scope: newScope,
+        if (!newTitle.trim() || !orgId) return;
+        const articleId = await createArticle({
+            orgId,
+            title: newTitle.trim(),
+            body: newBody,
+            category: newCat,
+            scope: newScope,
             tags: newTags.split(',').map(t => t.trim()).filter(Boolean),
         });
         setShowCreate(false); setNewTitle(''); setNewBody(''); setNewTags('');
-        setSelected(article.id);
-        await load();
+        setSelected(articleId as any);
     };
 
     const handleSaveBody = async () => {
         if (!selected) return;
-        await api.wiki.update(selected, { body: editBody });
+        await updateArticle({ articleId: selected as any, body: editBody });
         setEditMode(false);
-        await load();
     };
 
     const handleDelete = async (id: string) => {
-        await api.wiki.delete(id);
-        if (selected === id) setSelected(null);
-        await load();
+        if (confirm('Delete this article?')) {
+            await deleteArticle({ articleId: id as any });
+            if (selected === id) setSelected(null);
+        }
     };
 
     return (

@@ -1,4 +1,5 @@
 import type { Dimension } from '../../lib/dimensions';
+import SearchableSelect from '../SearchableSelect';
 
 interface DimensionPickerProps {
     dimensions: Dimension[];
@@ -9,21 +10,22 @@ interface DimensionPickerProps {
 }
 
 export default function DimensionPicker({ dimensions, selected, onChange, label = 'Group by', allowNone = true }: DimensionPickerProps) {
+    const options = [
+        ...(allowNone ? [{ value: '', label: 'No grouping' }] : []),
+        ...dimensions.map(d => ({ value: d.id, label: `${d.icon} ${d.label}` })),
+    ];
+
     return (
         <div className="dimension-picker">
             <span className="dimension-picker-label">{label}</span>
-            <select
-                className="filter-select"
+            <SearchableSelect
+                options={options}
                 value={selected}
-                onChange={e => onChange(e.target.value)}
-            >
-                {allowNone && <option value="">No grouping</option>}
-                {dimensions.map(d => (
-                    <option key={d.id} value={d.id}>
-                        {d.icon} {d.label}
-                    </option>
-                ))}
-            </select>
+                onChange={onChange}
+                placeholder="Group by"
+                clearable={false}
+                width="160px"
+            />
         </div>
     );
 }

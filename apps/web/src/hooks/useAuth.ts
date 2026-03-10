@@ -60,8 +60,8 @@ export function useAuth() {
         return result;
     }, [loginMutation]);
 
-    const register = useCallback(async (email: string, name: string, password: string) => {
-        const result = await registerMutation({ email, name, password });
+    const register = useCallback(async (email: string, name: string, password: string, orgName?: string) => {
+        const result = await registerMutation({ email, name, password, orgName });
         localStorage.setItem(TOKEN_KEY, result.token);
         setToken(result.token);
         return result;

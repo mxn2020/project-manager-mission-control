@@ -1,8 +1,11 @@
-import { useState, useEffect, useCallback } from 'react';
-import { api } from '../lib/api';
+import { useState, useMemo } from 'react';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '../../convex/_generated/api';
 import { useProjects } from '../hooks/useProjects';
+import { useAuth } from '../hooks/useAuth';
 import SearchableSelect, { type SelectOption } from '../components/SearchableSelect';
 import MultiSelect from '../components/MultiSelect';
+import PromptDialog from '../components/PromptDialog';
 
 const CATEGORIES = [
     { value: 'product-launch', label: 'Product Launch', icon: '🚀' },
@@ -40,11 +43,16 @@ const CHANNEL_OPTIONS: SelectOption[] = [
 interface Goal { id: string; title: string; done: boolean }
 
 export default function MarketingPage() {
-    const [plans, setPlans] = useState<any[] | null>(null);
+    const { orgId } = useAuth() as any;
+
     const [filter, setFilter] = useState('');
     const [showCreate, setShowCreate] = useState(false);
     const [expanded, setExpanded] = useState<string | null>(null);
     const { data: projectData } = useProjects();
+
+    // Prompt dialog state for adding goals
+    const [promptOpen, setPromptOpen] = useState(false);
+    const [promptPlanId, setPromptPlanId] = useState<string>('');
 
     // Create form state
     const [newTitle, setNewTitle] = useState('');
@@ -56,66 +64,66 @@ export default function MarketingPage() {
     const [newProjects, setNewProjects] = useState<string[]>([]);
     const [newChannels, setNewChannels] = useState<string[]>([]);
 
-    const load = useCallback(async () => {
-        try { setPlans(await api.marketing.list(filter ? { category: filter } : undefined)); }
-        catch { setPlans([]); }
-    }, [filter]);
+    // Convex hooks
+    const rawPlans = useQuery(api.marketing.list, orgId ? { orgId } : "skip");
 
-    useEffect(() => { load(); }, [load]);
+    const createPlan = useMutation(api.marketing.create);
+    const updatePlan = useMutation(api.marketing.update);
+    const deletePlan = useMutation(api.marketing.remove);
+    const addGoal = useMutation(api.marketing.addGoal);
+    const toggleGoalObj = useMutation(api.marketing.toggleGoal);
+    const removeGoal = useMutation(api.marketing.removeGoal);
 
-    const projectOptions: SelectOption[] = (projectData?.projects || []).map(p => {
-        const segs = p.path.split('/');
-        return { value: p.path, label: segs[segs.length - 1] || p.path, group: segs[0], icon: '📁' };
-    });
+    const plans = rawPlans ? rawPlans.map(p => ({ ...p, id: p._id })) : null;
+
+    const projectOptions: SelectOption[] = useMemo(() =>
+        (projectData?.projects || []).map(p => {
+            const segs = p.path.split('/');
+            return { value: p.path, label: segs[segs.length - 1] || p.path, group: segs[0], icon: '📁' };
+        }), [projectData]);
 
     const handleCreate = async () => {
-        if (!newTitle.trim()) return;
-        await api.marketing.create({
+        if (!newTitle.trim() || !orgId) return;
+        await createPlan({
+            orgId,
             title: newTitle.trim(), description: newDesc.trim(),
             category: newCat, budget: newBudget.trim(),
             startDate: newStart, endDate: newEnd,
             linkedProjects: newProjects, channels: newChannels,
-            goals: [],
         });
         setShowCreate(false); setNewTitle(''); setNewDesc(''); setNewBudget('');
         setNewStart(''); setNewEnd(''); setNewProjects([]); setNewChannels([]);
-        await load();
     };
 
-    const handleAddGoal = async (planId: string, plan: any) => {
-        const title = prompt('Goal:');
-        if (!title) return;
-        const goals: Goal[] = [...(plan.goals || []), {
-            id: `goal_${Date.now()}`, title, done: false,
-        }];
-        await api.marketing.update(planId, { goals });
-        await load();
+    const openAddGoal = (planId: string) => {
+        setPromptPlanId(planId);
+        setPromptOpen(true);
     };
 
-    const handleToggleGoal = async (planId: string, plan: any, goalId: string) => {
-        const goals = (plan.goals || []).map((g: Goal) => g.id === goalId ? { ...g, done: !g.done } : g);
-        await api.marketing.update(planId, { goals });
-        await load();
+    const handleAddGoal = async (title: string) => {
+        await addGoal({ planId: promptPlanId as any, goalTitle: title });
     };
 
-    const handleDeleteGoal = async (planId: string, plan: any, goalId: string) => {
-        const goals = (plan.goals || []).filter((g: Goal) => g.id !== goalId);
-        await api.marketing.update(planId, { goals });
-        await load();
+    const handleToggleGoal = async (planId: string, goalId: string) => {
+        await toggleGoalObj({ planId: planId as any, goalId });
+    };
+
+    const handleDeleteGoal = async (planId: string, goalId: string) => {
+        await removeGoal({ planId: planId as any, goalId });
     };
 
     const handleUpdateStatus = async (planId: string, status: string) => {
-        await api.marketing.update(planId, { status });
-        await load();
+        await updatePlan({ planId: planId as any, status });
     };
 
     const handleDelete = async (id: string) => {
-        await api.marketing.delete(id);
-        if (expanded === id) setExpanded(null);
-        await load();
+        if (confirm("Delete this marketing plan?")) {
+            await deletePlan({ planId: id as any });
+            if (expanded === id) setExpanded(null);
+        }
     };
 
-    const allPlans = plans || [];
+    const allPlans = (plans || []).filter(p => !filter || p.category === filter);
     const completedGoals = (p: any) => (p.goals || []).filter((g: Goal) => g.done).length;
     const totalGoals = (p: any) => (p.goals || []).length;
 
@@ -252,7 +260,7 @@ export default function MarketingPage() {
                                         {/* Status selector */}
                                         <div className="flex-row flex-wrap gap-6 mb-12">
                                             {['draft', 'active', 'completed', 'archived'].map(s => (
-                                                <button key={s} onClick={() => handleUpdateStatus(plan.id, s)}
+                                                <button key={s} onClick={() => handleUpdateStatus(plan.id, s || '')}
                                                     className="text-xs font-medium" style={{
                                                         padding: '3px 10px', borderRadius: 4, cursor: 'pointer',
                                                         textTransform: 'uppercase', border: 'none',
@@ -268,8 +276,7 @@ export default function MarketingPage() {
                                                 options={projectOptions}
                                                 value={plan.linkedProjects || []}
                                                 onChange={async (newProjects) => {
-                                                    await api.marketing.update(plan.id, { linkedProjects: newProjects });
-                                                    await load();
+                                                    await updatePlan({ planId: plan.id as any, linkedProjects: newProjects as string[] });
                                                 }}
                                                 placeholder="Link projects..."
                                                 grouped
@@ -282,8 +289,7 @@ export default function MarketingPage() {
                                                 options={CHANNEL_OPTIONS}
                                                 value={plan.channels || []}
                                                 onChange={async (newChannels) => {
-                                                    await api.marketing.update(plan.id, { channels: newChannels });
-                                                    await load();
+                                                    await updatePlan({ planId: plan.id as any, channels: newChannels as string[] });
                                                 }}
                                                 placeholder="Channels..."
                                             />
@@ -299,7 +305,7 @@ export default function MarketingPage() {
                                                 background: 'var(--bg-primary)', borderRadius: 8,
                                                 border: '1px solid var(--border)', opacity: goal.done ? 0.5 : 1,
                                             }}>
-                                                <div onClick={() => handleToggleGoal(plan.id, plan, goal.id)}
+                                                <div onClick={() => handleToggleGoal(plan.id, goal.id)}
                                                     className="flex-center flex-shrink-0" style={{
                                                         width: 20, height: 20, borderRadius: 4, cursor: 'pointer',
                                                         border: `2px solid ${goal.done ? '#34d399' : 'var(--border)'}`,
@@ -310,10 +316,10 @@ export default function MarketingPage() {
                                                 </div>
                                                 <span className="text-sm text-tertiary font-mono" style={{ width: 20 }}>{i + 1}</span>
                                                 <span className="text-md flex-1" style={{ textDecoration: goal.done ? 'line-through' : 'none' }}>{goal.title}</span>
-                                                <button onClick={() => handleDeleteGoal(plan.id, plan, goal.id)} className="icon-btn text-tertiary text-xs">✕</button>
+                                                <button onClick={() => handleDeleteGoal(plan.id, goal.id)} className="icon-btn text-tertiary text-xs">✕</button>
                                             </div>
                                         ))}
-                                        <button onClick={() => handleAddGoal(plan.id, plan)}
+                                        <button onClick={() => openAddGoal(plan.id)}
                                             className="btn btn-secondary text-sm mt-8" style={{ padding: '4px 12px' }}>
                                             + Add Goal
                                         </button>
@@ -324,6 +330,13 @@ export default function MarketingPage() {
                     })
                 )}
             </div>
+            <PromptDialog
+                open={promptOpen}
+                onClose={() => setPromptOpen(false)}
+                onSubmit={handleAddGoal}
+                title="Add Goal"
+                placeholder="Enter goal…"
+            />
         </div>
     );
 }

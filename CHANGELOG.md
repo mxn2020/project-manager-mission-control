@@ -5,6 +5,26 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and thi
 
 ## [Unreleased]
 
+## [1.2.0] — 2026-03-10
+
+### ✨ Features
+- **Convex-only architecture** — Removed Express server (`server/index.mjs`, `server/ai-chat.mjs`, `server/minions-adapter.mjs`) and REST API client (`lib/api.ts`). All data flows now go through Convex directly
+- **Expanded Convex schema** — Major schema additions for tasks, chat sessions, and auth with new table definitions and indexes
+- **Full page refactor** — All pages (AI, Admin, Analytics, Content, Focus, Ideas, Integrations, Kanban, Marketing, Minions, Project, Tasks, Tree, Wiki, Workflows) refactored to use Convex queries/mutations directly
+- **Enhanced auth flow** — Reworked `auth.ts` and `useAuth` hook for streamlined Convex-native authentication
+- **Improved hooks** — Refactored `useDimensions` and `useProjects` hooks to work with Convex backend
+- **CSS expansion** — Major styling additions to `index.css` for improved UI consistency
+
+### 🐛 Bug Fixes
+- **DimensionPicker** — Updated component to work with Convex-backed dimensions
+- **CreateProjectModal** — Fixed to use Convex mutations instead of REST API
+- **Mobile tasks** — Updated mobile app task view for compatibility
+
+### 🗑️ Removed
+- **Express server** — Deleted `server/index.mjs` (1972 lines), `server/ai-chat.mjs`, `server/minions-adapter.mjs`
+- **REST API client** — Deleted `lib/api.ts`, all API calls replaced with Convex queries/mutations
+- **pnpm-lock.yaml** — Regenerated lockfile with updated dependencies
+
 ## [1.1.0] — 2026-03-03
 
 ### ✨ Features
@@ -122,7 +142,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and thi
 - Hybrid project source: legacy PROJECT.yaml scanner + Minions adapter
 - VPS deployment via rsync + PM2
 
-[Unreleased]: https://github.com/mxn2020/project-manager-mission-control/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/mxn2020/project-manager-mission-control/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/mxn2020/project-manager-mission-control/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/mxn2020/project-manager-mission-control/compare/v1.0.6...v1.1.0
 [1.0.6]: https://github.com/mxn2020/project-manager-mission-control/compare/v1.0.5...v1.0.6
 [1.0.5]: https://github.com/mxn2020/project-manager-mission-control/compare/v1.0.4...v1.0.5

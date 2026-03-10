@@ -1,5 +1,7 @@
 import { useState } from 'react';
-import { getAuthHeaders, API_BASE } from '../lib/api';
+import { useMutation } from 'convex/react';
+import { api } from '../../convex/_generated/api';
+import { useAuth } from '../hooks/useAuth';
 import SearchableSelect, { type SelectOption } from './SearchableSelect';
 import { TIER_ORDER, PRIORITY_ORDER, TIER_CONFIG, PRIORITY_CONFIG } from '../lib/types';
 
@@ -42,22 +44,28 @@ export default function CreateProjectModal({ onClose, onCreated, lanes }: Create
         setStackInput('');
     };
 
+    const { user } = useAuth();
+    const orgId = (user as any)?.orgId;
+    const createProject = useMutation(api.projects.create);
+
     const handleSubmit = async () => {
         if (!name.trim() || !lane) { setError('Name and lane are required'); return; }
+        if (!orgId) { setError('Organization ID not found'); return; }
         setSubmitting(true);
         setError('');
         try {
-            const res = await fetch(`${API_BASE}/api/projects`, {
-                method: 'POST',
-                headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    name: name.trim(), lane, tier, priority, description: description.trim(),
-                    stack, oss, repo: repo.trim() || null,
-                }),
+            const newProjectId = await createProject({
+                orgId: orgId as any,
+                name: name.trim(),
+                lane,
+                tier,
+                priority,
+                description: description.trim(),
+                stack,
+                oss,
+                repo: repo.trim() || undefined,
             });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error || 'Failed to create project');
-            onCreated(data.path);
+            onCreated(newProjectId as string);
             onClose();
         } catch (err: any) {
             setError(err.message);

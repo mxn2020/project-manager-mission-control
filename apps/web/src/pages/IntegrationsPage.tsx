@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
-import { getAuthHeaders, API_BASE } from '../lib/api';
+
 import { useProjects } from '../hooks/useProjects';
 import SearchableSelect from '../components/SearchableSelect';
+import toast from 'react-hot-toast'
 
 interface GitStatus {
     branch: string;
@@ -48,27 +49,12 @@ export default function IntegrationsPage() {
     }, [projects]);
 
     const fetchGitStatus = async () => {
-        setLoading(true);
-        try {
-            const res = await fetch(`${API_BASE}/api/integrations/git-status`, {
-                headers: getAuthHeaders(),
-            });
-            if (res.ok) {
-                const data = await res.json();
-                setGitStatuses(data);
-            }
-        } catch (err) {
-            console.error('Failed to fetch git status:', err);
-        } finally {
-            setLoading(false);
-        }
+        setLoading(false);
+        setGitStatuses({});
     };
 
     const fetchCloneStatuses = async () => {
-        try {
-            const res = await fetch(`${API_BASE}/api/clone-status`, { headers: getAuthHeaders() });
-            if (res.ok) setCloneStatuses(await res.json());
-        } catch { /* ignore */ }
+        setCloneStatuses({});
     };
 
     useEffect(() => {
@@ -79,24 +65,7 @@ export default function IntegrationsPage() {
     }, [projects.length]);
 
     const handleClone = async (projectPath: string, repo?: string) => {
-        setCloning(prev => new Set(prev).add(projectPath));
-        try {
-            const res = await fetch(`${API_BASE}/api/projects/${encodeURIComponent(projectPath)}/clone`, {
-                method: 'POST',
-                headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
-                body: JSON.stringify({ repo }),
-            });
-            const data = await res.json();
-            setCloneStatuses(prev => ({ ...prev, [projectPath]: { status: data.status as any, repo } }));
-            // Poll for completion
-            setTimeout(() => fetchCloneStatuses(), 3000);
-            setTimeout(() => fetchCloneStatuses(), 8000);
-            setTimeout(() => fetchCloneStatuses(), 15000);
-        } catch (err) {
-            console.error('Clone failed:', err);
-        } finally {
-            setCloning(prev => { const s = new Set(prev); s.delete(projectPath); return s; });
-        }
+        toast.error("Local git cloning has been deprecated in favor of the upcoming GitHub integration.");
     };
 
     const getCloneStatusBadge = (projectPath: string) => {
@@ -139,6 +108,13 @@ export default function IntegrationsPage() {
                             {loading ? '⏳' : '🔄'} Refresh
                         </button>
                     </div>
+                </div>
+            </div>
+
+            <div className="mb-24" style={{ padding: 16, background: 'rgba(251,191,36,0.1)', borderRadius: 8, border: '1px solid rgba(251,191,36,0.3)' }}>
+                <div className="font-semibold text-md mb-4" style={{ color: '#fbbf24' }}>🔒 Local Git Integrations Deprecated</div>
+                <div className="text-base text-muted">
+                    This feature is being rewritten to integrate directly with GitHub. Local git status checks and cloning via the Express server are no longer supported.
                 </div>
             </div>
 

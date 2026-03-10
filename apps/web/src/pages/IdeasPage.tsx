@@ -1,7 +1,10 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { api } from '../lib/api';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '../../convex/_generated/api';
 import { useProjects } from '../hooks/useProjects';
+import { useAuth } from '../hooks/useAuth';
 import SearchableSelect, { type SelectOption } from '../components/SearchableSelect';
+import PromptDialog from '../components/PromptDialog';
 
 type IdeaView = 'cards' | 'pipeline' | 'list' | 'kanban' | 'canvas';
 
@@ -152,7 +155,8 @@ function IdeaCard({ idea, selected, onToggleSelect, onUpdate, onArchive, onDelet
 // ─── Main Page ─────────────────────────────────────────────────────────────
 
 export default function IdeasPage() {
-    const [ideas, setIdeas] = useState<any[] | null>(null);
+    const { orgId } = useAuth() as any;
+
     const [search, setSearch] = useState('');
     const [filterCat, setFilterCat] = useState('');
     const [filterProject, setFilterProject] = useState('');
@@ -162,6 +166,9 @@ export default function IdeasPage() {
     const [selected, setSelected] = useState<Set<string>>(new Set());
     const [sortBy, setSortBy] = useState<'score' | 'date' | 'title'>('date');
     const { data: projectData } = useProjects();
+
+    // Prompt dialog for combining ideas
+    const [combinePromptOpen, setCombinePromptOpen] = useState(false);
 
     // Create form
     const [newTitle, setNewTitle] = useState('');
@@ -176,17 +183,21 @@ export default function IdeasPage() {
     const [canvasPositions, setCanvasPositions] = useState<Record<string, { x: number; y: number }>>({});
     const dragRef = useRef<{ id: string; startX: number; startY: number; origX: number; origY: number } | null>(null);
 
-    const load = useCallback(async () => {
-        try {
-            setIdeas(await api.ideas.list({
-                category: filterCat || undefined,
-                search: search || undefined,
-                archived: showArchived ? 'all' : undefined,
-            }));
-        } catch { setIdeas([]); }
-    }, [filterCat, search, showArchived]);
+    // Convex hooks
+    const rawIdeas = useQuery(api.ideas.list, orgId ? {
+        orgId,
+        category: filterCat || undefined,
+        search: search || undefined,
+        archived: showArchived ? 'all' : undefined,
+    } : "skip");
 
-    useEffect(() => { load(); }, [load]);
+    const createIdea = useMutation(api.ideas.create);
+    const updateIdea = useMutation(api.ideas.update);
+    const deleteIdea = useMutation(api.ideas.remove);
+    const promoteIdea = useMutation(api.ideas.promote);
+    const combineIdeas = useMutation(api.ideas.combine);
+
+    const ideas = rawIdeas ? rawIdeas.map(i => ({ ...i, id: i._id })) : null;
 
     // Load canvas positions when filter changes
     useEffect(() => {
@@ -210,48 +221,51 @@ export default function IdeasPage() {
 
     // ─── Handlers ────────────────────────────────
     const handleCreate = async () => {
-        if (!newTitle.trim()) return;
-        await api.ideas.create({
+        if (!newTitle.trim() || !orgId) return;
+        await createIdea({
+            orgId,
             title: newTitle.trim(), body: newBody.trim(), category: newCat, score: newScore,
             tags: newTags.split(',').map(t => t.trim()).filter(Boolean),
             linkedProjects: newProject ? [newProject] : [],
         });
         setShowCreate(false); setNewTitle(''); setNewBody(''); setNewTags(''); setNewScore(5); setNewProject('');
-        await load();
     };
 
-    const handleUpdate = async (id: string, data: any) => { await api.ideas.update(id, data); await load(); };
-    const handleArchive = async (id: string, archived: boolean) => { await api.ideas.update(id, { archived }); await load(); };
-    const handleDelete = async (id: string) => { await api.ideas.delete(id); selected.delete(id); setSelected(new Set(selected)); await load(); };
+    const handleUpdate = async (id: string, data: any) => { await updateIdea({ ideaId: id as any, ...data }); };
+    const handleArchive = async (id: string, archived: boolean) => { await updateIdea({ ideaId: id as any, archived }); };
+    const handleDelete = async (id: string) => {
+        if (confirm("Delete this idea?")) {
+            await deleteIdea({ ideaId: id as any });
+            selected.delete(id); setSelected(new Set(selected));
+        }
+    };
 
     const handlePromote = async (id: string) => {
-        await api.ideas.promote(id);
+        await promoteIdea({ ideaId: id as any });
         selected.delete(id); setSelected(new Set(selected));
-        await load();
     };
 
-    const handleCombine = async () => {
-        const ids = [...selected];
-        if (ids.length < 2) return;
-        const title = prompt('Title for combined idea:', 'Combined Idea');
-        if (title === null) return;
-        await api.ideas.combine(ids, title || undefined);
+    const handleCombineClick = () => {
+        if (selected.size < 2) return;
+        setCombinePromptOpen(true);
+    };
+
+    const handleCombineSubmit = async (title: string) => {
+        const ids = [...selected] as any[];
+        await combineIdeas({ ideaIds: ids, title: title || undefined });
         setSelected(new Set());
-        await load();
     };
 
     const handleArchiveSelected = async () => {
-        for (const id of selected) await api.ideas.update(id, { archived: true });
+        for (const id of selected) await updateIdea({ ideaId: id as any, archived: true });
         setSelected(new Set());
-        await load();
     };
 
     const handleLinkProject = async (id: string, project: string) => {
         const idea = allIdeas.find(i => i.id === id);
         const existing = idea?.linkedProjects || [];
         const projects = project ? [...new Set([...existing, project])] : existing;
-        await api.ideas.update(id, { linkedProjects: projects });
-        await load();
+        await updateIdea({ ideaId: id as any, linkedProjects: projects });
     };
 
     const toggleSelect = (id: string) => {
@@ -473,7 +487,7 @@ export default function IdeasPage() {
                     <span className="text-base font-semibold">{selected.size} selected</span>
                     <div className="flex-1" />
                     {selected.size >= 2 && (
-                        <button className="btn btn-primary text-sm" onClick={handleCombine} style={{ padding: '4px 12px' }}>🔗 Combine</button>
+                        <button className="btn btn-primary text-sm" onClick={handleCombineClick} style={{ padding: '4px 12px' }}>🔗 Combine</button>
                     )}
                     <button className="btn btn-secondary text-sm" onClick={handleArchiveSelected} style={{ padding: '4px 12px' }}>📥 Archive All</button>
                     <button className="btn btn-secondary text-sm" onClick={selectNone} style={{ padding: '4px 10px' }}>✕ Clear</button>
@@ -524,6 +538,14 @@ export default function IdeasPage() {
                     </>
                 )}
             </div>
+            <PromptDialog
+                open={combinePromptOpen}
+                onClose={() => setCombinePromptOpen(false)}
+                onSubmit={handleCombineSubmit}
+                title="Combine Ideas"
+                placeholder="Title for combined idea…"
+                defaultValue="Combined Idea"
+            />
         </div>
     );
 }

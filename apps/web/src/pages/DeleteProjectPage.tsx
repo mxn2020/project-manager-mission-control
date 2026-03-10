@@ -1,30 +1,24 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { getAuthHeaders, API_BASE } from '../lib/api';
-
+import { useMutation } from 'convex/react';
+import { api } from '../../convex/_generated/api';
 export default function DeleteProjectPage() {
     const params = useParams<{ '*': string }>();
-    const path = params['*'] ? decodeURIComponent(params['*']) : '';
+    const projectId = params['*'] ? decodeURIComponent(params['*']) : '';
     const navigate = useNavigate();
     const [deleting, setDeleting] = useState(false);
     const [error, setError] = useState('');
+    const removeProject = useMutation(api.projects.remove);
 
     const handleDelete = async () => {
-        if (!path) return;
+        if (!projectId) return;
         setDeleting(true);
         setError('');
         try {
-            const res = await fetch(`${API_BASE}/api/projects/${encodeURIComponent(path)}`, {
-                method: 'DELETE',
-                headers: getAuthHeaders(),
-            });
-            if (!res.ok) {
-                const body = await res.json().catch(() => ({}));
-                throw new Error((body as { error?: string }).error || 'Failed to delete project');
-            }
+            await removeProject({ projectId: projectId as any });
             navigate('/');
-        } catch (err: unknown) {
-            setError(err instanceof Error ? err.message : 'Failed to delete project');
+        } catch (err: any) {
+            setError(err.message || 'Failed to delete project');
             setDeleting(false);
         }
     };
@@ -42,7 +36,7 @@ export default function DeleteProjectPage() {
                 <div className="delete-confirm-icon">🗑️</div>
                 <div className="delete-confirm-title">Delete Project?</div>
                 <div className="delete-confirm-message">
-                    Are you sure you want to delete <strong style={{ color: 'var(--text-primary)' }}>{path}</strong>?
+                    Are you sure you want to delete <strong style={{ color: 'var(--text-primary)' }}>{projectId}</strong>?
                     This action cannot be undone.
                 </div>
 

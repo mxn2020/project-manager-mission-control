@@ -8,13 +8,24 @@
  * @module
  */
 
+import type * as agents from "../agents.js";
+import type * as aiChat from "../aiChat.js";
 import type * as aiConfig from "../aiConfig.js";
 import type * as aiLogs from "../aiLogs.js";
 import type * as auth from "../auth.js";
 import type * as chatSessions from "../chatSessions.js";
+import type * as chatbots from "../chatbots.js";
 import type * as content from "../content.js";
 import type * as costs from "../costs.js";
+import type * as focusGroups from "../focusGroups.js";
+import type * as github from "../github.js";
+import type * as ideas from "../ideas.js";
+import type * as marketing from "../marketing.js";
+import type * as organizations from "../organizations.js";
+import type * as projects from "../projects.js";
 import type * as tasks from "../tasks.js";
+import type * as wiki from "../wiki.js";
+import type * as workflows from "../workflows.js";
 
 import type {
   ApiFromModules,
@@ -23,13 +34,24 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  agents: typeof agents;
+  aiChat: typeof aiChat;
   aiConfig: typeof aiConfig;
   aiLogs: typeof aiLogs;
   auth: typeof auth;
   chatSessions: typeof chatSessions;
+  chatbots: typeof chatbots;
   content: typeof content;
   costs: typeof costs;
+  focusGroups: typeof focusGroups;
+  github: typeof github;
+  ideas: typeof ideas;
+  marketing: typeof marketing;
+  organizations: typeof organizations;
+  projects: typeof projects;
   tasks: typeof tasks;
+  wiki: typeof wiki;
+  workflows: typeof workflows;
 }>;
 
 /**

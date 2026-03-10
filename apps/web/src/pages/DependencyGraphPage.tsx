@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { api as restApi, getAuthHeaders, API_BASE } from '../lib/api';
+
 
 interface DepNode {
     id: string;
@@ -43,32 +43,24 @@ export default function DependencyGraphPage() {
     const [runningAutomation, setRunningAutomation] = useState(false);
 
     useEffect(() => {
-        fetch(`${API_BASE}/api/dependencies`, { headers: { ...getAuthHeaders() } })
-            .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
-            .then(setData)
-            .catch(() => { })
-            .finally(() => setLoading(false));
-
-        // Also load last automation status
-        fetch(`${API_BASE}/api/automation/status`, { headers: { ...getAuthHeaders() } })
-            .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
-            .then(r => { if (r.startedAt) setAutomationResult(r); })
-            .catch(() => { });
+        // Return mock data indicating deprecation
+        setData({
+            nodes: [], packages: {},
+            summary: { totalProjects: 0, totalPackages: 0, sharedPackages: 0, topShared: [], avgDeps: 0 }
+        });
+        setLoading(false);
     }, []);
 
     const runAutomation = async () => {
         setRunningAutomation(true);
-        try {
-            const res = await fetch(`${API_BASE}/api/automation/run`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        setTimeout(() => {
+            setAutomationResult({
+                startedAt: Date.now(),
+                completedAt: Date.now(),
+                steps: [{ name: 'deprecation_notice', status: 'error' }]
             });
-            const result = await res.json();
-            setAutomationResult(result);
-        } catch (err) {
-            console.error(err);
-        }
-        setRunningAutomation(false);
+            setRunningAutomation(false);
+        }, 1000);
     };
 
     if (loading) return <div className="loading"><div className="loading-spinner" /> Loading dependency data...</div>;

@@ -4,13 +4,14 @@ import type { StatusData, Project, Tier } from '../lib/types';
 import { TIER_CONFIG, LANE_COLORS } from '../lib/types';
 import { groupByDimension } from '../lib/dimensions';
 import { useDimensions } from '../hooks/useDimensions';
-import { api } from '../lib/api';
+import { useMutation } from 'convex/react';
+import { api } from '../../convex/_generated/api';
 import { PageHeader, Card, Badge, EmptyState, GripIcon, DimensionPicker } from '../components/ui';
 import Dialog from '../components/Dialog';
 
 // ─── Project Card (for grid view) ─────────────────────────────────────────────
 
-function FocusCard({ project, onClick, onRemove, isPinned }: { project: Project; onClick: () => void; onRemove?: () => void; isPinned: boolean }) {
+function FocusCard({ project, onClick, onRemove }: { project: Project; onClick: () => void; onRemove?: () => void }) {
     const tc = TIER_CONFIG[project.tier as Tier] || TIER_CONFIG.idea;
     return (
         <Card onClick={onClick} accentColor={tc.color}>
@@ -18,7 +19,7 @@ function FocusCard({ project, onClick, onRemove, isPinned }: { project: Project;
                 <div className="card-name">{project.name}</div>
                 <div className="flex-row gap-6">
                     <Badge variant="tier" tier={project.tier} />
-                    {isPinned && onRemove && (
+                    {onRemove && (
                         <button
                             onClick={e => { e.stopPropagation(); onRemove(); }}
                             title="Remove from focus"
@@ -96,7 +97,7 @@ function AddToFocusDialog({
 
 export default function FocusPage({ data, onRefresh }: { data: StatusData; onRefresh: () => Promise<void> }) {
     const navigate = useNavigate();
-    const { dimensions, focusGroup, loaded, addToFocus, removeFromFocus } = useDimensions(data.projects);
+    const { dimensions, focusGroup, loaded, addToFocus, removeFromFocus, togglePin, isPinned } = useDimensions(data.projects);
     const [view, setView] = useState<'list' | 'grid' | 'kanban'>('list');
     const [groupDimension, setGroupDimension] = useState('priority');
     const [showAddDialog, setShowAddDialog] = useState(false);
@@ -111,6 +112,8 @@ export default function FocusPage({ data, onRefresh }: { data: StatusData; onRef
 
     const SAVE_DEBOUNCE = 1500;
 
+    const updateProject = useMutation(api.projects.update);
+
     const flushSaves = useCallback(async () => {
         const changes = [...pendingRef.current];
         pendingRef.current = [];
@@ -120,10 +123,10 @@ export default function FocusPage({ data, onRefresh }: { data: StatusData; onRef
             const byProject = new Map<string, typeof changes[0]>();
             for (const c of changes) byProject.set(c.projectPath, c);
             for (const [, change] of byProject) {
-                const { raw_yaml } = await api.projects.get(change.projectPath);
-                const regex = new RegExp(`^${change.field}:\\s*.*`, 'm');
-                const updatedYaml = raw_yaml.replace(regex, `${change.field}: ${change.newValue}`);
-                await api.projects.update(change.projectPath, updatedYaml);
+                await updateProject({
+                    projectId: change.projectPath as any,
+                    [change.field]: change.newValue,
+                });
             }
             await onRefresh();
             setOverrides({});
@@ -132,14 +135,14 @@ export default function FocusPage({ data, onRefresh }: { data: StatusData; onRef
         } finally {
             setSaving(false);
         }
-    }, [onRefresh]);
+    }, [onRefresh, updateProject]);
 
     useEffect(() => () => {
         if (timerRef.current) clearTimeout(timerRef.current);
         if (pendingRef.current.length > 0) flushSaves();
     }, [flushSaves]);
 
-    // Focus projects = manual pins + auto-included (building tier / high priority)
+    // Focus projects = only manually pinned projects
     const focusProjects = useMemo(() => {
         const pinned = new Set(focusGroup);
         // Apply overrides
@@ -147,22 +150,12 @@ export default function FocusPage({ data, onRefresh }: { data: StatusData; onRef
             const o = overrides[p.path];
             return o ? { ...p, ...o } as Project : p;
         });
-        const projects = allProjects.filter(p =>
-            pinned.has(p.path) || p.tier === 'building' || p.priority === 'high'
-        );
-        return projects.sort((a, b) => {
-            const aPinned = pinned.has(a.path) ? 0 : 1;
-            const bPinned = pinned.has(b.path) ? 0 : 1;
-            if (aPinned !== bPinned) return aPinned - bPinned;
-            if (a.tier === 'building' && b.tier !== 'building') return -1;
-            if (b.tier === 'building' && a.tier !== 'building') return 1;
-            return (a.priority === 'high' ? 0 : 1) - (b.priority === 'high' ? 0 : 1);
-        });
+        return allProjects.filter(p => pinned.has(p.path));
     }, [data.projects, focusGroup, overrides]);
 
-    const isPinned = useCallback((path: string) => focusGroup.includes(path), [focusGroup]);
 
-    const activeDimension = dimensions.find(d => d.id === groupDimension);
+
+    const activeDimension = dimensions.find((d: any) => d.id === groupDimension);
     const groups = useMemo(() => {
         if (!activeDimension) return null;
         return groupByDimension(focusProjects, activeDimension);
@@ -216,36 +209,53 @@ export default function FocusPage({ data, onRefresh }: { data: StatusData; onRef
     const canDrag = activeDimension && activeDimension.field !== 'computed';
 
     // ─── List View ──────────────────────────────────────────────────────────
+    const pinnedList = useMemo(() => focusProjects.filter(p => isPinned(p.path)), [focusProjects, isPinned]);
+    const unpinnedList = useMemo(() => focusProjects.filter(p => !isPinned(p.path)), [focusProjects, isPinned]);
+    const hasPinned = pinnedList.length > 0;
+
+    const renderListCard = (p: typeof focusProjects[0]) => {
+        const pinned = isPinned(p.path);
+        return (
+            <div key={p.path} className="focus-card" onClick={() => goToProject(p.path)}
+                style={pinned ? { borderLeft: '3px solid var(--accent)' } : undefined}>
+                <div className="flex-between mb-6" style={{ alignItems: 'flex-start' }}>
+                    <div className="focus-card-name">{p.name}</div>
+                    <div className="flex-row gap-6">
+                        <Badge variant="tier" tier={p.tier} />
+                        <button
+                            onClick={e => { e.stopPropagation(); togglePin(p.path); }}
+                            title={pinned ? 'Unpin' : 'Pin to top'}
+                            className="icon-btn text-lg"
+                            style={{ color: pinned ? 'var(--accent)' : 'var(--text-tertiary)', opacity: pinned ? 1 : 0.4 }}
+                        >📌</button>
+                        <button onClick={e => { e.stopPropagation(); removeFromFocus(p.path); }}
+                            title="Remove from focus" className="icon-btn text-tertiary text-lg">
+                            ✕
+                        </button>
+                    </div>
+                </div>
+                <div className="focus-card-description">{p.description}</div>
+                <div className="flex-row gap-8">
+                    <span className="text-base font-semibold" style={{ color: LANE_COLORS[p.lane] || 'var(--text-tertiary)' }}>{p.lane}</span>
+                    <Badge variant="health" score={p.health_score} />
+                    {p.oss && <Badge variant="oss" />}
+                </div>
+            </div>
+        );
+    };
+
     const renderList = () => (
         <div className="flex-col gap-10">
-            {focusProjects.map(p => {
-                const tc = TIER_CONFIG[p.tier as Tier] || TIER_CONFIG.idea;
-                return (
-                    <div key={p.path} className="focus-card" onClick={() => goToProject(p.path)}>
-                        <div className="flex-between mb-6" style={{ alignItems: 'flex-start' }}>
-                            <div className="focus-card-name">{p.name}</div>
-                            <div className="flex-row gap-6">
-                                <Badge variant="tier" tier={p.tier} />
-                                {isPinned(p.path) && (
-                                    <button onClick={e => { e.stopPropagation(); removeFromFocus(p.path); }}
-                                        title="Remove from focus" className="icon-btn text-tertiary text-lg">
-                                        ✕
-                                    </button>
-                                )}
-                            </div>
-                        </div>
-                        <div className="focus-card-description">{p.description}</div>
-                        <div className="flex-row gap-8">
-                            <span className="text-base font-semibold" style={{ color: LANE_COLORS[p.lane] || 'var(--text-tertiary)' }}>{p.lane}</span>
-                            <Badge variant="health" score={p.health_score} />
-                            {p.oss && <Badge variant="oss" />}
-                            {isPinned(p.path) && (
-                                <span className="text-xs font-semibold" style={{ color: 'var(--accent)' }}>📌 Pinned</span>
-                            )}
-                        </div>
-                    </div>
-                );
-            })}
+            {hasPinned && (
+                <>
+                    <div className="dimension-group-header">📌 Pinned</div>
+                    {pinnedList.map(renderListCard)}
+                    {unpinnedList.length > 0 && (
+                        <div className="dimension-group-header" style={{ marginTop: 8 }}>Others</div>
+                    )}
+                </>
+            )}
+            {unpinnedList.map(renderListCard)}
         </div>
     );
 
@@ -257,8 +267,7 @@ export default function FocusPage({ data, onRefresh }: { data: StatusData; onRef
                     key={p.path}
                     project={p}
                     onClick={() => goToProject(p.path)}
-                    onRemove={isPinned(p.path) ? () => removeFromFocus(p.path) : undefined}
-                    isPinned={isPinned(p.path)}
+                    onRemove={() => removeFromFocus(p.path)}
                 />
             ))}
         </div>
@@ -282,7 +291,7 @@ export default function FocusPage({ data, onRefresh }: { data: StatusData; onRef
 
     // ─── Kanban View (with DnD) ─────────────────────────────────────────────
     const renderKanban = () => {
-        const cols = groups || groupByDimension(focusProjects, dimensions.find(d => d.id === 'priority') || dimensions[0]);
+        const cols = groups || groupByDimension(focusProjects, dimensions.find((d: any) => d.id === 'priority') || dimensions[0]);
         return (
             <>
                 {saving && (
@@ -320,7 +329,6 @@ export default function FocusPage({ data, onRefresh }: { data: StatusData; onRef
                                                 <div className="kanban-card-lane" style={{ color: LANE_COLORS[p.lane] || 'var(--text-tertiary)' }}>{p.lane}</div>
                                                 <div className="flex-row gap-6 mt-6">
                                                     <Badge variant="health" score={p.health_score} />
-                                                    {isPinned(p.path) && <span className="text-xs" style={{ color: 'var(--accent)' }}>📌</span>}
                                                 </div>
                                             </div>
                                         </div>

@@ -1,6 +1,8 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { api } from '../lib/api';
+import { useMutation } from 'convex/react';
+import { api } from '../../convex/_generated/api';
+import { useAuth } from '../hooks/useAuth';
 import { useProjects } from '../hooks/useProjects';
 import SearchableSelect, { type SelectOption } from '../components/SearchableSelect';
 
@@ -28,6 +30,9 @@ const TYPE_OPTIONS: SelectOption[] = [
 export default function NewTaskPage() {
     const navigate = useNavigate();
     const { data: projectData } = useProjects();
+    const { user } = useAuth();
+    const orgId = (user as any)?.orgId;
+    const createTask = useMutation(api.tasks.create);
 
     const [title, setTitle] = useState('');
     const [project, setProject] = useState('');
@@ -40,9 +45,9 @@ export default function NewTaskPage() {
 
     const projectOptions: SelectOption[] = useMemo(() => {
         return (projectData?.projects ?? []).map(p => {
-            const segs = p.path.split('/');
+            const segs = p.path ? p.path.split('/') : [(p as any).name || 'Unknown'];
             return {
-                value: p.path,
+                value: (p as any).id || p.path,
                 label: segs[segs.length - 1] || p.path,
                 sublabel: segs.length > 1 ? segs.slice(0, -1).join('/') : undefined,
                 group: segs[0] || 'root',
@@ -53,20 +58,23 @@ export default function NewTaskPage() {
 
     const handleSubmit = async () => {
         if (!title.trim()) { setError('Title is required'); return; }
+        if (!orgId) { setError('Organization ID not found'); return; }
         setSubmitting(true);
         setError('');
         try {
-            await api.tasks.create({
+            await createTask({
+                orgId: orgId as any,
+                projectId: project.trim() ? (project as any) : undefined,
                 title: title.trim(),
-                projectPath: project.trim() || 'general',
                 priority,
                 effort,
                 description: description.trim(),
-                taskType: type,
+                type: type,
+                status: 'todo',
             });
             navigate('/tasks');
-        } catch (err: unknown) {
-            setError(err instanceof Error ? err.message : 'Failed to create task');
+        } catch (err: any) {
+            setError(err.message || 'Failed to create task');
         } finally {
             setSubmitting(false);
         }

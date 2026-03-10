@@ -10,6 +10,7 @@ import {
   Alert,
   RefreshControl,
   Modal,
+  Platform
 } from 'react-native';
 import { createApiClient } from '@mission-control/api';
 import { PRIORITY_CONFIG, colors } from '@mission-control/types';
@@ -90,19 +91,34 @@ export default function TasksScreen() {
   };
 
   const handleDelete = (id: string) => {
-    Alert.alert('Delete Task', 'Are you sure?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete', style: 'destructive', onPress: async () => {
-          try {
-            await apiClient.tasks.delete(id);
-            setTasks(prev => prev.filter(t => t.id !== id));
-          } catch (err) {
-            console.error('Failed to delete task:', err);
-          }
-        },
-      },
-    ]);
+    const doDelete = async () => {
+      try {
+        await apiClient.tasks.delete(id);
+        setTasks(prev => prev.filter(t => t.id !== id));
+      } catch (err) {
+        console.error('Failed to delete task:', err);
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      Alert.alert(
+        'Confirm',
+        'Are you sure you want to delete this task?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Delete', style: 'destructive', onPress: async () => {
+              doDelete();
+            }
+          },
+        ]
+      )
+    } else {
+      Alert.alert('Delete Task', 'Are you sure?', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: doDelete },
+      ]);
+    }
   };
 
   const filtered = filterStatus ? tasks.filter(t => t.status === filterStatus) : tasks;

@@ -1,66 +1,78 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getAuthHeaders, API_BASE } from '../lib/api';
-
-interface MinionItem {
-    id: string;
-    name: string;
-    description: string;
-    status: string;
-    priority: string;
-    tags: string[];
-    createdAt: string;
-    updatedAt: string;
-    [key: string]: unknown;
-}
-
-interface TypeInfo {
-    slug: string;
-    name: string;
-    icon: string;
-    count: number;
-}
-
-// API_BASE imported from api.ts
+import { useMinionsSDK } from '../hooks/useMinionsSDK';
+import type { Minion, MinionType } from 'minions-sdk';
 
 export default function MinionsPage() {
-    const [types, setTypes] = useState<TypeInfo[]>([]);
-    const [expandedType, setExpandedType] = useState<string | null>(null);
-    const [items, setItems] = useState<Record<string, MinionItem[]>>({});
-    const [selectedItem, setSelectedItem] = useState<MinionItem | null>(null);
+    const { client, list, create, remove, search, registry } = useMinionsSDK();
+
+    const [minions, setMinions] = useState<Minion[]>([]);
     const [loading, setLoading] = useState(true);
-    const [loadingType, setLoadingType] = useState<string | null>(null);
+    const [selectedItem, setSelectedItem] = useState<Minion | null>(null);
+    const [expandedType, setExpandedType] = useState<string | null>(null);
+    const [searchQuery, setSearchQuery] = useState('');
 
-    // Load type summary
-    useEffect(() => {
-        fetch(`${API_BASE}/api/minions-types`, { headers: getAuthHeaders() })
-            .then(r => r.json())
-            .then(d => {
-                setTypes(d.types || []);
-                setLoading(false);
-            })
-            .catch(() => setLoading(false));
-    }, []);
+    // Create form
+    const [showCreate, setShowCreate] = useState(false);
+    const [createSlug, setCreateSlug] = useState('');
+    const [createTitle, setCreateTitle] = useState('');
+    const [creating, setCreating] = useState(false);
 
-    // Load items for a type
-    const loadType = useCallback(async (slug: string) => {
-        if (items[slug]) return; // Already loaded
-        setLoadingType(slug);
+    // Load minions from Convex via SDK
+    const refresh = useCallback(async () => {
+        setLoading(true);
         try {
-            const res = await fetch(`${API_BASE}/api/minions/${slug}`, { headers: getAuthHeaders() });
-            const data = await res.json();
-            setItems(prev => ({ ...prev, [slug]: data.items || [] }));
-        } catch { /* ignore */ }
-        setLoadingType(null);
-    }, [items]);
+            const data = searchQuery.trim()
+                ? await search(searchQuery)
+                : await list();
+            setMinions(data);
+        } finally {
+            setLoading(false);
+        }
+    }, [list, search, searchQuery]);
+
+    useEffect(() => {
+        refresh();
+    }, [refresh]);
+
+    // Group minions by minionTypeId
+    const allTypes = registry.list();
+    const grouped: Record<string, Minion[]> = {};
+    for (const m of minions) {
+        const key = m.minionTypeId || '_unknown';
+        if (!grouped[key]) grouped[key] = [];
+        grouped[key].push(m);
+    }
+
+    const typeSlugToInfo = (slug: string): { name: string; icon: string } => {
+        const t = allTypes.find((t) => t.slug === slug);
+        return { name: t?.name ?? slug, icon: t?.icon ?? '📦' };
+    };
 
     const toggleType = (slug: string) => {
-        if (expandedType === slug) {
-            setExpandedType(null);
-        } else {
-            setExpandedType(slug);
-            loadType(slug);
+        setExpandedType(expandedType === slug ? null : slug);
+    };
+
+    const handleCreate = async () => {
+        if (!createSlug || !createTitle.trim()) return;
+        setCreating(true);
+        try {
+            const newMinion = await create(createSlug, { title: createTitle.trim() });
+            setCreateTitle('');
+            setShowCreate(false);
+            await refresh();
+            setSelectedItem(newMinion);
+        } finally {
+            setCreating(false);
         }
     };
+
+    const handleDelete = async (m: Minion) => {
+        await remove(m);
+        if (selectedItem?.id === m.id) setSelectedItem(null);
+        await refresh();
+    };
+
+    // ─── Render helpers ──────────────────────────────────────────────────
 
     const formatValue = (value: unknown, indent = 0): string => {
         const pad = '  '.repeat(indent);
@@ -68,15 +80,17 @@ export default function MinionsPage() {
         if (typeof value === 'boolean') return value ? 'true' : 'false';
         if (typeof value === 'number') return String(value);
         if (typeof value === 'string') {
-            if (value.includes('\n')) return `|\n${value.split('\n').map(l => `${pad}  ${l}`).join('\n')}`;
-            if (value.includes(':') || value.includes('#') || value === '') return `"${value}"`;
+            if (value.includes('\n'))
+                return `|\n${value.split('\n').map((l) => `${pad}  ${l}`).join('\n')}`;
+            if (value.includes(':') || value.includes('#') || value === '')
+                return `"${value}"`;
             return value;
         }
         if (Array.isArray(value)) {
             if (value.length === 0) return '[]';
-            if (value.every(v => typeof v === 'string' || typeof v === 'number'))
+            if (value.every((v) => typeof v === 'string' || typeof v === 'number'))
                 return `[${value.join(', ')}]`;
-            return '\n' + value.map(v => `${pad}  - ${formatValue(v, indent + 1)}`).join('\n');
+            return '\n' + value.map((v) => `${pad}  - ${formatValue(v, indent + 1)}`).join('\n');
         }
         if (typeof value === 'object') {
             const entries = Object.entries(value as Record<string, unknown>);
@@ -85,88 +99,155 @@ export default function MinionsPage() {
         return String(value);
     };
 
-    const renderYaml = (item: MinionItem) => {
+    const renderYaml = (item: Minion) => {
         const lines: string[] = [];
-        // Core fields first
-        const coreKeys = ['id', 'name', 'description', 'status', 'priority', 'tags', 'createdAt', 'updatedAt'];
+        const coreKeys = ['id', 'title', 'status', 'priority', 'tags', 'minionTypeId', 'createdAt', 'updatedAt'];
         for (const key of coreKeys) {
-            if (item[key] !== undefined) {
-                lines.push(`${key}: ${formatValue(item[key])}`);
+            if ((item as any)[key] !== undefined) {
+                lines.push(`${key}: ${formatValue((item as any)[key])}`);
             }
         }
-        // Then remaining fields
-        lines.push('');
-        lines.push('# ─── Fields ───────────────────────────');
-        for (const [key, value] of Object.entries(item)) {
-            if (coreKeys.includes(key)) continue;
-            lines.push(`${key}: ${formatValue(value)}`);
+        if (item.fields && Object.keys(item.fields).length > 0) {
+            lines.push('');
+            lines.push('# ─── Fields ───────────────────────────');
+            for (const [key, value] of Object.entries(item.fields)) {
+                lines.push(`${key}: ${formatValue(value)}`);
+            }
         }
         return lines.join('\n');
     };
 
-    if (loading) {
-        return <div className="loading"><div className="loading-spinner" /> Loading Minions...</div>;
-    }
+    // ─── UI ──────────────────────────────────────────────────────────────
+
+    const typeEntries = Object.keys(grouped).sort();
 
     return (
         <div className="minions-workspace">
             <div className="minions-tree">
                 <div className="minions-tree-header">
-                    <span className="minions-tree-title">📦 .minions</span>
-                    <span className="minions-tree-badge">{types.reduce((s, t) => s + t.count, 0)} items</span>
+                    <span className="minions-tree-title">📦 Minions</span>
+                    <span className="minions-tree-badge">{minions.length} items</span>
                 </div>
+
+                {/* Search bar */}
+                <div style={{ padding: '8px 12px' }}>
+                    <input
+                        className="form-input"
+                        placeholder="Search minions..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        style={{ fontSize: 12 }}
+                    />
+                </div>
+
+                {/* New minion */}
+                <div style={{ padding: '0 12px 8px' }}>
+                    <button className="btn btn-primary text-base" style={{ width: '100%' }} onClick={() => setShowCreate(!showCreate)}>
+                        + New Minion
+                    </button>
+                </div>
+                {showCreate && (
+                    <div style={{ padding: '0 12px 12px' }}>
+                        <select
+                            className="form-input mb-8"
+                            style={{ fontSize: 12 }}
+                            value={createSlug}
+                            onChange={(e) => setCreateSlug(e.target.value)}
+                        >
+                            <option value="">Select type...</option>
+                            {allTypes.map((t) => (
+                                <option key={t.slug} value={t.slug}>
+                                    {t.icon} {t.name}
+                                </option>
+                            ))}
+                        </select>
+                        <input
+                            className="form-input mb-8"
+                            style={{ fontSize: 12 }}
+                            placeholder="Title..."
+                            value={createTitle}
+                            onChange={(e) => setCreateTitle(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
+                        />
+                        <button className="btn btn-primary text-base" style={{ width: '100%' }} onClick={handleCreate} disabled={creating}>
+                            {creating ? '...' : 'Create'}
+                        </button>
+                    </div>
+                )}
+
+                {/* Tree list */}
                 <div className="minions-tree-list">
-                    {types.map(type => (
-                        <div key={type.slug} className="minions-type-group">
-                            <div
-                                className={`minions-type-folder ${expandedType === type.slug ? 'expanded' : ''}`}
-                                onClick={() => toggleType(type.slug)}
-                            >
-                                <span className="minions-folder-icon">
-                                    {expandedType === type.slug ? '📂' : '📁'}
-                                </span>
-                                <span className="minions-folder-name">{type.name}</span>
-                                <span className="minions-folder-count">{type.count}</span>
-                            </div>
-                            {expandedType === type.slug && (
-                                <div className="minions-type-items">
-                                    {loadingType === type.slug ? (
-                                        <div className="minions-loading-items">Loading...</div>
-                                    ) : (items[type.slug] || []).length === 0 ? (
-                                        <div className="minions-empty-items">No items</div>
-                                    ) : (
-                                        (items[type.slug] || []).map(item => (
-                                            <div
-                                                key={item.id}
-                                                className={`minions-item ${selectedItem?.id === item.id ? 'selected' : ''}`}
-                                                onClick={() => setSelectedItem(item)}
-                                            >
-                                                <span className="minions-item-icon">{type.icon}</span>
-                                                <span className="minions-item-name">{item.name || item.id.slice(0, 8)}</span>
-                                            </div>
-                                        ))
+                    {loading ? (
+                        <div className="loading" style={{ padding: 24 }}><div className="loading-spinner" /></div>
+                    ) : typeEntries.length === 0 ? (
+                        <div className="minions-empty" style={{ padding: 16 }}>
+                            <div style={{ fontSize: 36, marginBottom: 8, textAlign: 'center' }}>📦</div>
+                            <p style={{ textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 13 }}>
+                                No minions yet. Create one to get started.
+                            </p>
+                        </div>
+                    ) : (
+                        typeEntries.map((slug) => {
+                            const info = typeSlugToInfo(slug);
+                            const items = grouped[slug];
+                            return (
+                                <div key={slug} className="minions-type-group">
+                                    <div
+                                        className={`minions-type-folder ${expandedType === slug ? 'expanded' : ''}`}
+                                        onClick={() => toggleType(slug)}
+                                    >
+                                        <span className="minions-folder-icon">
+                                            {expandedType === slug ? '📂' : '📁'}
+                                        </span>
+                                        <span className="minions-folder-name">{info.name}</span>
+                                        <span className="minions-folder-count">{items.length}</span>
+                                    </div>
+                                    {expandedType === slug && (
+                                        <div className="minions-type-items">
+                                            {items.length === 0 ? (
+                                                <div className="minions-empty-items">No items</div>
+                                            ) : (
+                                                items.map((item) => (
+                                                    <div
+                                                        key={item.id}
+                                                        className={`minions-item ${selectedItem?.id === item.id ? 'selected' : ''}`}
+                                                        onClick={() => setSelectedItem(item)}
+                                                    >
+                                                        <span className="minions-item-icon">{info.icon}</span>
+                                                        <span className="minions-item-name">
+                                                            {item.title || item.id.slice(0, 8)}
+                                                        </span>
+                                                    </div>
+                                                ))
+                                            )}
+                                        </div>
                                     )}
                                 </div>
-                            )}
-                        </div>
-                    ))}
-                    {types.length === 0 && (
-                        <div className="minions-empty">
-                            <p>No minions data found.</p>
-                            <p style={{ fontSize: 11, marginTop: 8 }}>Run the migration script first.</p>
-                        </div>
+                            );
+                        })
                     )}
                 </div>
             </div>
+
+            {/* Detail pane */}
             <div className="minions-detail">
                 {selectedItem ? (
                     <>
                         <div className="minions-detail-header">
-                            <h2 className="minions-detail-title">{selectedItem.name || 'Untitled'}</h2>
+                            <h2 className="minions-detail-title">{selectedItem.title || 'Untitled'}</h2>
                             <div className="minions-detail-meta">
                                 <span className="minions-meta-badge">{selectedItem.status}</span>
-                                <span className="minions-meta-badge">{selectedItem.priority}</span>
+                                {selectedItem.priority && (
+                                    <span className="minions-meta-badge">{selectedItem.priority}</span>
+                                )}
                                 <span className="minions-meta-id">{selectedItem.id}</span>
+                                <button
+                                    className="btn btn-secondary text-sm text-error"
+                                    style={{ marginLeft: 'auto', padding: '2px 10px' }}
+                                    onClick={() => handleDelete(selectedItem)}
+                                >
+                                    Delete
+                                </button>
                             </div>
                         </div>
                         <pre className="minions-yaml-view">{renderYaml(selectedItem)}</pre>
