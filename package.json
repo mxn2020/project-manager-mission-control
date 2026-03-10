@@ -12,7 +12,8 @@
     "stop": "lsof -ti:3000,3001,5190,5191 | xargs kill -9 2>/dev/null || true",
     "build": "turbo run build",
     "lint": "turbo run lint",
-    "test": "turbo run test"
+    "test": "turbo run test",
+    "typecheck": "turbo run typecheck"
   },
   "devDependencies": {
     "turbo": "^2.8.12"

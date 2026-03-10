@@ -22,3 +22,37 @@ export {
     WORKSPACES,
 } from '@mission-control/types';
 
+// ─── Convex-specific types ───────────────────────────────────────────────────
+
+import type { Doc, Id } from '../../convex/_generated/dataModel';
+export type { Doc, Id };
+
+/**
+ * Shape returned by `api.auth.me` query.
+ */
+export interface AuthUser {
+    id: string;
+    email: string;
+    name?: string;
+    role?: string;
+    orgId?: string;
+    orgName?: string;
+    orgSlug?: string;
+}
+
+/**
+ * A project document from Convex, including the `_id` and `_creationTime` fields.
+ */
+export type ConvexProject = Doc<'projects'>;
+
+/**
+ * A task document from Convex.
+ */
+export type ConvexTask = Doc<'tasks'>;
+
+/**
+ * A cost entry document from Convex.
+ */
+export type ConvexCostEntry = Doc<'costEntries'>;
+
+
