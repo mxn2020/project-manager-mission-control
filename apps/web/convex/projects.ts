@@ -93,7 +93,7 @@ export const updateByPath = mutation({
     handler: async (ctx, args) => {
         const { path, ...updates } = args;
         const projects = await ctx.db.query("projects").collect();
-        const project = projects.find(p => p.repo === path);
+        const project = projects.find(p => p.repo === path) || projects.find(p => p.name === path);
         if (!project) throw new Error(`Project not found: ${path}`);
         const clean: Record<string, unknown> = { updatedAt: Date.now() };
         for (const [k, val] of Object.entries(updates)) {
@@ -188,6 +188,7 @@ export const create = mutation({
             healthScore: 0,
             syncStatus: "synced",
             lastSyncedAt: now,
+            projectScope: "main",
             createdAt: now,
             updatedAt: now,
         });

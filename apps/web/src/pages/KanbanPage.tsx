@@ -100,9 +100,10 @@ export default function KanbanPage({ data, onRefresh }: { data: StatusData; onRe
     }, [flushSaves]);
 
     // ── Drag handlers ───────────────────────────────────────────────────
-    const handleDragStart = useCallback((e: React.DragEvent, projectPath: string) => {
+    const handleDragStart = useCallback((e: React.DragEvent, projectPath: string, projectName: string) => {
         e.dataTransfer.effectAllowed = 'move';
-        e.dataTransfer.setData('text/plain', projectPath);
+        // Use name::path composite for unique identification
+        e.dataTransfer.setData('text/plain', `${projectName}::${projectPath}`);
 
         // Create rotated ghost
         const cardEl = e.currentTarget as HTMLElement;
@@ -148,11 +149,19 @@ export default function KanbanPage({ data, onRefresh }: { data: StatusData; onRe
 
         if (!activeDimension || activeDimension.field === 'computed') return;
 
-        const projectPath = e.dataTransfer.getData('text/plain');
-        if (!projectPath) return;
+        const dragData = e.dataTransfer.getData('text/plain');
+        if (!dragData) return;
+
+        // Parse composite identifier
+        const sepIdx = dragData.indexOf('::');
+        const projectName = sepIdx >= 0 ? dragData.substring(0, sepIdx) : '';
+        const projectPath = sepIdx >= 0 ? dragData.substring(sepIdx + 2) : dragData;
 
         // Check if same column
-        const project = projects.find(p => p.path === projectPath);
+        const project = projects.find(p => {
+            if (projectPath) return p.path === projectPath;
+            return p.name === projectName;
+        });
         if (!project) return;
         const currentValue = (project as any)[activeDimension.field];
         if (currentValue === targetValue) return;
@@ -165,7 +174,7 @@ export default function KanbanPage({ data, onRefresh }: { data: StatusData; onRe
 
         // Queue save
         queueSave({
-            projectPath,
+            projectPath: project.path || project.name,
             field: activeDimension.field,
             newValue: targetValue,
         });
@@ -210,7 +219,7 @@ export default function KanbanPage({ data, onRefresh }: { data: StatusData; onRe
                                     className="kanban-card"
                                     data-project-path={p.path}
                                     draggable={!!canDrag}
-                                    onDragStart={canDrag ? (e) => handleDragStart(e, p.path) : undefined}
+                                    onDragStart={canDrag ? (e) => handleDragStart(e, p.path, p.name) : undefined}
                                     onDragEnd={canDrag ? handleDragEnd : undefined}
                                     style={{ borderLeft: `3px solid ${col.sub.color || 'var(--border)'}` }}
                                 >

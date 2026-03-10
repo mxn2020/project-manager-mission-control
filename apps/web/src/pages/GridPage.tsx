@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { StatusData, Project, Tier } from '../lib/types';
 import { TIER_CONFIG, LANE_COLORS, TIER_ORDER, PRIORITY_ORDER } from '../lib/types';
@@ -37,9 +37,10 @@ function ProjectCard({ project, onClick }: { project: Project; onClick: () => vo
 export default function GridPage({ data }: { data: StatusData }) {
     const navigate = useNavigate();
     const { dimensions } = useDimensions(data.projects);
-    const [filters, setFilter] = useUrlFilters({ search: '', tier: '', lane: '', priority: '', group: '' });
 
-    const search = filters.search || '';
+    // Search is local state (instant), discrete filters persist in URL
+    const [search, setSearch] = useState('');
+    const [filters, setFilter] = useUrlFilters({ tier: '', lane: '', priority: '', group: '' });
     const tierFilter = filters.tier || '';
     const laneFilter = filters.lane || '';
     const priorityFilter = filters.priority || '';
@@ -50,9 +51,7 @@ export default function GridPage({ data }: { data: StatusData }) {
     const filtered = useMemo(() => data.projects.filter(p => {
         if (search) {
             const q = search.toLowerCase();
-            const nameMatch = p.name.toLowerCase().includes(q);
-            const descMatch = p.description.toLowerCase().includes(q);
-            if (!nameMatch && !descMatch) return false;
+            if (!p.name.toLowerCase().includes(q) && !p.description.toLowerCase().includes(q)) return false;
         }
         if (tierFilter && p.tier !== tierFilter) return false;
         if (laneFilter && p.lane !== laneFilter) return false;
@@ -76,7 +75,7 @@ export default function GridPage({ data }: { data: StatusData }) {
         <div>
             <PageHeader title="Grid View" description="Browse all projects as cards" />
             <FilterBar
-                search={{ value: search, onChange: (v: string) => setFilter('search', v), placeholder: 'Search projects...' }}
+                search={{ value: search, onChange: setSearch, placeholder: 'Search projects...' }}
                 resultCount={filtered.length}
                 filters={
                     <>
@@ -96,7 +95,6 @@ export default function GridPage({ data }: { data: StatusData }) {
             {filtered.length === 0 ? (
                 <EmptyState icon="🔍" message="No matching projects" />
             ) : groups ? (
-                // Grouped view
                 groups.filter(g => g.projects.length > 0).map(g => (
                     <div key={g.key} className="dimension-group">
                         <div className="dimension-group-header" style={{ borderColor: g.sub.color || 'var(--border)' }}>

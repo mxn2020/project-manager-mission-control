@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { StatusData, Tier, Priority } from '../lib/types';
 import { TIER_CONFIG, TIER_ORDER, PRIORITY_CONFIG, PRIORITY_ORDER, LANE_COLORS } from '../lib/types';
@@ -11,9 +11,10 @@ type SortDir = 'asc' | 'desc';
 
 export default function TablePage({ data }: { data: StatusData }) {
     const navigate = useNavigate();
-    const [filters, setFilter] = useUrlFilters({ search: '', tier: '', sort: 'name', dir: 'asc' });
 
-    const search = filters.search || '';
+    // Search is local state (instant), others persist in URL
+    const [search, setSearch] = useState('');
+    const [filters, setFilter] = useUrlFilters({ tier: '', sort: 'name', dir: 'asc' });
     const tierFilter = filters.tier || '';
     const sortField = (filters.sort || 'name') as SortField;
     const sortDir = (filters.dir || 'asc') as SortDir;
@@ -62,7 +63,7 @@ export default function TablePage({ data }: { data: StatusData }) {
         <div>
             <PageHeader title="Table View" />
             <FilterBar
-                search={{ value: search, onChange: (v: string) => setFilter('search', v) }}
+                search={{ value: search, onChange: setSearch }}
                 resultCount={filtered.length}
                 filters={
                     <SearchableSelect

@@ -238,9 +238,13 @@ export default function OverviewPage({ data, onNavigate }: { data: StatusData; o
 
             {showCreate && (
                 <CreateProjectModal
+                    lanes={Object.keys(data.summary.by_lane)}
                     onClose={() => setShowCreate(false)}
-                    onCreated={() => window.location.reload()}
-                    lanes={[...new Set(data.projects.map(p => p.lane))]}
+                    onCreated={(newId: string) => {
+                        setShowCreate(false);
+                        // Navigate to new project page if we got an ID
+                        if (newId) navigate(`/project/${encodeURIComponent(newId)}`);
+                    }}
                 />
             )}
         </div>
