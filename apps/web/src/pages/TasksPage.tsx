@@ -4,6 +4,7 @@ import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { useProjects } from '../hooks/useProjects';
 import { useAuth } from '../hooks/useAuth';
+import { useUrlFilters } from '../hooks/useUrlFilters';
 import { useIsMobile } from '../hooks/useMediaQuery';
 import SearchableSelect, { type SelectOption } from '../components/SearchableSelect';
 import { PageHeader, GripIcon } from '../components/ui';
@@ -28,10 +29,11 @@ export default function TasksPage() {
     const navigate = useNavigate();
     const isMobile = useIsMobile();
 
-    const [view, setView] = useState<'kanban' | 'list'>('kanban');
+    const [urlFilters, setUrlFilter] = useUrlFilters({ view: 'kanban', priority: '', project: '' });
+    const view = (urlFilters.view || 'kanban') as 'kanban' | 'list';
     const [showCreate, setShowCreate] = useState(false);
-    const [filterPriority, setFilterPriority] = useState('');
-    const [filterProject, setFilterProject] = useState('');
+    const filterPriority = urlFilters.priority;
+    const filterProject = urlFilters.project;
 
     // Convex queries & mutations
     const rawTasks = useQuery(api.tasks.list, orgId ? { orgId, status: undefined, priority: undefined, projectPath: undefined } : "skip");
@@ -383,20 +385,20 @@ export default function TasksPage() {
             {/* View Toggle & Filters */}
             <div className="filter-bar flex-row flex-wrap gap-8">
                 <div className="flex-row" style={{ borderRadius: 6, overflow: 'hidden', border: '1px solid var(--border)' }}>
-                    <button className={view === 'kanban' ? 'btn btn-primary' : 'btn btn-secondary'} onClick={() => setView('kanban')} style={{ borderRadius: 0, fontSize: 12 }}>⊞ Kanban</button>
-                    <button className={view === 'list' ? 'btn btn-primary' : 'btn btn-secondary'} onClick={() => setView('list')} style={{ borderRadius: 0, fontSize: 12 }}>☰ List</button>
+                    <button className={view === 'kanban' ? 'btn btn-primary' : 'btn btn-secondary'} onClick={() => setUrlFilter('view', 'kanban')} style={{ borderRadius: 0, fontSize: 12 }}>⊞ Kanban</button>
+                    <button className={view === 'list' ? 'btn btn-primary' : 'btn btn-secondary'} onClick={() => setUrlFilter('view', 'list')} style={{ borderRadius: 0, fontSize: 12 }}>☰ List</button>
                 </div>
                 <SearchableSelect
                     options={priorityOptions}
                     value={filterPriority}
-                    onChange={setFilterPriority}
+                    onChange={(v) => setUrlFilter('priority', v)}
                     placeholder="All Priorities"
                     width="150px"
                 />
                 <SearchableSelect
                     options={projectOptions}
                     value={filterProject}
-                    onChange={setFilterProject}
+                    onChange={(v) => setUrlFilter('project', v)}
                     placeholder="All Projects"
                     grouped
                     width="200px"

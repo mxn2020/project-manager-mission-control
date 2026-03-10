@@ -19,7 +19,12 @@ export function useProjects(scope: 'main' | 'child' | 'all' = 'main') {
         : "skip" as const;
 
     const projectsList = useQuery(api.projects.list, queryArgs);
-    const projectStats = useQuery(api.projects.getStats, orgId ? { orgId: orgId as any } : "skip");
+    const statsQueryArgs = orgId
+        ? scope === 'all'
+            ? { orgId: orgId as any }
+            : { orgId: orgId as any, scope }
+        : "skip" as const;
+    const projectStats = useQuery(api.projects.getStats, statsQueryArgs);
 
     const loading = projectsList === undefined || projectStats === undefined;
     const error = null;

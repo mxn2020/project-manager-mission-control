@@ -1,6 +1,7 @@
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import SearchableSelect from '../components/SearchableSelect';
 import { useDimensions } from '../hooks/useDimensions';
 import { DEFAULT_DIMENSIONS, type Dimension, type SubDimension } from '../lib/dimensions';
@@ -14,7 +15,9 @@ export default function AdminPage() {
     const toggleProvider = useMutation(api.aiConfig.toggleProvider);
     const toggleModel = useMutation(api.aiConfig.toggleModel);
 
-    const [tab, setTab] = useState<'providers' | 'models' | 'datasources' | 'dimensions' | 'chatbots' | 'system'>('providers');
+    const [searchParams, setSearchParams] = useSearchParams();
+    const tab = (searchParams.get('tab') || 'providers') as 'providers' | 'models' | 'datasources' | 'dimensions' | 'chatbots' | 'system';
+    const setTab = (t: typeof tab) => setSearchParams(prev => { const next = new URLSearchParams(prev); next.set('tab', t); return next; }, { replace: true });
     const { dimensions, saveDimensions } = useDimensions();
     const [newDimName, setNewDimName] = useState('');
     const [newDimField, setNewDimField] = useState('');

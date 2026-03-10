@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useProjects } from '../hooks/useProjects';
+import { useUrlFilters } from '../hooks/useUrlFilters';
 import SearchableSelect from '../components/SearchableSelect';
 import CreateProjectModal from '../components/CreateProjectModal';
 import { TIER_CONFIG, TIER_ORDER, type Tier } from '../lib/types';
@@ -7,15 +8,19 @@ import { PageHeader, Badge, EmptyState } from '../components/ui';
 
 type RoadmapView = 'pipeline' | 'list' | 'compact';
 
+const FILTER_DEFAULTS = { view: 'pipeline', lane: '', priority: '', category: '', subcategory: '' };
+
 export default function RoadmapPage() {
     const { data, refresh } = useProjects();
     const projects = data?.projects || [];
     const [showCreate, setShowCreate] = useState(false);
-    const [filterLane, setFilterLane] = useState('');
-    const [filterPriority, setFilterPriority] = useState('');
-    const [filterCategory, setFilterCategory] = useState('');
-    const [filterSubcategory, setFilterSubcategory] = useState('');
-    const [view, setView] = useState<RoadmapView>('pipeline');
+    const [filters, setFilter] = useUrlFilters(FILTER_DEFAULTS);
+
+    const view = (filters.view || 'pipeline') as RoadmapView;
+    const filterLane = filters.lane;
+    const filterPriority = filters.priority;
+    const filterCategory = filters.category;
+    const filterSubcategory = filters.subcategory;
 
     // Derive categories from project paths
     const categories = useMemo(() => {
@@ -224,16 +229,16 @@ export default function RoadmapPage() {
             {/* Filters */}
             <div className="filter-bar flex-row flex-wrap gap-8 mb-16">
                 <div className="view-toggle">
-                    <button className={`btn ${view === 'pipeline' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setView('pipeline')}>🔀 Pipeline</button>
-                    <button className={`btn ${view === 'list' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setView('list')}>☰ List</button>
-                    <button className={`btn ${view === 'compact' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setView('compact')}>⊞ Compact</button>
+                    <button className={`btn ${view === 'pipeline' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setFilter('view', 'pipeline')}>🔀 Pipeline</button>
+                    <button className={`btn ${view === 'list' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setFilter('view', 'list')}>☰ List</button>
+                    <button className={`btn ${view === 'compact' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setFilter('view', 'compact')}>⊞ Compact</button>
                 </div>
-                <SearchableSelect options={categoryOptions} value={filterCategory} onChange={(v) => { setFilterCategory(v); setFilterSubcategory(''); }} placeholder="All Categories" width="170px" />
+                <SearchableSelect options={categoryOptions} value={filterCategory} onChange={(v) => { setFilter('category', v); setFilter('subcategory', ''); }} placeholder="All Categories" width="170px" />
                 {subcategoryOptions.length > 0 && (
-                    <SearchableSelect options={subcategoryOptions} value={filterSubcategory} onChange={setFilterSubcategory} placeholder="All Subcategories" width="170px" />
+                    <SearchableSelect options={subcategoryOptions} value={filterSubcategory} onChange={(v) => setFilter('subcategory', v)} placeholder="All Subcategories" width="170px" />
                 )}
-                <SearchableSelect options={laneOptions} value={filterLane} onChange={setFilterLane} placeholder="All Lanes" width="150px" />
-                <SearchableSelect options={priorityOptions} value={filterPriority} onChange={setFilterPriority} placeholder="All Priorities" width="150px" />
+                <SearchableSelect options={laneOptions} value={filterLane} onChange={(v) => setFilter('lane', v)} placeholder="All Lanes" width="150px" />
+                <SearchableSelect options={priorityOptions} value={filterPriority} onChange={(v) => setFilter('priority', v)} placeholder="All Priorities" width="150px" />
             </div>
 
             {!data ? (

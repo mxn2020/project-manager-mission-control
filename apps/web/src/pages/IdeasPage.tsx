@@ -3,6 +3,7 @@ import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { useProjects } from '../hooks/useProjects';
 import { useAuth } from '../hooks/useAuth';
+import { useUrlFilters } from '../hooks/useUrlFilters';
 import SearchableSelect, { type SelectOption } from '../components/SearchableSelect';
 import PromptDialog from '../components/PromptDialog';
 
@@ -158,13 +159,14 @@ export default function IdeasPage() {
     const { orgId } = useAuth() as any;
 
     const [search, setSearch] = useState('');
-    const [filterCat, setFilterCat] = useState('');
-    const [filterProject, setFilterProject] = useState('');
-    const [showArchived, setShowArchived] = useState(false);
+    const [urlFilters, setUrlFilter] = useUrlFilters({ view: 'cards', category: '', project: '', sort: 'date', archived: '' });
+    const filterCat = urlFilters.category;
+    const filterProject = urlFilters.project;
+    const showArchived = urlFilters.archived === 'true';
+    const view = (urlFilters.view || 'cards') as IdeaView;
+    const sortBy = (urlFilters.sort || 'date') as 'score' | 'date' | 'title';
     const [showCreate, setShowCreate] = useState(false);
-    const [view, setView] = useState<IdeaView>('cards');
     const [selected, setSelected] = useState<Set<string>>(new Set());
-    const [sortBy, setSortBy] = useState<'score' | 'date' | 'title'>('date');
     const { data: projectData } = useProjects();
 
     // Prompt dialog for combining ideas
@@ -439,7 +441,7 @@ export default function IdeasPage() {
                 {/* Views */}
                 <div className="flex-row gap-2" style={{ background: 'var(--bg-secondary)', borderRadius: 8, padding: 2 }}>
                     {VIEW_OPTIONS.map(v => (
-                        <button key={v.value} onClick={() => setView(v.value)}
+                        <button key={v.value} onClick={() => setUrlFilter('view', v.value)}
                             className={`btn ${view === v.value ? 'btn-primary' : 'btn-secondary'} text-sm`}
                             style={{ padding: '4px 10px', borderRadius: 6 }}>
                             {v.icon} {v.label}
@@ -455,24 +457,24 @@ export default function IdeasPage() {
 
                 {/* Category filter */}
                 <div className="flex-row gap-2">
-                    <button className={`btn ${!filterCat ? 'btn-primary' : 'btn-secondary'} text-xs`} onClick={() => setFilterCat('')} style={{ padding: '3px 8px' }}>All</button>
+                    <button className={`btn ${!filterCat ? 'btn-primary' : 'btn-secondary'} text-xs`} onClick={() => setUrlFilter('category', '')} style={{ padding: '3px 8px' }}>All</button>
                     {CATEGORIES.map(c => (
                         <button key={c.value} className={`btn ${filterCat === c.value ? 'btn-primary' : 'btn-secondary'} text-xs`}
-                            onClick={() => setFilterCat(filterCat === c.value ? '' : c.value)}
+                            onClick={() => setUrlFilter('category', filterCat === c.value ? '' : c.value)}
                             style={{ padding: '3px 8px' }} title={c.label}>{c.icon}</button>
                     ))}
                 </div>
 
                 {/* Project filter */}
-                <SearchableSelect options={projectOptions} value={filterProject} onChange={setFilterProject} placeholder="📁 Project" width="140px" grouped />
+                <SearchableSelect options={projectOptions} value={filterProject} onChange={(v) => setUrlFilter('project', v)} placeholder="📁 Project" width="140px" grouped />
 
                 {/* Sort */}
                 <SearchableSelect
                     options={[{ value: 'date', label: 'Newest' }, { value: 'score', label: 'Score ↓' }, { value: 'title', label: 'A-Z' }]}
-                    value={sortBy} onChange={v => setSortBy(v as any)} placeholder="Sort" clearable={false} width="110px" />
+                    value={sortBy} onChange={v => setUrlFilter('sort', v)} placeholder="Sort" clearable={false} width="110px" />
 
                 <label className="flex-row gap-4 text-sm text-tertiary">
-                    <input type="checkbox" checked={showArchived} onChange={e => setShowArchived(e.target.checked)} /> Archived
+                    <input type="checkbox" checked={showArchived} onChange={e => setUrlFilter('archived', e.target.checked ? 'true' : '')} /> Archived
                 </label>
 
                 <span className="text-sm text-tertiary" style={{ marginLeft: 'auto' }}>{allIdeas.length} ideas</span>

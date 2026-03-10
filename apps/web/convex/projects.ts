@@ -63,12 +63,25 @@ export const get = query({
 // ─── Get Project Stats ───────────────────────────────────────────────────
 
 export const getStats = query({
-    args: { orgId: v.id("organizations") },
+    args: {
+        orgId: v.id("organizations"),
+        scope: v.optional(v.string()),
+    },
     handler: async (ctx, args) => {
-        const projects = await ctx.db
-            .query("projects")
-            .withIndex("by_org", (idx) => idx.eq("orgId", args.orgId))
-            .collect();
+        let projects;
+        if (args.scope) {
+            projects = await ctx.db
+                .query("projects")
+                .withIndex("by_org_scope", (idx) =>
+                    idx.eq("orgId", args.orgId).eq("projectScope", args.scope!)
+                )
+                .collect();
+        } else {
+            projects = await ctx.db
+                .query("projects")
+                .withIndex("by_org", (idx) => idx.eq("orgId", args.orgId))
+                .collect();
+        }
 
         const byTier: Record<string, number> = {};
         const byLane: Record<string, number> = {};

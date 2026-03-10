@@ -75,8 +75,11 @@ export function useAuth() {
         setToken(null);
     }, [token, logoutMutation]);
 
+    const orgId = (user as any)?.orgId ?? undefined;
+
     return {
         user,
+        orgId,
         token,
         needsSetup: needsSetup === true,
         isSetupLoading: needsSetup === undefined || agentLoginPending,
