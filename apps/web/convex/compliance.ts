@@ -1,4 +1,4 @@
-import { action, internalMutation, internalQuery, query } from "./_generated/server";
+import { action, internalAction, internalMutation, internalQuery, query } from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 
@@ -707,7 +707,7 @@ export const scanAllProjects = action({
 });
 
 // Internal action version (callable from scanAllProjects)
-export const scanProjectInternal = action({
+export const scanProjectInternal = internalAction({
     args: {
         orgId: v.id("organizations"),
         projectId: v.id("projects"),
