@@ -4,7 +4,8 @@ import type { StatusData, Project } from '../lib/types';
 import { useAuth } from './useAuth';
 
 export function useProjects() {
-    const { orgId } = useAuth() as any; // useAuth returns user object which has orgId
+    const { user } = useAuth();
+    const orgId = (user as any)?.orgId;
 
     const projectsList = useQuery(api.projects.list, orgId ? { orgId } : "skip");
     const projectStats = useQuery(api.projects.getStats, orgId ? { orgId } : "skip");
