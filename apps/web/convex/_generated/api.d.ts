@@ -22,6 +22,7 @@ import type * as content from "../content.js";
 import type * as costs from "../costs.js";
 import type * as focusGroups from "../focusGroups.js";
 import type * as github from "../github.js";
+import type * as githubOAuth from "../githubOAuth.js";
 import type * as http from "../http.js";
 import type * as ideas from "../ideas.js";
 import type * as marketing from "../marketing.js";
@@ -55,6 +56,7 @@ declare const fullApi: ApiFromModules<{
   costs: typeof costs;
   focusGroups: typeof focusGroups;
   github: typeof github;
+  githubOAuth: typeof githubOAuth;
   http: typeof http;
   ideas: typeof ideas;
   marketing: typeof marketing;

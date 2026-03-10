@@ -1,7 +1,9 @@
 import { httpRouter } from "convex/server";
 import { httpAction } from "./_generated/server";
 import { internal } from "./_generated/api";
-import { Id } from "./_generated/dataModel";
+import type { Id } from "./_generated/dataModel";
+
+declare const process: { env: Record<string, string | undefined> };
 
 /**
  * HTTP Router — Webhook endpoints for voice memos and text input.
@@ -146,6 +148,124 @@ http.route({
             });
         } catch (err: any) {
             return jsonResponse(500, { error: err.message || "Internal server error" });
+        }
+    }),
+});
+
+// ─── GitHub OAuth: Authorize ────────────────────────────────────────────
+
+http.route({
+    path: "/github/authorize",
+    method: "GET",
+    handler: httpAction(async (_ctx, request) => {
+        const clientId = process.env.GITHUB_CLIENT_ID;
+        if (!clientId) {
+            return jsonResponse(500, { error: "GITHUB_CLIENT_ID not configured" });
+        }
+
+        // Extract session token from query param
+        const url = new URL(request.url);
+        const sessionToken = url.searchParams.get("session");
+        if (!sessionToken) {
+            return jsonResponse(400, { error: "Missing session parameter" });
+        }
+
+        const redirectUri = process.env.GITHUB_REDIRECT_URI || `${url.origin}/github/callback`;
+        const scopes = "repo,read:user";
+        // Encode session token as state for the callback
+        const state = btoa(sessionToken);
+
+        const githubUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${scopes}&state=${state}`;
+
+        return new Response(null, {
+            status: 302,
+            headers: { Location: githubUrl },
+        });
+    }),
+});
+
+// ─── GitHub OAuth: Callback ─────────────────────────────────────────────
+
+http.route({
+    path: "/github/callback",
+    method: "GET",
+    handler: httpAction(async (ctx, request) => {
+        const clientId = process.env.GITHUB_CLIENT_ID;
+        const clientSecret = process.env.GITHUB_CLIENT_SECRET;
+        if (!clientId || !clientSecret) {
+            return jsonResponse(500, { error: "GitHub OAuth not configured" });
+        }
+
+        const url = new URL(request.url);
+        const code = url.searchParams.get("code");
+        const state = url.searchParams.get("state");
+
+        if (!code || !state) {
+            return jsonResponse(400, { error: "Missing code or state" });
+        }
+
+        // Decode session token from state
+        let sessionToken: string;
+        try {
+            sessionToken = atob(state);
+        } catch {
+            return jsonResponse(400, { error: "Invalid state" });
+        }
+
+        try {
+            // 1. Exchange code for access token
+            const tokenRes = await fetch("https://github.com/login/oauth/access_token", {
+                method: "POST",
+                headers: {
+                    Accept: "application/json",
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    client_id: clientId,
+                    client_secret: clientSecret,
+                    code,
+                }),
+            });
+
+            const tokenData = await tokenRes.json() as { access_token?: string; error?: string };
+            if (!tokenData.access_token) {
+                return jsonResponse(400, { error: tokenData.error || "Failed to get access token" });
+            }
+
+            // 2. Get GitHub username
+            const userRes = await fetch("https://api.github.com/user", {
+                headers: {
+                    Authorization: `Bearer ${tokenData.access_token}`,
+                    "User-Agent": "MissionControl/1.0",
+                },
+            });
+            const userData = await userRes.json() as { login?: string };
+
+            // 3. Resolve session → user → org
+            const session = await ctx.runQuery(internal.githubOAuth.resolveSession, {
+                token: sessionToken,
+            });
+
+            if (!session?.orgId) {
+                return jsonResponse(401, { error: "Invalid or expired session" });
+            }
+
+            // 4. Store token on organization
+            await ctx.runMutation(internal.github.saveGithubToken, {
+                orgId: session.orgId as Id<"organizations">,
+                githubToken: tokenData.access_token,
+                githubUsername: userData.login,
+            });
+
+            // 5. Redirect back to the app
+            const appUrl = process.env.APP_URL || "https://mission-control-app-green.vercel.app";
+            return new Response(null, {
+                status: 302,
+                headers: { Location: `${appUrl}/files?github=connected` },
+            });
+        } catch (err: any) {
+            console.error("GitHub OAuth callback error:", err);
+            return jsonResponse(500, { error: err.message || "OAuth callback failed" });
         }
     }),
 });

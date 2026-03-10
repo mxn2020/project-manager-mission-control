@@ -9,7 +9,8 @@ export default defineSchema({
         ownerId: v.id("users"),
         planTier: v.string(), // free | pro | team
         settings: v.optional(v.string()), // JSON settings
-        githubToken: v.optional(v.string()), // encrypted PAT
+        githubToken: v.optional(v.string()), // OAuth access token
+        githubUsername: v.optional(v.string()), // Connected GitHub username
         createdAt: v.number(),
     })
         .index("by_slug", ["slug"])

@@ -1,4 +1,4 @@
-import { action, internalMutation, mutation, query } from "./_generated/server";
+import { action, internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 
@@ -84,6 +84,53 @@ export const updateSyncData = internalMutation({
     },
 });
 
+// ─── GitHub OAuth Token Management ───────────────────────────────────────
+
+export const saveGithubToken = internalMutation({
+    args: {
+        orgId: v.id("organizations"),
+        githubToken: v.string(),
+        githubUsername: v.optional(v.string()),
+    },
+    handler: async (ctx, args) => {
+        await ctx.db.patch(args.orgId, {
+            githubToken: args.githubToken,
+            ...(args.githubUsername ? { githubUsername: args.githubUsername } : {}),
+        } as any);
+    },
+});
+
+export const getGithubConnection = query({
+    args: { orgId: v.id("organizations") },
+    handler: async (ctx, args) => {
+        const org = await ctx.db.get(args.orgId);
+        if (!org) return null;
+        return {
+            connected: !!(org as any).githubToken,
+            username: (org as any).githubUsername || null,
+        };
+    },
+});
+
+export const revokeGithubToken = mutation({
+    args: { orgId: v.id("organizations") },
+    handler: async (ctx, args) => {
+        await ctx.db.patch(args.orgId, {
+            githubToken: undefined,
+            githubUsername: undefined,
+        } as any);
+    },
+});
+
+// Internal: get the raw token for use in actions
+export const getOrgGithubToken = internalQuery({
+    args: { orgId: v.id("organizations") },
+    handler: async (ctx, args) => {
+        const org = await ctx.db.get(args.orgId);
+        return (org as any)?.githubToken || undefined;
+    },
+});
+
 // ─── Sync a Single Repo (Action — calls GitHub API) ──────────────────────
 
 export const syncRepo = action({
@@ -118,12 +165,13 @@ export const syncRepo = action({
             // Fetch ACCOUNTS.yaml from repo (optional - may not exist)
             let accountsContent: string | undefined;
             try {
-                accountsContent = await fetchFileFromGitHub(
+                const result = await fetchFileFromGitHub(
                     repoFullName,
                     "ACCOUNTS.yaml",
                     defaultBranch,
                     args.githubToken
                 );
+                accountsContent = result ?? undefined;
             } catch {
                 // ACCOUNTS.yaml is optional
             }
@@ -162,15 +210,21 @@ export const browseContents = action({
         repoFullName: v.string(),
         path: v.optional(v.string()),
         branch: v.optional(v.string()),
-        githubToken: v.string(),
+        githubToken: v.optional(v.string()),
+        orgId: v.optional(v.id("organizations")),
     },
-    handler: async (_ctx, args) => {
+    handler: async (ctx, args) => {
+        let token: string | undefined = args.githubToken;
+        if (!token && args.orgId) {
+            token = await ctx.runQuery(internal.github.getOrgGithubToken, { orgId: args.orgId }) as string | undefined;
+        }
+        if (!token) throw new Error('No GitHub token available. Connect GitHub in Settings.');
         const path = args.path || '';
         const branch = args.branch || 'main';
         const url = `https://api.github.com/repos/${args.repoFullName}/contents/${path}?ref=${branch}`;
         const res = await fetch(url, {
             headers: {
-                Authorization: `Bearer ${args.githubToken}`,
+                Authorization: `Bearer ${token}`,
                 Accept: 'application/vnd.github.v3+json',
                 'User-Agent': 'MissionControl/1.0',
             },
@@ -205,18 +259,24 @@ export const fetchFileContent = action({
         repoFullName: v.string(),
         path: v.string(),
         branch: v.optional(v.string()),
-        githubToken: v.string(),
+        githubToken: v.optional(v.string()),
+        orgId: v.optional(v.id("organizations")),
     },
-    handler: async (_ctx, args) => {
+    handler: async (ctx, args) => {
+        let token: string | undefined = args.githubToken;
+        if (!token && args.orgId) {
+            token = await ctx.runQuery(internal.github.getOrgGithubToken, { orgId: args.orgId }) as string | undefined;
+        }
+        if (!token) throw new Error('No GitHub token available. Connect GitHub in Settings.');
         const branch = args.branch || 'main';
-        const content = await fetchFileFromGitHub(args.repoFullName, args.path, branch, args.githubToken);
+        const content = await fetchFileFromGitHub(args.repoFullName, args.path, branch, token);
         return { content: content || '', path: args.path, name: args.path.split('/').pop() || '' };
     },
 });
 
 // ─── Internal query helper ───────────────────────────────────────────────
 
-export const getRepoById = query({
+export const getRepoById = internalQuery({
     args: { repoId: v.id("githubRepos") },
     handler: async (ctx, args) => {
         return await ctx.db.get(args.repoId);

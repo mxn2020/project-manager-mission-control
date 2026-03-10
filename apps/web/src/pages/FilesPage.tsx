@@ -1,5 +1,5 @@
-import { useState, useMemo, useCallback } from 'react';
-import { useQuery, useAction } from 'convex/react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useQuery, useAction, useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { useProjects } from '../hooks/useProjects';
 import { useAuth } from '../hooks/useAuth';
@@ -15,7 +15,7 @@ interface GitHubEntry {
 
 export default function FilesPage() {
     const { data, loading: projectsLoading } = useProjects();
-    const { orgId } = useAuth() as any;
+    const { orgId, token: sessionToken } = useAuth() as any;
     const projects = data?.projects || [];
 
     const [selectedProject, setSelectedProject] = useState<string>('');
@@ -24,8 +24,20 @@ export default function FilesPage() {
     const [loading, setLoading] = useState(false);
     const [fileContent, setFileContent] = useState<{ name: string; content: string } | null>(null);
     const [error, setError] = useState<string | null>(null);
-    const [githubToken, setGithubToken] = useState(localStorage.getItem('mc-github-token') || '');
-    const [showTokenInput, setShowTokenInput] = useState(!localStorage.getItem('mc-github-token'));
+
+    // GitHub OAuth connection status from Convex
+    const githubConnection = useQuery(api.github.getGithubConnection, orgId ? { orgId } : 'skip');
+    const revokeGithub = useMutation(api.github.revokeGithubToken);
+    const isGithubConnected = githubConnection?.connected ?? false;
+    const githubUsername = githubConnection?.username;
+
+    // Check for OAuth callback redirect
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('github') === 'connected') {
+            window.history.replaceState({}, '', window.location.pathname);
+        }
+    }, []);
 
     const linkedRepos = useQuery(api.github.list, orgId ? { orgId } : 'skip');
     const browseContents = useAction(api.github.browseContents);
@@ -47,7 +59,7 @@ export default function FilesPage() {
     }, [projects, linkedRepos]);
 
     const fetchDir = useCallback(async (projectPath: string, subPath: string = '') => {
-        if (!githubToken) { setShowTokenInput(true); return; }
+        if (!isGithubConnected) return;
         const repo = getRepoForProject(projectPath);
         if (!repo) { setError('No GitHub repo linked to this project. Link one in Admin or add a repo URL.'); return; }
 
@@ -58,7 +70,7 @@ export default function FilesPage() {
                 repoFullName: repo.repoFullName,
                 path: subPath,
                 branch: repo.branch,
-                githubToken,
+                orgId,
             });
 
             if (result.type === 'directory') {
@@ -72,10 +84,10 @@ export default function FilesPage() {
         } finally {
             setLoading(false);
         }
-    }, [githubToken, getRepoForProject, browseContents]);
+    }, [isGithubConnected, orgId, getRepoForProject, browseContents]);
 
     const fetchFile = useCallback(async (projectPath: string, filePath: string) => {
-        if (!githubToken) { setShowTokenInput(true); return; }
+        if (!isGithubConnected) return;
         const repo = getRepoForProject(projectPath);
         if (!repo) return;
 
@@ -85,7 +97,7 @@ export default function FilesPage() {
                 repoFullName: repo.repoFullName,
                 path: filePath,
                 branch: repo.branch,
-                githubToken,
+                orgId,
             });
             setFileContent({ name: result.name, content: result.content });
         } catch (err: any) {
@@ -93,7 +105,7 @@ export default function FilesPage() {
         } finally {
             setLoading(false);
         }
-    }, [githubToken, getRepoForProject, fetchFileContentAction]);
+    }, [isGithubConnected, orgId, getRepoForProject, fetchFileContentAction]);
 
     const handleSelectProject = (v: string) => {
         setSelectedProject(v);
@@ -101,7 +113,7 @@ export default function FilesPage() {
         setFileContent(null);
         setError(null);
         setEntries([]);
-        if (v && githubToken) fetchDir(v, '');
+        if (v && isGithubConnected) fetchDir(v, '');
     };
 
     const navigateToDir = (dirPath: string) => {
@@ -124,12 +136,16 @@ export default function FilesPage() {
         fetchDir(selectedProject, '');
     };
 
-    const saveToken = () => {
-        if (githubToken.trim()) {
-            localStorage.setItem('mc-github-token', githubToken.trim());
-            setShowTokenInput(false);
-            if (selectedProject) fetchDir(selectedProject, currentPath.join('/'));
-        }
+    const connectGithub = () => {
+        if (!sessionToken) return;
+        const convexUrl = import.meta.env.VITE_CONVEX_URL?.replace('.cloud', '.site') || '';
+        const authorizeUrl = `${convexUrl}/github/authorize?session=${encodeURIComponent(sessionToken)}`;
+        window.location.href = authorizeUrl;
+    };
+
+    const disconnectGithub = async () => {
+        if (!orgId) return;
+        await revokeGithub({ orgId });
     };
 
     const formatSize = (bytes?: number) => {
@@ -172,34 +188,31 @@ export default function FilesPage() {
                         <p className="page-description">Browse GitHub repository files</p>
                     </div>
                     <div className="flex-row gap-8">
-                        <button className="btn btn-secondary text-base" onClick={() => setShowTokenInput(!showTokenInput)}>
-                            🔑 {githubToken ? 'Update Token' : 'Set Token'}
-                        </button>
+                        {isGithubConnected ? (
+                            <>
+                                <span className="text-sm text-tertiary" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#22c55e', display: 'inline-block' }} />
+                                    Connected as <strong>{githubUsername || 'GitHub'}</strong>
+                                </span>
+                                <button className="btn btn-secondary text-sm" onClick={disconnectGithub}>Disconnect</button>
+                            </>
+                        ) : (
+                            <button className="btn btn-primary text-base" onClick={connectGithub}>
+                                🔗 Connect GitHub
+                            </button>
+                        )}
                     </div>
                 </div>
             </div>
 
-            {/* GitHub Token Input */}
-            {showTokenInput && (
-                <div className="section-card mb-16">
-                    <div className="font-semibold text-md mb-8">🔑 GitHub Personal Access Token</div>
+            {/* Not connected banner */}
+            {!isGithubConnected && (
+                <div className="section-card mb-16" style={{ borderLeft: '3px solid var(--accent)' }}>
+                    <div className="font-semibold text-md mb-4">🔗 Connect your GitHub account</div>
                     <div className="text-sm text-tertiary mb-8">
-                        Required to browse repository contents. Create one at{' '}
-                        <a href="https://github.com/settings/tokens" target="_blank" rel="noreferrer" style={{ color: 'var(--accent)' }}>
-                            github.com/settings/tokens
-                        </a>{' '}
-                        with <code>repo</code> scope.
+                        Connect GitHub via OAuth to securely browse repository files. Your token is stored on the server — never in the browser.
                     </div>
-                    <div className="flex-row gap-8">
-                        <input
-                            type="password"
-                            value={githubToken}
-                            onChange={e => setGithubToken(e.target.value)}
-                            placeholder="ghp_..."
-                            className="form-input flex-1"
-                        />
-                        <button className="btn btn-primary" onClick={saveToken} disabled={!githubToken.trim()}>Save</button>
-                    </div>
+                    <button className="btn btn-primary" onClick={connectGithub}>Connect GitHub</button>
                 </div>
             )}
 
@@ -262,7 +275,7 @@ export default function FilesPage() {
                                 )}
                                 {entries.length === 0 && !loading ? (
                                     <div className="text-center text-tertiary text-md" style={{ padding: 20 }}>
-                                        {!githubToken ? 'Set GitHub token to browse files' : 'No files found'}
+                                        {!isGithubConnected ? 'Connect GitHub to browse files' : 'No files found'}
                                     </div>
                                 ) : (
                                     [...entries]
