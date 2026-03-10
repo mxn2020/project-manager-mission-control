@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import type { StatusData } from '../lib/types';
 import { TIER_ORDER, TIER_CONFIG, PRIORITY_ORDER, PRIORITY_CONFIG, LANE_COLORS, type Tier, type Priority } from '../lib/types';
 import CreateProjectModal from '../components/CreateProjectModal';
+import CloneProjectModal from '../components/CloneProjectModal';
 import { useIsMobile } from '../hooks/useMediaQuery';
 import { PageHeader, StatCard, Card, Badge } from '../components/ui';
 
@@ -59,6 +60,7 @@ function DonutChart({ data, colors, size = 120 }: { data: Record<string, number>
 
 export default function OverviewPage({ data, onNavigate }: { data: StatusData; onNavigate?: (path: string) => void }) {
     const [showCreate, setShowCreate] = useState(false);
+    const [showClone, setShowClone] = useState(false);
     const navigate = useNavigate();
     const isMobile = useIsMobile();
 
@@ -101,9 +103,14 @@ export default function OverviewPage({ data, onNavigate }: { data: StatusData; o
                 title="🏠 Mission Control"
                 description={`Last scanned: ${new Date(data.generated_at).toLocaleString()}`}
                 actions={
-                    <button className="btn btn-primary text-base" onClick={handleNewProject}>
-                        ✨ New Project
-                    </button>
+                    <div className="flex-row gap-8">
+                        <button className="btn btn-secondary text-base" onClick={() => setShowClone(true)}>
+                            🔗 Clone Project
+                        </button>
+                        <button className="btn btn-primary text-base" onClick={handleNewProject}>
+                            ✨ New Project
+                        </button>
+                    </div>
                 }
             />
 
@@ -243,6 +250,17 @@ export default function OverviewPage({ data, onNavigate }: { data: StatusData; o
                     onCreated={(newId: string) => {
                         setShowCreate(false);
                         // Navigate to new project page if we got an ID
+                        if (newId) navigate(`/project/${encodeURIComponent(newId)}`);
+                    }}
+                />
+            )}
+
+            {showClone && (
+                <CloneProjectModal
+                    lanes={Object.keys(data.summary.by_lane)}
+                    onClose={() => setShowClone(false)}
+                    onCreated={(newId: string) => {
+                        setShowClone(false);
                         if (newId) navigate(`/project/${encodeURIComponent(newId)}`);
                     }}
                 />

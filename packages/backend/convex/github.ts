@@ -84,6 +84,46 @@ export const updateRepoLink = mutation({
     },
 });
 
+// ─── Check Repo Name Availability ────────────────────────────────────────
+
+export const checkRepoAvailability = action({
+    args: {
+        orgId: v.id("organizations"),
+        name: v.string(),
+        orgName: v.optional(v.string()),
+    },
+    handler: async (ctx, args) => {
+        const token = await ctx.runQuery(internal.github.getOrgGithubToken, {
+            orgId: args.orgId,
+        }) as string | undefined;
+        if (!token) throw new Error("No GitHub token. Connect GitHub in Integrations.");
+
+        const slug = args.name
+            .toLowerCase()
+            .replace(/[^a-z0-9-]/g, "-")
+            .replace(/-+/g, "-")
+            .replace(/^-|-$/g, "");
+
+        if (!slug) return { available: false, slug: "", error: "Invalid name" };
+
+        const owner = args.orgName || (await getGitHubUsername(token));
+        const checkRes = await fetch(`https://api.github.com/repos/${owner}/${slug}`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+                Accept: "application/vnd.github.v3+json",
+                "User-Agent": "MissionControl/1.0",
+            },
+        });
+
+        return {
+            available: checkRes.status === 404,
+            slug,
+            fullName: `${owner}/${slug}`,
+            error: checkRes.status === 200 ? `"${owner}/${slug}" already exists` : undefined,
+        };
+    },
+});
+
 // ─── Create GitHub Repo ──────────────────────────────────────────────────
 
 export const createRepo = action({
