@@ -5,20 +5,21 @@
   "type": "module",
   "scripts": {
     "dev": "vite --port 5190",
-    "build": "tsc -b && vite build",
+    "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview"
   },
   "dependencies": {
     "@convex-dev/auth": "^0.0.91",
-    "@mission-control/types": "workspace:*",
     "@mission-control/api": "workspace:*",
     "@mission-control/hooks": "workspace:*",
+    "@mission-control/types": "workspace:*",
     "@vercel/analytics": "^1.6.1",
     "convex": "^1.32.0",
     "minions-sdk": "^0.2.5",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
+    "react-hot-toast": "^2.6.0",
     "react-router-dom": "^7.13.1"
   },
   "devDependencies": {

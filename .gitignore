@@ -38,3 +38,4 @@ apps/mobile/ios
 # Added by AI Agent
 .env.*
 !.env.example
+.vercel
