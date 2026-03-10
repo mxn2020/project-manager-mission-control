@@ -121,7 +121,7 @@ export const listPersonas = query({
         // For orgs without custom personas, return defaults from the code
         if (personas.length === 0) {
             return DEFAULT_PERSONAS.map((p, i) => ({
-                _id: `default_${i}` as any,
+                _id: `default_${i}`,
                 name: p.name,
                 description: p.description,
                 icon: p.icon,

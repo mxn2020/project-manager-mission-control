@@ -242,12 +242,14 @@ http.route({
             const userData = await userRes.json() as { login?: string };
 
             // 3. Resolve session → user → org
+            console.log('[GitHub OAuth] Resolving session token:', sessionToken.slice(0, 8) + '...');
             const session = await ctx.runQuery(internal.githubOAuth.resolveSession, {
                 token: sessionToken,
             });
+            console.log('[GitHub OAuth] Session resolved:', session ? `orgId=${session.orgId}` : 'null');
 
             if (!session?.orgId) {
-                return jsonResponse(401, { error: "Invalid or expired session" });
+                return jsonResponse(401, { error: "Invalid or expired session", debug: { tokenPrefix: sessionToken.slice(0, 8) } });
             }
 
             // 4. Store token on organization

@@ -115,7 +115,7 @@ export const upsertModel = mutation({
             ...args,
             id: undefined,
             createdAt: Date.now(),
-        } as any);
+        });
     },
 });
 
