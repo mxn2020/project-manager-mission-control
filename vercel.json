@@ -1,0 +1,10 @@
+{
+    "buildCommand": "pnpm turbo run build --filter=@mission-control/web",
+    "outputDirectory": "apps/web/dist",
+    "rewrites": [
+        {
+            "source": "/((?!assets/|_vercel/|vite.svg|favicon.ico).*)",
+            "destination": "/index.html"
+        }
+    ]
+}
