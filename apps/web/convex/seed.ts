@@ -1,6 +1,49 @@
 import { mutation } from "./_generated/server";
 import { v } from "convex/values";
 
+// ─── Link User to Organization ──────────────────────────────────────────
+
+export const linkUserToOrg = mutation({
+    args: {
+        email: v.string(),
+        orgSlug: v.string(),
+    },
+    handler: async (ctx, args) => {
+        const user = await ctx.db
+            .query("users")
+            .withIndex("by_email", (idx) => idx.eq("email", args.email.toLowerCase().trim()))
+            .unique();
+        if (!user) throw new Error("User not found");
+
+        const org = await ctx.db
+            .query("organizations")
+            .withIndex("by_slug", (idx) => idx.eq("slug", args.orgSlug))
+            .unique();
+        if (!org) throw new Error("Organization not found");
+
+        // Set default org
+        await ctx.db.patch(user._id, { defaultOrgId: org._id });
+
+        // Add membership if not exists
+        const existing = await ctx.db
+            .query("orgMembers")
+            .withIndex("by_user", (idx) => idx.eq("userId", user._id))
+            .collect();
+        const alreadyMember = existing.some((m) => m.orgId === org._id);
+        if (!alreadyMember) {
+            await ctx.db.insert("orgMembers", {
+                orgId: org._id,
+                userId: user._id,
+                role: "owner",
+                joinedAt: Date.now(),
+            });
+        }
+
+        return { userId: user._id, orgId: org._id, wasAlreadyMember: alreadyMember };
+    },
+});
+
+
 // ─── Seed Organization + Admin User ──────────────────────────────────────
 
 export const seedOrg = mutation({
