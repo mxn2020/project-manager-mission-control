@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
-
+import { useNavigate } from 'react-router-dom';
 import { useProjects } from '../hooks/useProjects';
 import SearchableSelect from '../components/SearchableSelect';
+import CreateProjectModal from '../components/CreateProjectModal';
 import toast from 'react-hot-toast'
 
 interface GitStatus {
@@ -25,13 +26,15 @@ function hasValue(v: any): boolean {
 }
 
 export default function RepositoriesPage() {
-    const { data } = useProjects();
+    const { data, refresh } = useProjects();
+    const navigate = useNavigate();
     const projects = data?.projects || [];
     const [gitStatuses, setGitStatuses] = useState<Record<string, GitStatus>>({});
     const [cloneStatuses, setCloneStatuses] = useState<Record<string, CloneStatus>>({});
     const [loading, setLoading] = useState(false);
     const [cloning, setCloning] = useState<Set<string>>(new Set());
     const [filterLane, setFilterLane] = useState('');
+    const [showCreate, setShowCreate] = useState(false);
 
     // Correct filtering using hasValue helper
     const deployed = projects.filter((p: any) => hasValue(p.deploy_url));
@@ -104,6 +107,7 @@ export default function RepositoriesPage() {
                             placeholder="All Lanes"
                             width="160px"
                         />
+                        <button className="btn btn-primary text-base" onClick={() => setShowCreate(true)}>+ New Project</button>
                         <button className="btn btn-secondary text-base" onClick={() => { fetchGitStatus(); fetchCloneStatuses(); }} disabled={loading}>
                             {loading ? '⏳' : '🔄'} Refresh
                         </button>
@@ -277,6 +281,17 @@ export default function RepositoriesPage() {
                         ))}
                     </div>
                 </div>
+            )}
+
+            {showCreate && (
+                <CreateProjectModal
+                    onClose={() => setShowCreate(false)}
+                    onCreated={(path) => {
+                        refresh();
+                        navigate('/roadmap?lane=' + encodeURIComponent(path.split('/')[0] || ''));
+                    }}
+                    lanes={[...new Set(projects.map((p: any) => p.lane))]}
+                />
             )}
         </div>
     );

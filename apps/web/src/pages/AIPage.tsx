@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useQuery, useMutation, useAction } from 'convex/react';
 import { useSearchParams } from 'react-router-dom';
 import { api } from '../../convex/_generated/api';
@@ -133,15 +133,36 @@ function base64ToAudioUrl(base64: string, mimeType: string): string {
 }
 
 export default function AIPage() {
-    const { user } = useAuth();
+    const { user, orgId } = useAuth() as any;
     const userId = user?.id;
     const [searchParams, setSearchParams] = useSearchParams();
 
     // ─── Session from URL ────────────────────────────────────────────
     const sessionIdFromUrl = searchParams.get('session');
 
+    // ─── Dynamic Personas from Chatbot Configs ───────────────────────
+    const chatbotConfigs = useQuery(api.chatbots.listConfigs, orgId ? { orgId } : 'skip');
+
+    const personas: Persona[] = useMemo(() => {
+        if (!chatbotConfigs || chatbotConfigs.length === 0) return DEFAULT_PERSONAS;
+        return chatbotConfigs.map((c: any, idx: number) => ({
+            id: c._id,
+            name: c.name || `Chatbot ${idx + 1}`,
+            icon: c.icon || DEFAULT_PERSONAS[idx % DEFAULT_PERSONAS.length]?.icon || '🤖',
+            description: c.description || '',
+            welcome: c.welcomeMessage || DEFAULT_PERSONAS[idx % DEFAULT_PERSONAS.length]?.welcome || `👋 Hi! I'm **${c.name}**.\n\nHow can I help you today?`,
+        }));
+    }, [chatbotConfigs]);
+
     // ─── Persona State ───────────────────────────────────────────────
     const [selectedPersona, setSelectedPersona] = useState<Persona>(DEFAULT_PERSONAS[0]);
+
+    // Sync selected persona when dynamic list loads
+    useEffect(() => {
+        if (personas.length > 0 && !personas.find(p => p.id === selectedPersona.id)) {
+            setSelectedPersona(personas[0]);
+        }
+    }, [personas]);
 
     const getWelcomeMsg = (persona: Persona): Message => ({
         id: 'welcome',
@@ -562,7 +583,7 @@ export default function AIPage() {
         <div className="chat-container">
             {/* Persona Selector Bar */}
             <div className="persona-bar">
-                {DEFAULT_PERSONAS.map(p => (
+                {personas.map(p => (
                     <button
                         key={p.id}
                         className={`persona-pill ${selectedPersona.id === p.id ? 'active' : ''}`}
