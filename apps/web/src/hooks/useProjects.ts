@@ -1,28 +1,23 @@
 import { useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
-import type { StatusData } from '../lib/types';
+import type { StatusData, Id } from '../lib/types';
 import { useAuth } from './useAuth';
 
-interface AuthUser {
-    orgId?: string;
-    [key: string]: unknown;
-}
-
 export function useProjects(scope: 'main' | 'child' | 'all' = 'main') {
-    const { user } = useAuth();
-    const orgId = (user as AuthUser | undefined)?.orgId;
+    const { orgId } = useAuth();
+    const typedOrgId = orgId as Id<"organizations"> | undefined;
 
-    const queryArgs = orgId
+    const queryArgs = typedOrgId
         ? scope === 'all'
-            ? { orgId: orgId as any }
-            : { orgId: orgId as any, scope }
+            ? { orgId: typedOrgId }
+            : { orgId: typedOrgId, scope }
         : "skip" as const;
 
     const projectsList = useQuery(api.projects.list, queryArgs);
-    const statsQueryArgs = orgId
+    const statsQueryArgs = typedOrgId
         ? scope === 'all'
-            ? { orgId: orgId as any }
-            : { orgId: orgId as any, scope }
+            ? { orgId: typedOrgId }
+            : { orgId: typedOrgId, scope }
         : "skip" as const;
     const projectStats = useQuery(api.projects.getStats, statsQueryArgs);
 
@@ -42,7 +37,7 @@ export function useProjects(scope: 'main' | 'child' | 'all' = 'main') {
                 by_stack: projectStats.byStack,
             },
             projects: projectsList.map((p) => ({
-                id: (p as any)._id,
+                id: p._id,
                 name: p.name,
                 description: p.description || '',
                 tier: p.tier,

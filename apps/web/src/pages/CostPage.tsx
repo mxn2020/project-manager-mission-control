@@ -38,7 +38,7 @@ export default function CostPage() {
     const projectOptions: SelectOption[] = useMemo(() => {
         const allPaths = new Set<string>();
         for (const p of (projectData?.projects || [])) allPaths.add(p.path);
-        for (const c of allCosts) allPaths.add((c as any).projectPath);
+        for (const c of allCosts) allPaths.add(c.projectPath);
         return [...allPaths].sort().map(path => {
             const segments = path.split('/');
             return { value: path, label: segments[segments.length - 1] || path, sublabel: segments.slice(0, -1).join('/'), group: segments[0], icon: '📁' };
@@ -65,7 +65,7 @@ export default function CostPage() {
     // Group costs
     const grouped: Record<string, any[]> = {};
     for (const c of allCosts) {
-        const key = groupBy === 'category' ? (c as any).category : (c as any).projectPath;
+        const key = groupBy === 'category' ? c.category : c.projectPath;
         if (!grouped[key]) grouped[key] = [];
         grouped[key].push(c);
     }
@@ -165,17 +165,17 @@ export default function CostPage() {
                 </div>
             ) : (
                 Object.entries(grouped)
-                    .sort(([, a], [, b]) => b.reduce((s: number, c: any) => s + c.monthlyCost, 0) - a.reduce((s: number, c: any) => s + c.monthlyCost, 0))
+                    .sort(([, a], [, b]) => b.reduce((s: number, c: { monthlyCost: number }) => s + c.monthlyCost, 0) - a.reduce((s: number, c: { monthlyCost: number }) => s + c.monthlyCost, 0))
                     .map(([group, items]) => (
                         <div key={group} className="mb-12">
                             <div className="list-group-header" style={{ borderRadius: '8px 8px 0 0' }}>
                                 <span>{groupBy === 'category' ? (CATEGORY_ICONS[group] || '📦') : '📂'}</span>
                                 <span className="font-semibold text-md">{group}</span>
                                 <span className="font-semibold text-md" style={{ marginLeft: 'auto', color: '#f87171' }}>
-                                    ${items.reduce((s: number, c: any) => s + c.monthlyCost, 0).toFixed(2)}/mo
+                                    ${items.reduce((s: number, c: { monthlyCost: number }) => s + c.monthlyCost, 0).toFixed(2)}/mo
                                 </span>
                             </div>
-                            {items.map((cost: any) => (
+                            {items.map(cost => (
                                 <div key={cost._id} className="list-row-bordered">
                                     <span className="font-medium flex-1">{cost.name}</span>
                                     <span className="text-tertiary text-sm">

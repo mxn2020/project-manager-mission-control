@@ -239,7 +239,7 @@ export default function DependencyGraphPage() {
                                 {automationResult.completedAt && ` · Completed: ${new Date(automationResult.completedAt).toLocaleString()}`}
                             </div>
 
-                            {automationResult.steps?.map((step: any) => (
+                            {automationResult.steps?.map((step: { title?: string; action?: string; staleProjects?: Array<{ name: string; tier?: string }>; dirtyProjects?: Array<{ name: string; reason?: string }> }) => (
                                 <div key={step.name} className="mb-12" style={{
                                     background: 'var(--bg-secondary)', borderRadius: 10, padding: 16,
                                     border: '1px solid var(--border)', borderLeft: `3px solid ${step.status === 'success' ? '#34d399' : '#f87171'}`,
@@ -263,7 +263,7 @@ export default function DependencyGraphPage() {
                                     {step.name === 'stale_detection' && (
                                         <div>
                                             <div className="text-base mb-8">{step.staleCount} stale projects ({'>'} 30 days)</div>
-                                            {step.staleProjects?.slice(0, 10).map((p: any) => (
+                                            {step.staleProjects?.slice(0, 10).map(p => (
                                                 <div key={p.path} className="text-sm text-muted" style={{ padding: '4px 0' }}>
                                                     ⚠️ {p.name} ({p.tier}) — {p.lastActive || 'never active'}
                                                 </div>
@@ -274,7 +274,7 @@ export default function DependencyGraphPage() {
                                     {step.name === 'git_status' && (
                                         <div>
                                             <div className="text-base mb-8">{step.dirtyCount} repos with uncommitted changes</div>
-                                            {step.dirtyProjects?.map((p: any) => (
+                                            {step.dirtyProjects?.map(p => (
                                                 <div key={p.path} className="text-sm text-muted" style={{ padding: '4px 0' }}>
                                                     📝 {p.name} — {p.changes} changed files
                                                 </div>

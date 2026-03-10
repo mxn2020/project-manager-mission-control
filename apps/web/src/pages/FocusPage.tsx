@@ -166,7 +166,7 @@ export default function FocusPage({ data, onRefresh }: { data: StatusData; onRef
 
 
 
-    const activeDimension = dimensions.find((d: any) => d.id === groupDimension);
+    const activeDimension = dimensions.find((d: Dimension) => d.id === groupDimension);
     const groups = useMemo(() => {
         if (!activeDimension) return null;
         return groupByDimension(focusProjects, activeDimension);
@@ -210,7 +210,7 @@ export default function FocusPage({ data, onRefresh }: { data: StatusData; onRef
         const projectPath = e.dataTransfer.getData('text/plain');
         if (!projectPath) return;
         const project = focusProjects.find(p => p.path === projectPath);
-        if (!project || (project as any)[activeDimension.field] === targetValue) return;
+        if (!project || ((project as Record<string, unknown>)[activeDimension.field]) === targetValue) return;
         setOverrides(prev => ({ ...prev, [projectPath]: { ...prev[projectPath], [activeDimension.field]: targetValue } }));
         pendingRef.current.push({ projectPath, field: activeDimension.field, newValue: targetValue });
         if (timerRef.current) clearTimeout(timerRef.current);
@@ -302,7 +302,7 @@ export default function FocusPage({ data, onRefresh }: { data: StatusData; onRef
 
     // ─── Kanban View (with DnD) ─────────────────────────────────────────────
     const renderKanban = () => {
-        const cols = groups || groupByDimension(focusProjects, dimensions.find((d: any) => d.id === 'priority') || dimensions[0]);
+        const cols = groups || groupByDimension(focusProjects, dimensions.find((d: Dimension) => d.id === 'priority') || dimensions[0]);
         return (
             <>
                 {saving && (

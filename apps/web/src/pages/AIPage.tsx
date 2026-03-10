@@ -133,7 +133,7 @@ function base64ToAudioUrl(base64: string, mimeType: string): string {
 }
 
 export default function AIPage() {
-    const { user, orgId } = useAuth() as any;
+    const { user, orgId } = useAuth();
     const userId = user?.id;
     const [searchParams, setSearchParams] = useSearchParams();
 
@@ -145,7 +145,7 @@ export default function AIPage() {
 
     const personas: Persona[] = useMemo(() => {
         if (!chatbotConfigs || chatbotConfigs.length === 0) return DEFAULT_PERSONAS;
-        return chatbotConfigs.map((c: any, idx: number) => ({
+        return chatbotConfigs.map((c, idx: number) => ({
             id: c._id,
             name: c.name || `Chatbot ${idx + 1}`,
             icon: c.icon || DEFAULT_PERSONAS[idx % DEFAULT_PERSONAS.length]?.icon || '🤖',
@@ -201,9 +201,9 @@ export default function AIPage() {
     // ─── Convex Queries ──────────────────────────────────────────────
     const sessionMessages = useQuery(
         api.chatSessions.getMessages,
-        sessionIdFromUrl ? { sessionId: sessionIdFromUrl as any } : 'skip'
+        sessionIdFromUrl ? { sessionId: sessionIdFromUrl as Id<"chatSessions"> } : 'skip'
     );
-    const settings = useQuery(api.aiConfig.getSettings, userId ? { userId: userId as any } : 'skip');
+    const settings = useQuery(api.aiConfig.getSettings, userId ? { userId: userId as Id<"users"> } : 'skip');
     const models = useQuery(api.aiConfig.listModels);
 
     // ─── Convex Mutations & Actions ──────────────────────────────────
@@ -224,7 +224,7 @@ export default function AIPage() {
             return;
         }
         if (sessionMessages && sessionMessages.length > 0) {
-            const loaded: Message[] = sessionMessages.map((m: any) => ({
+            const loaded: Message[] = sessionMessages.map(m => ({
                 id: m._id,
                 role: m.role as 'user' | 'assistant',
                 content: m.content,
@@ -260,7 +260,7 @@ export default function AIPage() {
 
         let sessionId = sessionIdFromUrl;
         if (!sessionId && userId) {
-            sessionId = await createSession({ userId: userId as any });
+            sessionId = await createSession({ userId: userId as Id<"users"> });
             setSearchParams({ session: sessionId }, { replace: true });
         }
 
@@ -293,9 +293,9 @@ export default function AIPage() {
 
             const res = await aiChat({
                 messages: history,
-                sessionId: sessionId as any,
-                userId: userId as any,
-                orgId: (user as any)?.orgId as any,
+                sessionId: sessionId as Id<"chatSessions">,
+                userId: userId as Id<"users">,
+                orgId: user?.orgId as Id<"organizations">,
                 personaId: selectedPersona.id,
             });
 
@@ -322,7 +322,7 @@ export default function AIPage() {
             if (conversationModeRef.current) {
                 handleTTS(reply.id, res.response);
             }
-        } catch (err: any) {
+        } catch (err: unknown) {
             setMessages(prev => [...prev, {
                 id: `e-${Date.now()}`,
                 role: 'assistant',
@@ -504,10 +504,10 @@ export default function AIPage() {
                     <SearchableSelect
                         options={[
                             { value: '', label: 'System Default' },
-                            ...(models || []).map((m: any) => ({ value: m._id, label: `${m.displayName} (${m.provider?.name || 'Unknown'})` })),
+                            ...(models || []).map(m => ({ value: m._id, label: `${m.displayName} (${m.provider?.name || 'Unknown'})` })),
                         ]}
-                        value={(currentSettings as any)?.defaultModelId || ''}
-                        onChange={v => updateSettings({ userId: userId as any, defaultModelId: v || undefined } as any)}
+                        value={currentSettings?.defaultModelId || ''}
+                        onChange={v => updateSettings({ userId: userId as Id<"users">, defaultModelId: v || undefined })}
                         placeholder="Model" clearable={false} />
                 </div>
 
@@ -517,7 +517,7 @@ export default function AIPage() {
                         type="range" min="0" max="2" step="0.1"
                         value={currentSettings.temperature}
                         onChange={e => updateSettings({
-                            userId: userId as any,
+                            userId: userId as Id<"users">,
                             temperature: parseFloat(e.target.value),
                         })}
                     />
@@ -529,7 +529,7 @@ export default function AIPage() {
                         type="range" min="256" max="8192" step="256"
                         value={currentSettings.maxResponseTokens}
                         onChange={e => updateSettings({
-                            userId: userId as any,
+                            userId: userId as Id<"users">,
                             maxResponseTokens: parseInt(e.target.value),
                         })}
                     />
@@ -541,7 +541,7 @@ export default function AIPage() {
                         type="range" min="2" max="30" step="2"
                         value={currentSettings.historyLength}
                         onChange={e => updateSettings({
-                            userId: userId as any,
+                            userId: userId as Id<"users">,
                             historyLength: parseInt(e.target.value),
                         })}
                     />
@@ -553,7 +553,7 @@ export default function AIPage() {
                             type="checkbox"
                             checked={currentSettings.toolsEnabled}
                             onChange={e => updateSettings({
-                                userId: userId as any,
+                                userId: userId as Id<"users">,
                                 toolsEnabled: e.target.checked,
                             })}
                         />

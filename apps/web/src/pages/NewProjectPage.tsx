@@ -17,7 +17,7 @@ export default function NewProjectPage() {
     const navigate = useNavigate();
     const { data } = useProjects();
     const { user } = useAuth();
-    const orgId = (user as any)?.orgId;
+    const orgId = user?.orgId;
     const createProject = useMutation(api.projects.create);
 
     const lanes = [...new Set((data?.projects ?? []).map(p => p.lane).filter(Boolean))].sort();
@@ -53,7 +53,7 @@ export default function NewProjectPage() {
         setError('');
         try {
             await createProject({
-                orgId: orgId as any,
+                orgId: orgId as Id<"organizations">,
                 name: name.trim(),
                 lane,
                 tier,
@@ -64,7 +64,7 @@ export default function NewProjectPage() {
                 repo: repo.trim() || undefined,
             });
             navigate('/');
-        } catch (err: any) {
+        } catch (err: unknown) {
             setError(err.message || 'Failed to create project');
         } finally {
             setSubmitting(false);

@@ -21,7 +21,7 @@ interface CloneStatus {
     completedAt?: string;
 }
 
-function hasValue(v: any): boolean {
+function hasValue(v: unknown): boolean {
     return v && v !== 'null' && v !== 'undefined' && v !== '';
 }
 
@@ -37,17 +37,17 @@ export default function RepositoriesPage() {
     const [showCreate, setShowCreate] = useState(false);
 
     // Correct filtering using hasValue helper
-    const deployed = projects.filter((p: any) => hasValue(p.deploy_url));
-    const withRepo = projects.filter((p: any) => hasValue(p.repo));
-    const withoutRepo = projects.filter((p: any) => !hasValue(p.repo));
+    const deployed = projects.filter(p => hasValue(p.deploy_url));
+    const withRepo = projects.filter(p => hasValue(p.repo));
+    const withoutRepo = projects.filter(p => !hasValue(p.repo));
 
     // Filter by lane
-    const filteredDeployed = filterLane ? deployed.filter((p: any) => p.lane === filterLane) : deployed;
-    const filteredWithRepo = filterLane ? withRepo.filter((p: any) => p.lane === filterLane) : withRepo;
-    const filteredWithoutRepo = filterLane ? withoutRepo.filter((p: any) => p.lane === filterLane) : withoutRepo;
+    const filteredDeployed = filterLane ? deployed.filter(p => p.lane === filterLane) : deployed;
+    const filteredWithRepo = filterLane ? withRepo.filter(p => p.lane === filterLane) : withRepo;
+    const filteredWithoutRepo = filterLane ? withoutRepo.filter(p => p.lane === filterLane) : withoutRepo;
 
     const laneOptions = useMemo(() => {
-        const lanes = [...new Set(projects.map((p: any) => p.lane))].sort();
+        const lanes = [...new Set(projects.map(p => p.lane))].sort();
         return lanes.map(l => ({ value: l, label: l }));
     }, [projects]);
 
@@ -154,7 +154,7 @@ export default function RepositoriesPage() {
                         <span className="text-sm" style={{ background: '#34d39930', color: '#34d399', padding: '2px 8px', borderRadius: 10 }}>{filteredDeployed.length}</span>
                     </h3>
                     <div className="gap-8" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' }}>
-                        {filteredDeployed.map((p: any) => (
+                        {filteredDeployed.map(p => (
                             <div key={p.path || p.name} className="flex-row gap-12" style={{
                                 padding: '12px 16px', alignItems: 'center',
                                 background: 'var(--bg-secondary)', borderRadius: 8, border: '1px solid var(--border)',
@@ -183,7 +183,7 @@ export default function RepositoriesPage() {
                         <span className="text-sm" style={{ background: '#60a5fa30', color: '#60a5fa', padding: '2px 8px', borderRadius: 10 }}>{filteredWithRepo.length}</span>
                     </h3>
                     <div className="flex-col gap-6">
-                        {filteredWithRepo.map((p: any) => {
+                        {filteredWithRepo.map(p => {
                             const git = gitStatuses[p.path];
                             const cs = cloneStatuses[p.path];
                             const isCloned = cs?.status === 'cloned';
@@ -267,7 +267,7 @@ export default function RepositoriesPage() {
                         <span className="text-sm" style={{ background: '#fbbf2430', color: '#fbbf24', padding: '2px 8px', borderRadius: 10 }}>{filteredWithoutRepo.length}</span>
                     </h3>
                     <div className="gap-6" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))' }}>
-                        {filteredWithoutRepo.map((p: any) => (
+                        {filteredWithoutRepo.map(p => (
                             <div key={p.path || p.name} className="flex-row gap-8 text-base" style={{
                                 padding: '8px 14px', alignItems: 'center',
                                 background: 'var(--bg-secondary)', borderRadius: 8,
@@ -290,7 +290,7 @@ export default function RepositoriesPage() {
                         refresh();
                         navigate('/roadmap?lane=' + encodeURIComponent(path.split('/')[0] || ''));
                     }}
-                    lanes={[...new Set(projects.map((p: any) => p.lane))]}
+                    lanes={[...new Set(projects.map(p => p.lane))]}
                 />
             )}
         </div>

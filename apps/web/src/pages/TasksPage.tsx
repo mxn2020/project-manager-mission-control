@@ -24,7 +24,7 @@ const PRIORITY_CONFIG: Record<string, { label: string; color: string }> = {
 const EFFORT_OPTIONS = ['XS', 'S', 'M', 'L', 'XL'];
 
 export default function TasksPage() {
-    const { orgId } = useAuth() as any;
+    const { orgId } = useAuth();
     const { data: projectData } = useProjects();
     const navigate = useNavigate();
     const isMobile = useIsMobile();
@@ -81,7 +81,7 @@ export default function TasksPage() {
         { value: 'low', label: 'Low', icon: '🔵' },
     ];
 
-    const filtered = allTasks.filter((t: any) => {
+    const filtered = allTasks.filter(t => {
         if (filterPriority && t.priority !== filterPriority) return false;
         if (filterProject && t.projectPath !== filterProject) return false;
         return true;
@@ -97,7 +97,7 @@ export default function TasksPage() {
             orgId,
             title: newTitle.trim(),
             projectPath: newProject.trim() || '(general)',
-            projectId: projMatch?.id as any,
+            projectId: projMatch?.id as Id<"projects">,
             priority: newPriority,
             effort: newEffort,
             description: newDescription.trim(),
@@ -110,12 +110,12 @@ export default function TasksPage() {
     };
 
     const handleStatusChange = async (id: string, status: string) => {
-        await updateTask({ taskId: id as any, status });
+        await updateTask({ taskId: id as Id<"tasks">, status });
     };
 
     const handleDelete = async (id: string) => {
         if (confirm('Delete this task?')) {
-            await deleteTask({ taskId: id as any });
+            await deleteTask({ taskId: id as Id<"tasks"> });
         }
     };
 
@@ -153,7 +153,7 @@ export default function TasksPage() {
         if (!draggedTaskId) return;
 
         // Find the task's current status
-        const task = allTasks.find((t: any) => t.id === draggedTaskId);
+        const task = allTasks.find(t => t.id === draggedTaskId);
         if (!task || task.status === targetStatus) {
             setDraggedTaskId(null);
             return;
@@ -166,7 +166,7 @@ export default function TasksPage() {
     const renderKanban = () => (
         <div className="gap-16 mt-16" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)' }}>
             {STATUS_COLS.map(col => {
-                const colTasks = filtered.filter((t: any) => t.status === col.key);
+                const colTasks = filtered.filter(t => t.status === col.key);
                 return (
                     <div
                         key={col.key}
@@ -184,7 +184,7 @@ export default function TasksPage() {
                             </span>
                         </div>
                         <div className="flex-col gap-8">
-                            {colTasks.map((task: any) => (
+                            {colTasks.map(task => (
                                 <div
                                     key={task.id}
                                     className="task-kanban-card"
@@ -253,7 +253,7 @@ export default function TasksPage() {
                     <div className="empty-state-text">No tasks yet — create one to get started</div>
                 </div>
             ) : (
-                filtered.map((task: any) => (
+                filtered.map(task => (
                     <div key={task.id} className="flex-row gap-12" style={{ padding: '10px 16px', borderBottom: '1px solid var(--border)', alignItems: 'center' }}>
                         <div
                             className={`flex-center flex-shrink-0 ${task.status === 'done' ? 'done' : ''}`}

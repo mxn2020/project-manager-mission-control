@@ -3,6 +3,7 @@ import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { useProjects } from '../hooks/useProjects';
 import { useAuth } from '../hooks/useAuth';
+import type { Id } from '../lib/types';
 import SearchableSelect, { type SelectOption } from '../components/SearchableSelect';
 import MultiSelect from '../components/MultiSelect';
 import PromptDialog from '../components/PromptDialog';
@@ -25,7 +26,8 @@ const CAT_COLORS: Record<string, string> = {
 interface Step { id: string; title: string; description: string; order: number; done: boolean }
 
 export default function WorkflowsPage() {
-    const { orgId } = useAuth() as any;
+    const { orgId } = useAuth();
+    const typedOrgId = orgId as Id<"organizations"> | undefined;
 
     const [filter, setFilter] = useState('');
     const [showCreate, setShowCreate] = useState(false);
@@ -44,7 +46,7 @@ export default function WorkflowsPage() {
     const [newIsTemplate, setNewIsTemplate] = useState(false);
 
     // Convex hooks
-    const rawWorkflows = useQuery(api.workflows.list, orgId ? { orgId } : "skip");
+    const rawWorkflows = useQuery(api.workflows.list, typedOrgId ? { orgId: typedOrgId } : "skip");
 
     const createWorkflow = useMutation(api.workflows.create);
     const updateWorkflow = useMutation(api.workflows.update);
@@ -62,9 +64,9 @@ export default function WorkflowsPage() {
         }), [projectData]);
 
     const handleCreate = async () => {
-        if (!newTitle.trim() || !orgId) return;
+        if (!newTitle.trim() || !typedOrgId) return;
         await createWorkflow({
-            orgId,
+            orgId: typedOrgId,
             title: newTitle.trim(), description: newDesc.trim(),
             category: newCat, linkedProjects: newProjects, isTemplate: newIsTemplate,
         });
@@ -77,27 +79,27 @@ export default function WorkflowsPage() {
     };
 
     const handleAddStep = async (title: string) => {
-        await addStep({ workflowId: promptWfId as any, stepTitle: title, stepDescription: '' });
+        await addStep({ workflowId: promptWfId as Id<"workflows">, stepTitle: title, stepDescription: '' });
     };
 
     const handleToggleStep = async (wfId: string, stepId: string) => {
-        await toggleStepObj({ workflowId: wfId as any, stepId });
+        await toggleStepObj({ workflowId: wfId as Id<"workflows">, stepId });
     };
 
     const handleDeleteStep = async (wfId: string, stepId: string) => {
-        await removeStep({ workflowId: wfId as any, stepId });
+        await removeStep({ workflowId: wfId as Id<"workflows">, stepId });
     };
 
     const handleDelete = async (id: string) => {
         if (confirm("Delete this workflow?")) {
-            await deleteWorkflow({ workflowId: id as any });
+            await deleteWorkflow({ workflowId: id as Id<"workflows"> });
             if (expanded === id) setExpanded(null);
         }
     };
 
     const allWorkflows = (workflows || []).filter(w => !filter || w.category === filter);
-    const completedSteps = (wf: any) => (wf.steps || []).filter((s: Step) => s.done).length;
-    const totalSteps = (wf: any) => (wf.steps || []).length;
+    const completedSteps = (wf: { steps?: Step[] }) => (wf.steps || []).filter((s: Step) => s.done).length;
+    const totalSteps = (wf: { steps?: Step[] }) => (wf.steps || []).length;
 
     return (
         <div>
@@ -201,7 +203,7 @@ export default function WorkflowsPage() {
                                                 options={projectOptions}
                                                 value={wf.linkedProjects || []}
                                                 onChange={async (newProjects) => {
-                                                    await updateWorkflow({ workflowId: wf.id as any, linkedProjects: newProjects });
+                                                    await updateWorkflow({ workflowId: wf.id as Id<"workflows">, linkedProjects: newProjects });
                                                 }}
                                                 placeholder="Link projects..."
                                                 grouped

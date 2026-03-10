@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { useAuth } from '../hooks/useAuth';
+import type { Id } from '../lib/types';
 import SearchableSelect from '../components/SearchableSelect';
 
 const CATEGORIES = [
@@ -26,7 +27,8 @@ const SCOPE_MAP = Object.fromEntries(SCOPES.map(s => [s.value, s]));
 const CAT_MAP = Object.fromEntries(CATEGORIES.map(c => [c.value, c]));
 
 export default function WikiPage() {
-    const { orgId } = useAuth() as any;
+    const { orgId } = useAuth();
+    const typedOrgId = orgId as Id<"organizations"> | undefined;
 
     const [search, setSearch] = useState('');
     const [filterCat, setFilterCat] = useState('');
@@ -44,11 +46,10 @@ export default function WikiPage() {
     const [newTags, setNewTags] = useState('');
 
     // Convex queries and mutations
-    const rawArticles = useQuery(api.wiki.list, orgId ? {
-        orgId,
+    const rawArticles = useQuery(api.wiki.list, typedOrgId ? {
+        orgId: typedOrgId,
         category: filterCat || undefined,
         scope: filterScope || undefined,
-        search: search || undefined,
     } : "skip");
 
     const createArticle = useMutation(api.wiki.create);
@@ -64,9 +65,9 @@ export default function WikiPage() {
     for (const a of all) catCounts[a.category] = (catCounts[a.category] || 0) + 1;
 
     const handleCreate = async () => {
-        if (!newTitle.trim() || !orgId) return;
+        if (!newTitle.trim() || !typedOrgId) return;
         const articleId = await createArticle({
-            orgId,
+            orgId: typedOrgId,
             title: newTitle.trim(),
             body: newBody,
             category: newCat,
@@ -74,18 +75,18 @@ export default function WikiPage() {
             tags: newTags.split(',').map(t => t.trim()).filter(Boolean),
         });
         setShowCreate(false); setNewTitle(''); setNewBody(''); setNewTags('');
-        setSelected(articleId as any);
+        setSelected(articleId as string);
     };
 
     const handleSaveBody = async () => {
         if (!selected) return;
-        await updateArticle({ articleId: selected as any, body: editBody });
+        await updateArticle({ articleId: selected as Id<"wikiArticles">, body: editBody });
         setEditMode(false);
     };
 
     const handleDelete = async (id: string) => {
         if (confirm('Delete this article?')) {
-            await deleteArticle({ articleId: id as any });
+            await deleteArticle({ articleId: id as Id<"wikiArticles"> });
             if (selected === id) setSelected(null);
         }
     };

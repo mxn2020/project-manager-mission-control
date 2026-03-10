@@ -15,9 +15,9 @@ export default function DeleteProjectPage() {
         setDeleting(true);
         setError('');
         try {
-            await removeProject({ projectId: projectId as any });
+            await removeProject({ projectId: projectId as Id<"projects"> });
             navigate('/');
-        } catch (err: any) {
+        } catch (err: unknown) {
             setError(err.message || 'Failed to delete project');
             setDeleting(false);
         }

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
+import type { AuthUser } from '../lib/types';
 
 const TOKEN_KEY = 'mc_auth_token';
 
@@ -24,7 +25,7 @@ export function useAuth() {
     );
     const hasStartedAgentLogin = useRef(false);
 
-    const user = useQuery(api.auth.me, token ? { token } : "skip");
+    const user = useQuery(api.auth.me, token ? { token } : "skip") as AuthUser | null | undefined;
     const needsSetup = useQuery(api.auth.needsSetup);
 
     const loginMutation = useMutation(api.auth.login);
@@ -75,7 +76,7 @@ export function useAuth() {
         setToken(null);
     }, [token, logoutMutation]);
 
-    const orgId = (user as any)?.orgId ?? undefined;
+    const orgId = user?.orgId;
 
     return {
         user,
@@ -90,4 +91,3 @@ export function useAuth() {
         logout,
     };
 }
-

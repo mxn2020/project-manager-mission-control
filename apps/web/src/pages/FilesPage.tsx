@@ -15,7 +15,7 @@ interface GitHubEntry {
 
 export default function FilesPage() {
     const { data, loading: projectsLoading } = useProjects();
-    const { orgId, token: sessionToken } = useAuth() as any;
+    const { orgId, token: sessionToken } = useAuth();
     const projects = data?.projects || [];
 
     const [selectedProject, setSelectedProject] = useState<string>('');
@@ -45,14 +45,14 @@ export default function FilesPage() {
 
     // Get repo full name for selected project
     const getRepoForProject = useCallback((projectPath: string) => {
-        const project = projects.find((p: any) => p.path === projectPath || p.name === projectPath);
+        const project = projects.find(p => p.path === projectPath || p.name === projectPath);
         if (!project) return null;
         // Check linked repos
-        const linked = linkedRepos?.find((r: any) => r.projectId === (project as any)._id);
+        const linked = linkedRepos?.find(r => r.projectId === project._id);
         if (linked) return { repoFullName: linked.repoFullName, branch: linked.defaultBranch || 'main' };
         // Fall back to repo URL in project data
-        if ((project as any).repo) {
-            const match = (project as any).repo.match(/github\.com\/([^\/]+\/[^\/]+)/);
+        if (project.repo) {
+            const match = project.repo.match(/github\.com\/([^\/]+\/[^\/]+)/);
             if (match) return { repoFullName: match[1].replace(/\.git$/, ''), branch: 'main' };
         }
         return null;
@@ -78,7 +78,7 @@ export default function FilesPage() {
             } else {
                 setFileContent({ name: result.name || subPath.split('/').pop() || '', content: result.content || '' });
             }
-        } catch (err: any) {
+        } catch (err: unknown) {
             setError(err.message);
             setEntries([]);
         } finally {
@@ -100,7 +100,7 @@ export default function FilesPage() {
                 orgId,
             });
             setFileContent({ name: result.name, content: result.content });
-        } catch (err: any) {
+        } catch (err: unknown) {
             setError(err.message);
         } finally {
             setLoading(false);
@@ -167,7 +167,7 @@ export default function FilesPage() {
         return icons[ext || ''] || '📄';
     };
 
-    const projectOptions: SelectOption[] = useMemo(() => projects.map((p: any) => {
+    const projectOptions: SelectOption[] = useMemo(() => projects.map(p => {
         const segments = (p.path || p.name).split('/');
         const repo = getRepoForProject(p.path || p.name);
         return {

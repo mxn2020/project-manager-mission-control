@@ -10,7 +10,7 @@ interface STTResult {
     model: string;
     provider: string;
     duration?: number;
-    words?: any[];
+    words?: Array<{ word: string; start: number; end: number }>;
     latencyMs: number;
 }
 
@@ -50,8 +50,8 @@ export default function AIPlaygroundPage() {
     const transcribeAction = useAction(api.aiVoice.transcribe);
     const synthesizeAction = useAction(api.aiVoice.synthesize);
 
-    const sttModels = (voiceModels || []).filter((m: any) => m.type === 'stt');
-    const ttsModels = (voiceModels || []).filter((m: any) => m.type === 'tts');
+    const sttModels = (voiceModels || []).filter(m => m.type === 'stt');
+    const ttsModels = (voiceModels || []).filter(m => m.type === 'tts');
 
     const tabs: { id: Tab; label: string; icon: string }[] = [
         { id: 'chat', label: 'Chat (LLM)', icon: '💬' },
@@ -103,7 +103,7 @@ export default function AIPlaygroundPage() {
 // TAB 1: Chat (LLM)
 // ═══════════════════════════════════════════════════════════════════════════
 
-function ChatTab({ models, aiChat, userId }: { models: any[]; aiChat: any; userId?: string }) {
+function ChatTab({ models, aiChat, userId }: { models: VoiceModel[]; aiChat: { send: (args: Record<string, unknown>) => Promise<{ content: string }> }; userId?: string }) {
     const [prompt, setPrompt] = useState('');
     const [systemPrompt, setSystemPrompt] = useState('You are a helpful assistant. Be concise.');
     const [temperature, setTemperature] = useState(0.7);
@@ -116,15 +116,15 @@ function ChatTab({ models, aiChat, userId }: { models: any[]; aiChat: any; userI
     // Provider/model grouping
     const providers = Array.from(new Map(
         models
-            .filter((m: any) => m.provider && m.isEnabled)
-            .map((m: any) => [m.provider?._id || m.provider?.slug, m.provider])
+            .filter(m => m.provider && m.isEnabled)
+            .map(m => [m.provider?._id || m.provider?.slug, m.provider])
     ).values());
 
     const filteredModels = selectedProvider
-        ? models.filter((m: any) => (m.provider?._id === selectedProvider || m.provider?.slug === selectedProvider) && m.isEnabled)
-        : models.filter((m: any) => m.isEnabled);
+        ? models.filter(m => (m.provider?._id === selectedProvider || m.provider?.slug === selectedProvider) && m.isEnabled)
+        : models.filter(m => m.isEnabled);
 
-    const selectedModel = models.find((m: any) => m._id === selectedModelId || m.modelId === selectedModelId);
+    const selectedModel = models.find(m => m._id === selectedModelId || m.modelId === selectedModelId);
 
     const handleSend = async () => {
         if (!prompt.trim() || loading) return;
@@ -137,7 +137,7 @@ function ChatTab({ models, aiChat, userId }: { models: any[]; aiChat: any; userI
                     { role: 'system', content: systemPrompt },
                     { role: 'user', content: prompt },
                 ],
-                userId: userId as any,
+                userId: userId as Id<"users">,
             });
             setResponse(res.response);
             setMeta({
@@ -148,7 +148,7 @@ function ChatTab({ models, aiChat, userId }: { models: any[]; aiChat: any; userI
                 durationMs: res.durationMs,
                 toolCalls: res.toolCalls,
             });
-        } catch (err: any) {
+        } catch (err: unknown) {
             setResponse(`❌ Error: ${err.message}`);
         } finally {
             setLoading(false);
@@ -167,7 +167,7 @@ function ChatTab({ models, aiChat, userId }: { models: any[]; aiChat: any; userI
                             setSelectedModelId(''); // Reset model when provider changes
                         }}>
                             <option value="">All Providers</option>
-                            {providers.map((p: any) => (
+                            {providers.map(p => (
                                 <option key={p._id || p.slug} value={p._id || p.slug}>
                                     {p.name}
                                 </option>
@@ -180,7 +180,7 @@ function ChatTab({ models, aiChat, userId }: { models: any[]; aiChat: any; userI
                         <label>Model</label>
                         <select className="pg-select" value={selectedModelId} onChange={e => setSelectedModelId(e.target.value)}>
                             <option value="">Default (auto-select)</option>
-                            {filteredModels.map((m: any) => (
+                            {filteredModels.map(m => (
                                 <option key={m._id} value={m._id}>
                                     {m.displayName || m.modelId}{m.isDefault ? ' ⭐' : ''}
                                 </option>
@@ -265,7 +265,7 @@ function ChatTab({ models, aiChat, userId }: { models: any[]; aiChat: any; userI
 // TAB 2: Speech-to-Text
 // ═══════════════════════════════════════════════════════════════════════════
 
-function STTTab({ models, transcribe }: { models: any[]; transcribe: any }) {
+function STTTab({ models, transcribe }: { models: VoiceModel[]; transcribe: (formData: FormData) => Promise<string> }) {
     const [selectedModel, setSelectedModel] = useState('');
     const [language, setLanguage] = useState('en');
     const [results, setResults] = useState<STTResult[]>([]);
@@ -275,14 +275,14 @@ function STTTab({ models, transcribe }: { models: any[]; transcribe: any }) {
     const audioChunksRef = useRef<Blob[]>([]);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const getModel = (id: string) => models.find((m: any) => (m._id === id || m.name === id));
+    const getModel = (id: string) => models.find(m => (m._id === id || m.name === id));
 
-    const doTranscribe = async (audioBlob: Blob, model?: any) => {
+    const doTranscribe = async (audioBlob: Blob, model?: VoiceModel) => {
         setLoading(true);
         const start = Date.now();
         try {
             const base64 = await blobToBase64(audioBlob);
-            const m = model || getModel(selectedModel) || models.find((m: any) => m.apiFormat === 'openai');
+            const m = model || getModel(selectedModel) || models.find(m => m.apiFormat === 'openai');
 
             const res = await transcribe({
                 audioBase64: base64,
@@ -302,7 +302,7 @@ function STTTab({ models, transcribe }: { models: any[]; transcribe: any }) {
                 words: res.words,
                 latencyMs: Date.now() - start,
             }]);
-        } catch (err: any) {
+        } catch (err: unknown) {
             setResults(prev => [...prev, {
                 text: `❌ ${err.message}`,
                 model: model?.displayName || 'Error',
@@ -345,7 +345,7 @@ function STTTab({ models, transcribe }: { models: any[]; transcribe: any }) {
     const compareAll = async () => {
         if (!audioChunksRef.current.length) return;
         const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        const openaiModels = models.filter((m: any) => m.apiFormat === 'openai' && m.isEnabled);
+        const openaiModels = models.filter(m => m.apiFormat === 'openai' && m.isEnabled);
         for (const m of openaiModels) {
             await doTranscribe(blob, m);
         }
@@ -359,7 +359,7 @@ function STTTab({ models, transcribe }: { models: any[]; transcribe: any }) {
                         <label>STT Model</label>
                         <select className="pg-select" value={selectedModel} onChange={e => setSelectedModel(e.target.value)}>
                             <option value="">Auto (first available)</option>
-                            {models.map((m: any) => (
+                            {models.map(m => (
                                 <option key={m._id || m.name} value={m._id || m.name} disabled={m.apiFormat === 'riva-grpc'}>
                                     {m.displayName} {m.apiFormat === 'riva-grpc' ? '(gRPC — proxy needed)' : ''}
                                 </option>
@@ -426,7 +426,7 @@ function STTTab({ models, transcribe }: { models: any[]; transcribe: any }) {
 // TAB 3: Text-to-Speech
 // ═══════════════════════════════════════════════════════════════════════════
 
-function TTSTab({ models, synthesize }: { models: any[]; synthesize: any }) {
+function TTSTab({ models, synthesize }: { models: VoiceModel[]; synthesize: (text: string, modelId: string, options?: Record<string, unknown>) => Promise<Blob> }) {
     const [text, setText] = useState('Hello! This is a test of the text-to-speech system. How does this voice sound?');
     const [selectedModel, setSelectedModel] = useState('');
     const [voice, setVoice] = useState('alloy');
@@ -435,11 +435,11 @@ function TTSTab({ models, synthesize }: { models: any[]; synthesize: any }) {
     const [results, setResults] = useState<TTSResult[]>([]);
     const [loading, setLoading] = useState(false);
 
-    const handleSynthesize = async (modelOverride?: any) => {
+    const handleSynthesize = async (modelOverride?: VoiceModel) => {
         if (!text.trim() || loading) return;
         setLoading(true);
         const start = Date.now();
-        const m = modelOverride || models.find((m: any) => m._id === selectedModel || m.name === selectedModel) || models[0];
+        const m = modelOverride || models.find(m => m._id === selectedModel || m.name === selectedModel) || models[0];
         try {
             const res = await synthesize({
                 text,
@@ -459,7 +459,7 @@ function TTSTab({ models, synthesize }: { models: any[]; synthesize: any }) {
                 provider: m?.provider || 'unknown',
                 latencyMs: Date.now() - start,
             }]);
-        } catch (err: any) {
+        } catch (err: unknown) {
             setResults(prev => [...prev, {
                 audioUrl: '',
                 model: `❌ ${m?.displayName || 'Error'}: ${err.message}`,
@@ -478,7 +478,7 @@ function TTSTab({ models, synthesize }: { models: any[]; synthesize: any }) {
                     <div className="pg-field">
                         <label>TTS Model</label>
                         <select className="pg-select" value={selectedModel} onChange={e => setSelectedModel(e.target.value)}>
-                            {models.map((m: any) => (
+                            {models.map(m => (
                                 <option key={m._id || m.name} value={m._id || m.name} disabled={m.apiFormat === 'riva-grpc'}>
                                     {m.displayName} {m.apiFormat === 'riva-grpc' ? '(gRPC — proxy needed)' : ''}
                                 </option>
@@ -548,7 +548,7 @@ function TTSTab({ models, synthesize }: { models: any[]; synthesize: any }) {
 // TAB 4: Voice Cloning
 // ═══════════════════════════════════════════════════════════════════════════
 
-function VoiceCloningTab({ models, synthesize }: { models: any[]; synthesize: any }) {
+function VoiceCloningTab({ models, synthesize }: { models: VoiceModel[]; synthesize: (text: string, modelId: string, options?: Record<string, unknown>) => Promise<Blob> }) {
     const [text, setText] = useState('This is a test of voice cloning. The generated speech should sound similar to the reference audio.');
     const [refAudio, setRefAudio] = useState<string | null>(null);
     const [refName, setRefName] = useState('');
@@ -561,7 +561,7 @@ function VoiceCloningTab({ models, synthesize }: { models: any[]; synthesize: an
     const audioChunksRef = useRef<Blob[]>([]);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const cloningModels = models.filter((m: any) => {
+    const cloningModels = models.filter(m => {
         try { return JSON.parse(m.config || '{}').supportsVoiceCloning; } catch { return false; }
     });
 
@@ -594,7 +594,7 @@ function VoiceCloningTab({ models, synthesize }: { models: any[]; synthesize: an
         if (!text.trim() || !refAudio || loading) return;
         setLoading(true);
         const start = Date.now();
-        const m = cloningModels.find((m: any) => m._id === selectedModel || m.name === selectedModel) || cloningModels[0];
+        const m = cloningModels.find(m => m._id === selectedModel || m.name === selectedModel) || cloningModels[0];
         try {
             const res = await synthesize({
                 text,
@@ -612,7 +612,7 @@ function VoiceCloningTab({ models, synthesize }: { models: any[]; synthesize: an
                 provider: m?.provider || 'unknown',
                 latencyMs: Date.now() - start,
             }]);
-        } catch (err: any) {
+        } catch (err: unknown) {
             setResults(prev => [...prev, {
                 audioUrl: '',
                 model: `❌ ${err.message}`,
@@ -632,7 +632,7 @@ function VoiceCloningTab({ models, synthesize }: { models: any[]; synthesize: an
                         <label>Voice Cloning Model</label>
                         <select className="pg-select" value={selectedModel} onChange={e => setSelectedModel(e.target.value)}>
                             {cloningModels.length === 0 && <option value="">No cloning models available</option>}
-                            {cloningModels.map((m: any) => (
+                            {cloningModels.map(m => (
                                 <option key={m._id || m.name} value={m._id || m.name} disabled={m.apiFormat === 'riva-grpc'}>
                                     {m.displayName} {m.apiFormat === 'riva-grpc' ? '(proxy needed)' : ''}
                                 </option>

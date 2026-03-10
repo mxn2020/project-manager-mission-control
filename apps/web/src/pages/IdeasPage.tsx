@@ -58,7 +58,7 @@ function saveCanvasPositions(key: string, positions: Record<string, { x: number;
 // ─── IdeaCard (shared across views) ────────────────────────────────────────
 
 function IdeaCard({ idea, selected, onToggleSelect, onUpdate, onArchive, onDelete, onPromote, onLinkProject, projectOptions, compact }: {
-    idea: any; selected: boolean; onToggleSelect: () => void; onUpdate: (data: any) => void;
+    idea: Doc<"ideas"> & { id: string }; selected: boolean; onToggleSelect: () => void; onUpdate: (data: Record<string, unknown>) => void;
     onArchive: () => void; onDelete: () => void; onPromote: () => void;
     onLinkProject: (proj: string) => void; projectOptions: SelectOption[]; compact?: boolean;
 }) {
@@ -156,7 +156,7 @@ function IdeaCard({ idea, selected, onToggleSelect, onUpdate, onArchive, onDelet
 // ─── Main Page ─────────────────────────────────────────────────────────────
 
 export default function IdeasPage() {
-    const { orgId } = useAuth() as any;
+    const { orgId } = useAuth();
 
     const [search, setSearch] = useState('');
     const [urlFilters, setUrlFilter] = useUrlFilters({ view: 'cards', category: '', project: '', sort: 'date', archived: '' });
@@ -233,17 +233,17 @@ export default function IdeasPage() {
         setShowCreate(false); setNewTitle(''); setNewBody(''); setNewTags(''); setNewScore(5); setNewProject('');
     };
 
-    const handleUpdate = async (id: string, data: any) => { await updateIdea({ ideaId: id as any, ...data }); };
-    const handleArchive = async (id: string, archived: boolean) => { await updateIdea({ ideaId: id as any, archived }); };
+    const handleUpdate = async (id: string, data: Record<string, unknown>) => { await updateIdea({ ideaId: id as Id<"ideas">, ...data }); };
+    const handleArchive = async (id: string, archived: boolean) => { await updateIdea({ ideaId: id as Id<"ideas">, archived }); };
     const handleDelete = async (id: string) => {
         if (confirm("Delete this idea?")) {
-            await deleteIdea({ ideaId: id as any });
+            await deleteIdea({ ideaId: id as Id<"ideas"> });
             selected.delete(id); setSelected(new Set(selected));
         }
     };
 
     const handlePromote = async (id: string) => {
-        await promoteIdea({ ideaId: id as any });
+        await promoteIdea({ ideaId: id as Id<"ideas"> });
         selected.delete(id); setSelected(new Set(selected));
     };
 
@@ -253,13 +253,13 @@ export default function IdeasPage() {
     };
 
     const handleCombineSubmit = async (title: string) => {
-        const ids = [...selected] as any[];
+        const ids = [...selected];
         await combineIdeas({ ideaIds: ids, title: title || undefined });
         setSelected(new Set());
     };
 
     const handleArchiveSelected = async () => {
-        for (const id of selected) await updateIdea({ ideaId: id as any, archived: true });
+        for (const id of selected) await updateIdea({ ideaId: id as Id<"ideas">, archived: true });
         setSelected(new Set());
     };
 
@@ -267,7 +267,7 @@ export default function IdeasPage() {
         const idea = allIdeas.find(i => i.id === id);
         const existing = idea?.linkedProjects || [];
         const projects = project ? [...new Set([...existing, project])] : existing;
-        await updateIdea({ ideaId: id as any, linkedProjects: projects });
+        await updateIdea({ ideaId: id as Id<"ideas">, linkedProjects: projects });
     };
 
     const toggleSelect = (id: string) => {
@@ -310,9 +310,9 @@ export default function IdeasPage() {
 
     // ─── Render Helpers ──────────────────────────
 
-    const cardProps = (idea: any) => ({
+    const cardProps = idea => ({
         idea, selected: selected.has(idea.id), onToggleSelect: () => toggleSelect(idea.id),
-        onUpdate: (d: any) => handleUpdate(idea.id, d), onArchive: () => handleArchive(idea.id, !idea.archived),
+        onUpdate: d => handleUpdate(idea.id, d), onArchive: () => handleArchive(idea.id, !idea.archived),
         onDelete: () => handleDelete(idea.id), onPromote: () => handlePromote(idea.id),
         onLinkProject: (p: string) => handleLinkProject(idea.id, p), projectOptions,
     });

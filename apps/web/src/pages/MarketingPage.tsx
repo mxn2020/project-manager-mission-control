@@ -43,7 +43,7 @@ const CHANNEL_OPTIONS: SelectOption[] = [
 interface Goal { id: string; title: string; done: boolean }
 
 export default function MarketingPage() {
-    const { orgId } = useAuth() as any;
+    const { orgId } = useAuth();
 
     const [filter, setFilter] = useState('');
     const [showCreate, setShowCreate] = useState(false);
@@ -101,31 +101,31 @@ export default function MarketingPage() {
     };
 
     const handleAddGoal = async (title: string) => {
-        await addGoal({ planId: promptPlanId as any, goalTitle: title });
+        await addGoal({ planId: promptPlanId as Id<"marketingPlans">, goalTitle: title });
     };
 
     const handleToggleGoal = async (planId: string, goalId: string) => {
-        await toggleGoalObj({ planId: planId as any, goalId });
+        await toggleGoalObj({ planId: planId as Id<"marketingPlans">, goalId });
     };
 
     const handleDeleteGoal = async (planId: string, goalId: string) => {
-        await removeGoal({ planId: planId as any, goalId });
+        await removeGoal({ planId: planId as Id<"marketingPlans">, goalId });
     };
 
     const handleUpdateStatus = async (planId: string, status: string) => {
-        await updatePlan({ planId: planId as any, status });
+        await updatePlan({ planId: planId as Id<"marketingPlans">, status });
     };
 
     const handleDelete = async (id: string) => {
         if (confirm("Delete this marketing plan?")) {
-            await deletePlan({ planId: id as any });
+            await deletePlan({ planId: id as Id<"marketingPlans"> });
             if (expanded === id) setExpanded(null);
         }
     };
 
     const allPlans = (plans || []).filter(p => !filter || p.category === filter);
-    const completedGoals = (p: any) => (p.goals || []).filter((g: Goal) => g.done).length;
-    const totalGoals = (p: any) => (p.goals || []).length;
+    const completedGoals = (p: { goals?: Goal[] }) => (p.goals || []).filter((g: Goal) => g.done).length;
+    const totalGoals = (p: { goals?: Goal[] }) => (p.goals || []).length;
 
     const formatDate = (d: string) => {
         if (!d) return '';
@@ -276,7 +276,7 @@ export default function MarketingPage() {
                                                 options={projectOptions}
                                                 value={plan.linkedProjects || []}
                                                 onChange={async (newProjects) => {
-                                                    await updatePlan({ planId: plan.id as any, linkedProjects: newProjects as string[] });
+                                                    await updatePlan({ planId: plan.id as Id<"marketingPlans">, linkedProjects: newProjects as string[] });
                                                 }}
                                                 placeholder="Link projects..."
                                                 grouped
@@ -289,7 +289,7 @@ export default function MarketingPage() {
                                                 options={CHANNEL_OPTIONS}
                                                 value={plan.channels || []}
                                                 onChange={async (newChannels) => {
-                                                    await updatePlan({ planId: plan.id as any, channels: newChannels as string[] });
+                                                    await updatePlan({ planId: plan.id as Id<"marketingPlans">, channels: newChannels as string[] });
                                                 }}
                                                 placeholder="Channels..."
                                             />

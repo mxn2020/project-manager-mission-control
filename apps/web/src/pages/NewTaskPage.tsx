@@ -31,7 +31,7 @@ export default function NewTaskPage() {
     const navigate = useNavigate();
     const { data: projectData } = useProjects();
     const { user } = useAuth();
-    const orgId = (user as any)?.orgId;
+    const orgId = user?.orgId;
     const createTask = useMutation(api.tasks.create);
 
     const [title, setTitle] = useState('');
@@ -45,9 +45,9 @@ export default function NewTaskPage() {
 
     const projectOptions: SelectOption[] = useMemo(() => {
         return (projectData?.projects ?? []).map(p => {
-            const segs = p.path ? p.path.split('/') : [(p as any).name || 'Unknown'];
+            const segs = p.path ? p.path.split('/') : [p.name || 'Unknown'];
             return {
-                value: (p as any).id || p.path,
+                value: p.id || p.path,
                 label: segs[segs.length - 1] || p.path,
                 sublabel: segs.length > 1 ? segs.slice(0, -1).join('/') : undefined,
                 group: segs[0] || 'root',
@@ -63,8 +63,8 @@ export default function NewTaskPage() {
         setError('');
         try {
             await createTask({
-                orgId: orgId as any,
-                projectId: project.trim() ? (project as any) : undefined,
+                orgId: orgId as Id<"organizations">,
+                projectId: project.trim() ? project as string : undefined,
                 title: title.trim(),
                 priority,
                 effort,
@@ -73,7 +73,7 @@ export default function NewTaskPage() {
                 status: 'todo',
             });
             navigate('/tasks');
-        } catch (err: any) {
+        } catch (err: unknown) {
             setError(err.message || 'Failed to create task');
         } finally {
             setSubmitting(false);

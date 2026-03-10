@@ -15,7 +15,7 @@ interface LoginPageProps {
  *   "[CONVEX M(auth:login)] [Request ID: xxx] Server Error Uncaught Error: Invalid email or password."
  * We strip the prefix and return just "Invalid email or password."
  */
-function parseErrorMessage(err: any): string {
+function parseErrorMessage(err: unknown): string {
     const raw = err?.message || err?.data?.message || 'Authentication failed';
 
     // Try to extract message after "Uncaught Error: " or "Server Error: "
@@ -50,11 +50,11 @@ export default function LoginPage({ needsSetup, onLogin, onRegister }: LoginPage
         try {
             if (isSetup) {
                 // Determine if onRegister takes an optional 4th parameter based on type, but we pass it anyway
-                await (onRegister as any)(email, name, password, orgName || undefined);
+                await onRegister(email, name, password, orgName || undefined);
             } else {
                 await onLogin(email, password);
             }
-        } catch (err: any) {
+        } catch (err: unknown) {
             setError(parseErrorMessage(err));
         } finally {
             setLoading(false);

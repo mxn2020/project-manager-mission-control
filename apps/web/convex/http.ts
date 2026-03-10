@@ -171,7 +171,7 @@ http.route({
         }
 
         const redirectUri = process.env.GITHUB_REDIRECT_URI || `${url.origin}/github/callback`;
-        const scopes = "repo,read:user";
+        const scopes = "repo,read:user,read:org";
         // Encode session token as state for the callback
         const state = btoa(sessionToken);
 
@@ -263,7 +263,7 @@ http.route({
             const appUrl = process.env.APP_URL || "https://mission-control-app-green.vercel.app";
             return new Response(null, {
                 status: 302,
-                headers: { Location: `${appUrl}/files?github=connected` },
+                headers: { Location: `${appUrl}/integrations?github=connected` },
             });
         } catch (err: any) {
             console.error("GitHub OAuth callback error:", err);

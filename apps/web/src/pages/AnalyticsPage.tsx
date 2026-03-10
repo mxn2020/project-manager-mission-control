@@ -7,7 +7,7 @@ import { PageHeader } from '../components/ui';
 import { useAuth } from '../hooks/useAuth';
 
 export default function AnalyticsPage() {
-    const { orgId } = useAuth() as any;
+    const { orgId } = useAuth();
 
     const aiStats = useQuery(convexApi.aiLogs.getStats);
     const costSummary = useQuery(convexApi.costs.getCostSummary);

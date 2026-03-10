@@ -121,7 +121,7 @@ export function getProjectDimensionValue(
         return '10+';
     }
 
-    const val = (project as any)[dimension.field];
+    const val = (project as unknown as Record<string, unknown>)[dimension.field];
     return typeof val === 'string' ? val : String(val ?? 'unknown');
 }
 

@@ -10,9 +10,9 @@ export default function AILogsPage() {
     const [filter, setFilter] = useState<'all' | 'success' | 'error'>('all');
     const [search, setSearch] = useState('');
 
-    const models = [...new Set((logs || []).map((l: any) => l.model.split('/').pop()))].sort();
+    const models = [...new Set((logs || []).map(l => l.model.split('/').pop()))].sort();
 
-    const filtered = (logs || []).filter((l: any) => {
+    const filtered = (logs || []).filter(l => {
         if (filter !== 'all' && l.status !== filter) return false;
         if (search) {
             const q = search.toLowerCase();
@@ -108,7 +108,7 @@ export default function AILogsPage() {
                             </tr>
                         </thead>
                         <tbody>
-                            {filtered.map((log: any) => (
+                            {filtered.map(log => (
                                 <>
                                     <tr
                                         key={log._id}
@@ -152,7 +152,7 @@ export default function AILogsPage() {
                                                             {(() => {
                                                                 try {
                                                                     const msgs = JSON.parse(log.promptMessages);
-                                                                    return msgs.map((m: any) => `[${m.role}] ${m.content}`).join('\n\n');
+                                                                    return msgs.map(m => `[${m.role}] ${m.content}`).join('\n\n');
                                                                 } catch { return log.promptMessages; }
                                                             })()}
                                                         </pre>

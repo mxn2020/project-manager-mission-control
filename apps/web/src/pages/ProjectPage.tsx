@@ -26,7 +26,7 @@ export default function ProjectPage() {
     // Sync form with project data once loaded
     useEffect(() => {
         if (project && Object.keys(editedProject).length === 0) {
-            setEditedProject(project as any);
+            setEditedProject(project as Partial<ConvexProject>);
         }
     }, [project, editedProject]);
 
@@ -55,20 +55,20 @@ export default function ProjectPage() {
         }
     };
 
-    const handleChange = (field: any, value: any) => {
+    const handleChange = (field: string, value: string | boolean | string[] | number) => {
         setEditedProject(prev => ({ ...prev, [field]: value }));
     };
 
     if (project === undefined) return <div className="loading"><div className="loading-spinner" />Loading...</div>;
     if (project === null) return <div className="error-message">Project not found</div>;
 
-    const currentProject = { ...project, ...editedProject } as any;
+    const currentProject = { ...project, ...editedProject };
 
     const tc = TIER_CONFIG[currentProject.tier as Tier] || TIER_CONFIG.idea;
     const pc = PRIORITY_CONFIG[(currentProject.priority as Priority)] || PRIORITY_CONFIG.medium;
     const lc = LANE_COLORS[currentProject.lane] || 'var(--text-tertiary)';
 
-    const hasChanges = Object.keys(editedProject).some((k) => editedProject[k as keyof Project] !== (project as any)[k]);
+    const hasChanges = Object.keys(editedProject).some((k) => editedProject[k as keyof Project] !== (project as Record<string, unknown>)[k]);
 
     return (
         <div className="project-detail">
@@ -91,7 +91,7 @@ export default function ProjectPage() {
                     <div className="yaml-editor-title">📝 Project Settings {hasChanges && <span style={{ color: 'var(--warning)', fontSize: 11, fontWeight: 400 }}>(unsaved)</span>}</div>
                     <div className="yaml-editor-actions">
                         {saveStatus && <span className={`save-status ${saveStatus}`}>{saveStatus === 'success' ? '✓ Saved' : '✗ Error'}</span>}
-                        {hasChanges && <button className="btn btn-secondary" onClick={() => setEditedProject(project as any)}>Cancel</button>}
+                        {hasChanges && <button className="btn btn-secondary" onClick={() => setEditedProject(project as Partial<ConvexProject>)}>Cancel</button>}
                         <button className="btn btn-primary" onClick={handleSave} disabled={saving || !hasChanges}>{saving ? '⏳' : '💾'} Save</button>
                     </div>
                 </div>

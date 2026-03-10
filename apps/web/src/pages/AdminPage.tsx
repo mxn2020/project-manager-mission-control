@@ -28,7 +28,7 @@ export default function AdminPage() {
     const [showAddChatbot, setShowAddChatbot] = useState(false);
 
     const { user } = useAuth();
-    const orgId = (user as any)?.orgId;
+    const orgId = user?.orgId;
 
     const chatbots = useQuery(api.chatbots.listConfigs, orgId ? { orgId } : "skip");
     const systemPrompts = useQuery(api.chatbots.listPrompts, orgId ? { orgId } : "skip");
@@ -80,7 +80,7 @@ export default function AdminPage() {
     const handleAddModel = async () => {
         if (!mProviderId || !mModelId || !mDisplayName) return;
         await upsertModel({
-            providerId: mProviderId as any,
+            providerId: mProviderId as Id<"aiProviders">,
             modelId: mModelId,
             displayName: mDisplayName,
             maxTokens: parseInt(mMaxTokens),
@@ -100,8 +100,8 @@ export default function AdminPage() {
             orgId,
             name: cName,
             description: cDesc,
-            systemPromptId: cPrompt ? (cPrompt as any) : undefined,
-            modelId: cModel ? (cModel as any) : undefined,
+            systemPromptId: cPrompt ? (cPrompt as Id<"systemPrompts">) : undefined,
+            modelId: cModel ? (cModel as Id<"aiModels">) : undefined,
             isDefault: chatbots?.length === 0,
         });
         setCName(''); setCDesc(''); setCPrompt(''); setCModel('');
@@ -149,7 +149,7 @@ export default function AdminPage() {
                     )}
 
                     {!providers ? <div className="loading"><div className="loading-spinner" /></div> : (
-                        providers.map((p: any) => (
+                        providers.map(p => (
                             <div key={p._id} className="flex-row gap-16 mb-8" style={{
                                 padding: '14px 16px',
                                 background: 'var(--bg-secondary)', borderRadius: 8, border: '1px solid var(--border)',
@@ -184,7 +184,7 @@ export default function AdminPage() {
                         <div className="section-card-sm mb-16">
                             <div className="grid-2 gap-12 mb-12">
                                 <SearchableSelect
-                                    options={[{ value: '', label: 'Select Provider' }, ...(providers || []).map((p: any) => ({ value: p._id, label: p.name }))]}
+                                    options={[{ value: '', label: 'Select Provider' }, ...(providers || []).map(p => ({ value: p._id, label: p.name }))]}
                                     value={mProviderId} onChange={setMProviderId} placeholder="Provider" clearable={false} />
                                 <input placeholder="Model ID" value={mModelId} onChange={e => setMModelId(e.target.value)} className="form-input" />
                                 <input placeholder="Display Name" value={mDisplayName} onChange={e => setMDisplayName(e.target.value)} className="form-input" />
@@ -200,7 +200,7 @@ export default function AdminPage() {
                     )}
 
                     {!models ? <div className="loading"><div className="loading-spinner" /></div> : (
-                        (models as any[]).map((m: any) => (
+                        models.map(m => (
                             <div key={m._id} className="flex-row gap-16 mb-8" style={{
                                 padding: '14px 16px',
                                 background: 'var(--bg-secondary)', borderRadius: 8, border: '1px solid var(--border)',
@@ -361,11 +361,11 @@ export default function AdminPage() {
                                 <input placeholder="Description (Optional)" value={cDesc} onChange={e => setCDesc(e.target.value)} className="form-input" />
 
                                 <SearchableSelect
-                                    options={[{ value: '', label: 'Select Model (Global Default)' }, ...(models as any[] || []).map((m: any) => ({ value: m._id, label: m.displayName }))]}
+                                    options={[{ value: '', label: 'Select Model (Global Default)' }, ...((models || []) as Doc<"aiModels">[]).map(m => ({ value: m._id, label: m.displayName }))]}
                                     value={cModel} onChange={setCModel} placeholder="AI Model" clearable={false} />
 
                                 <SearchableSelect
-                                    options={[{ value: '', label: 'Select System Prompt (Blank)' }, ...(systemPrompts || []).map((p: any) => ({ value: p._id, label: p.name + ` (v${p.version})` }))]}
+                                    options={[{ value: '', label: 'Select System Prompt (Blank)' }, ...(systemPrompts || []).map(p => ({ value: p._id, label: p.name + ` (v${p.version})` }))]}
                                     value={cPrompt} onChange={setCPrompt} placeholder="System Prompt" clearable={false} />
                             </div>
                             <div className="flex-row gap-8" style={{ justifyContent: 'flex-end' }}>
@@ -376,7 +376,7 @@ export default function AdminPage() {
                     )}
 
                     {!chatbots ? <div className="loading"><div className="loading-spinner" /></div> : (
-                        chatbots.map((c: any) => (
+                        chatbots.map(c => (
                             <div key={c._id} className="mb-8" style={{
                                 background: 'var(--bg-secondary)', borderRadius: 8, border: '1px solid var(--border)',
                             }}>
@@ -391,7 +391,7 @@ export default function AdminPage() {
                                         <div className="text-sm text-tertiary">{c.description || 'No description'}</div>
                                     </div>
                                     <div className="flex-col text-sm text-tertiary" style={{ alignItems: 'flex-end' }}>
-                                        <span>Model: {c.modelId ? (models as any[])?.find(m => m._id === c.modelId)?.displayName || c.modelId : 'Global Default'}</span>
+                                        <span>Model: {c.modelId ? models?.find(m => m._id === c.modelId)?.displayName || c.modelId : 'Global Default'}</span>
                                         <span>Prompt: {c.systemPromptId ? systemPrompts?.find(p => p._id === c.systemPromptId)?.name || 'Default' : 'Blank'}</span>
                                     </div>
                                     <div className="flex-col gap-4">
@@ -422,14 +422,14 @@ export default function AdminPage() {
                                             <div>
                                                 <label className="form-label">Model</label>
                                                 <SearchableSelect
-                                                    options={[{ value: '', label: 'Global Default' }, ...(models as any[] || []).map((m: any) => ({ value: m._id, label: m.displayName }))]}
-                                                    value={c.modelId || ''} onChange={v => updateChatbot({ configId: c._id, modelId: v || undefined } as any)} placeholder="Model" clearable={false} />
+                                                    options={[{ value: '', label: 'Global Default' }, ...((models || []) as Doc<"aiModels">[]).map(m => ({ value: m._id, label: m.displayName }))]}
+                                                    value={c.modelId || ''} onChange={v => updateChatbot({ configId: c._id, modelId: (v || undefined) as Id<"aiModels"> | undefined })} placeholder="Model" clearable={false} />
                                             </div>
                                             <div>
                                                 <label className="form-label">System Prompt</label>
                                                 <SearchableSelect
-                                                    options={[{ value: '', label: 'None' }, ...(systemPrompts || []).map((p: any) => ({ value: p._id, label: p.name + ` (v${p.version})` }))]}
-                                                    value={c.systemPromptId || ''} onChange={v => updateChatbot({ configId: c._id, systemPromptId: v || undefined } as any)} placeholder="Prompt" clearable={false} />
+                                                    options={[{ value: '', label: 'None' }, ...(systemPrompts || []).map(p => ({ value: p._id, label: p.name + ` (v${p.version})` }))]}
+                                                    value={c.systemPromptId || ''} onChange={v => updateChatbot({ configId: c._id, systemPromptId: (v || undefined) as Id<"systemPrompts"> | undefined })} placeholder="Prompt" clearable={false} />
                                             </div>
                                         </div>
                                         <div className="flex-row gap-12">
@@ -488,7 +488,7 @@ export default function AdminPage() {
                             </div>
                         ) : (
                             <div className="mb-24">
-                                {systemPrompts.map((p: any) => (
+                                {systemPrompts.map(p => (
                                     <div key={p._id} className="mb-8" style={{
                                         background: 'var(--bg-secondary)', borderRadius: 8, border: '1px solid var(--border)',
                                     }}>

@@ -38,7 +38,7 @@ export default function MinionsPage() {
     }, [refresh]);
 
     // Group minions by minionTypeId
-    let allTypes: any[] = [];
+    let allTypes: MinionRecord[] = [];
     try { allTypes = registry.list() || []; } catch { allTypes = []; }
     const grouped: Record<string, Minion[]> = {};
     for (const m of minions) {
@@ -48,7 +48,7 @@ export default function MinionsPage() {
     }
 
     const typeSlugToInfo = (slug: string): { name: string; icon: string } => {
-        const t = allTypes.find((t: any) => t.slug === slug);
+        const t = allTypes.find(t => t.slug === slug);
         return { name: t?.name ?? slug, icon: t?.icon ?? '📦' };
     };
 
@@ -107,8 +107,8 @@ export default function MinionsPage() {
         const lines: string[] = [];
         const coreKeys = ['id', 'title', 'status', 'priority', 'tags', 'minionTypeId', 'createdAt', 'updatedAt'];
         for (const key of coreKeys) {
-            if ((item as any)[key] !== undefined) {
-                lines.push(`${key}: ${formatValue((item as any)[key])}`);
+            if ((item as Record<string, unknown>)[key] !== undefined) {
+                lines.push(`${key}: ${formatValue((item as Record<string, unknown>)[key])}`);
             }
         }
         if (item.fields && Object.keys(item.fields).length > 0) {

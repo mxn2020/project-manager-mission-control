@@ -6,7 +6,7 @@ import SearchableSelect from '../components/SearchableSelect';
 
 export default function AgentRunsPage() {
     const { user } = useAuth();
-    const orgId = (user as any)?.orgId;
+    const orgId = user?.orgId;
 
     const runs = useQuery(api.agents.listRuns, orgId ? { orgId } : "skip");
     const chatbots = useQuery(api.chatbots.listConfigs, orgId ? { orgId } : "skip");
@@ -19,13 +19,13 @@ export default function AgentRunsPage() {
     const [starting, setStarting] = useState(false);
 
     const handleStartRun = async () => {
-        if (!goal || !chatbotId || !orgId || !(user as any)?.id) return;
+        if (!goal || !chatbotId || !orgId || !user?.id) return;
         setStarting(true);
         try {
             await startRun({
                 orgId,
-                userId: (user as any).id,
-                chatbotConfigId: chatbotId as any,
+                userId: user?.id,
+                chatbotConfigId: chatbotId as Id<"chatbotConfigs">,
                 goal,
             });
             setGoal('');
@@ -51,7 +51,7 @@ export default function AgentRunsPage() {
     };
 
     const agentOptions = chatbots
-        ? chatbots.filter((c: any) => c.isAgentic).map((c: any) => ({ value: c._id, label: c.name }))
+        ? chatbots.filter(c => c.isAgentic).map(c => ({ value: c._id, label: c.name }))
         : [];
 
     return (
@@ -107,14 +107,14 @@ export default function AgentRunsPage() {
                 </div>
             ) : (
                 <div className="grid gap-12">
-                    {runs.map((run: any) => (
+                    {runs.map(run => (
                         <div key={run._id} className="section-card-sm" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                             <div className="flex-between">
                                 <div className="font-semibold" style={{ fontSize: 16 }}>{run.goal.substring(0, 100)}{run.goal.length > 100 ? '...' : ''}</div>
                                 <StatusBadge status={run.status} />
                             </div>
                             <div className="text-sm text-tertiary flex-between">
-                                <span>Agent: {chatbots?.find((c: any) => c._id === run.chatbotConfigId)?.name || 'Unknown'}</span>
+                                <span>Agent: {chatbots?.find(c => c._id === run.chatbotConfigId)?.name || 'Unknown'}</span>
                                 <span>Started: {new Date(run.startedAt).toLocaleString()}</span>
                             </div>
 

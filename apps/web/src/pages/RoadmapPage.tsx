@@ -60,7 +60,7 @@ export default function RoadmapPage() {
     ];
 
     const filtered = useMemo(() => {
-        return projects.filter((p: any) => {
+        return projects.filter(p => {
             if (filterLane && p.lane !== filterLane) return false;
             if (filterPriority && p.priority !== filterPriority) return false;
             if (filterCategory) {
@@ -86,7 +86,7 @@ export default function RoadmapPage() {
         }
         const order: Record<string, number> = { high: 0, medium: 1, low: 2, parked: 3 };
         for (const t of Object.keys(map)) {
-            map[t].sort((a: any, b: any) => (order[a.priority] ?? 99) - (order[b.priority] ?? 99));
+            map[t].sort((a: { priority?: string }, b: { priority?: string }) => (order[a.priority] ?? 99) - (order[b.priority] ?? 99));
         }
         return map;
     }, [filtered]);
@@ -132,7 +132,7 @@ export default function RoadmapPage() {
                             <span className="dimension-group-count">{byTier[tier].length}</span>
                         </div>
                         <div className="grid-auto-180 gap-8">
-                            {byTier[tier].map((p: any) => (
+                            {byTier[tier].map(p => (
                                 <div key={p.path} className="section-card-sm" style={{
                                     borderLeft: `3px solid ${cfg?.color || 'var(--border)'}`,
                                 }}>
@@ -169,7 +169,7 @@ export default function RoadmapPage() {
                             </tr>
                         </thead>
                         <tbody>
-                            {filtered.map((p: any) => {
+                            {filtered.map(p => {
                                 const segments = p.path.split('/');
                                 return (
                                     <tr key={p.path}>
@@ -281,7 +281,7 @@ export default function RoadmapPage() {
                 <CreateProjectModal
                     onClose={() => setShowCreate(false)}
                     onCreated={() => { refresh(); }}
-                    lanes={[...new Set(projects.map((p: any) => p.lane))]}
+                    lanes={[...new Set(projects.map(p => p.lane))]}
                 />
             )}
         </div>

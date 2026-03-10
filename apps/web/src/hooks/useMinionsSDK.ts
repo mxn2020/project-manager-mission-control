@@ -7,13 +7,24 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+export interface MinionRecord {
+    id: string;
+    type: string;
+    data: Record<string, unknown>;
+}
+
+export interface MinionRegistry {
+    list: () => MinionRecord[];
+    types: string[];
+}
+
 export interface UseMinionsSDK {
-    client: any;
-    list: (filter?: any) => Promise<any[]>;
-    create: (typeSlug: string, input: any) => Promise<any>;
-    remove: (minion: any) => Promise<void>;
-    search: (query: string) => Promise<any[]>;
-    registry: any;
+    client: unknown;
+    list: (filter?: Record<string, unknown>) => Promise<MinionRecord[]>;
+    create: (typeSlug: string, input: Record<string, unknown>) => Promise<MinionRecord>;
+    remove: (minion: MinionRecord) => Promise<void>;
+    search: (query: string) => Promise<MinionRecord[]>;
+    registry: MinionRegistry;
 }
 
 export function useMinionsSDK(): UseMinionsSDK {

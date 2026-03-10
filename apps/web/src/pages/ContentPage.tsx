@@ -17,7 +17,7 @@ const STATUS_FLOW = [
 const PLATFORMS = ['twitter', 'reddit', 'youtube', 'linkedin', 'devto', 'github'];
 
 export default function ContentPage() {
-    const { orgId } = useAuth() as any;
+    const { orgId } = useAuth();
     const { data: projectData } = useProjects();
 
     const [filter, setFilter] = useState('all');
@@ -45,11 +45,11 @@ export default function ContentPage() {
     const plans = rawPlans ? rawPlans.map(p => ({ ...p, id: p._id })) : null;
 
     // Use full plan data when expanded
-    const rawExpandedDetail = useQuery(api.content.getPlan, expandedPlan ? { id: expandedPlan as any } : "skip");
+    const rawExpandedDetail = useQuery(api.content.getPlan, expandedPlan ? { id: expandedPlan as Id<"contentPlans"> } : "skip");
     const expandedDetail = rawExpandedDetail ? { ...rawExpandedDetail, id: rawExpandedDetail._id } : null;
 
     const allPlans = plans || [];
-    const filtered = allPlans.filter((p: any) => filter === 'all' || p.status === filter);
+    const filtered = allPlans.filter((p: typeof allPlans[0]) => filter === 'all' || p.status === filter);
 
     const projectOptions: SelectOption[] = useMemo(() => {
         const allPaths = new Set<string>();
@@ -81,16 +81,16 @@ export default function ContentPage() {
         setNewTag('');
         setNewTitle('');
         setNewNotes('');
-        setExpandedPlan(planId as any);
+        setExpandedPlan(planId as string);
     };
 
     const handleUpdatePlan = async (id: string, updates: Record<string, unknown>) => {
-        await updatePlan({ id: id as any, ...updates });
+        await updatePlan({ id: id as Id<"contentPlans">, ...updates });
     };
 
     const handleDeletePlan = async (id: string) => {
         if (confirm("Delete this content plan?")) {
-            await deletePlan({ id: id as any });
+            await deletePlan({ id: id as Id<"contentPlans"> });
             if (expandedPlan === id) setExpandedPlan(null);
         }
     };
@@ -98,7 +98,7 @@ export default function ContentPage() {
     const handleAddItem = async () => {
         if (!expandedPlan || !newItemContent.trim()) return;
         await addItem({
-            planId: expandedPlan as any,
+            planId: expandedPlan as Id<"contentPlans">,
             platform: newItemPlatform,
             content: newItemContent.trim(),
         });
@@ -106,7 +106,7 @@ export default function ContentPage() {
     };
 
     const handleUpdateItem = async (itemId: string, updates: Record<string, unknown>) => {
-        await updateItem({ id: itemId as any, ...updates });
+        await updateItem({ id: itemId as Id<"contentItems">, ...updates });
     };
 
     return (
@@ -175,7 +175,7 @@ export default function ContentPage() {
                 ) : filtered.length === 0 ? (
                     <EmptyState icon="📢" message="No content plans yet" />
                 ) : (
-                    filtered.map((plan: any) => (
+                    filtered.map((plan: typeof allPlans[0]) => (
                         <div key={plan.id} className="section-card-sm mb-8" style={{
                             borderColor: expandedPlan === plan.id ? 'var(--accent)' : undefined,
                         }}>
@@ -215,7 +215,7 @@ export default function ContentPage() {
                                         <div className="section-label mb-8">
                                             Content Items ({expandedDetail.items?.length || 0})
                                         </div>
-                                        {(expandedDetail.items || []).map((item: any) => (
+                                        {(expandedDetail.items || []).map(item => (
                                             <div key={item._id} className="flex-row gap-8 mb-6" style={{
                                                 alignItems: 'flex-start', padding: '8px 12px',
                                                 background: 'var(--bg-primary)', borderRadius: 8, border: '1px solid var(--border)',

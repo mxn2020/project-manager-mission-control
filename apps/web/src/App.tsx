@@ -36,6 +36,7 @@ import NewProjectPage from './pages/NewProjectPage';
 import DeleteProjectPage from './pages/DeleteProjectPage';
 import AgentRunsPage from './pages/AgentRunsPage';
 import AIPlaygroundPage from './pages/AIPlaygroundPage';
+import IntegrationsPage from './pages/IntegrationsPage';
 
 function AppShell() {
   const location = useLocation();
@@ -74,6 +75,7 @@ function AppShell() {
     if (p.startsWith('/costs')) return WORKSPACES.find(ws => ws.id === 'costs')!;
     if (p.startsWith('/analytics')) return WORKSPACES.find(ws => ws.id === 'analytics')!;
     if (p.startsWith('/admin')) return WORKSPACES.find(ws => ws.id === 'admin')!;
+    if (p.startsWith('/integrations')) return WORKSPACES.find(ws => ws.id === 'admin')!;
     if (p.startsWith('/roadmap')) return WORKSPACES.find(ws => ws.id === 'roadmap')!;
     if (p.startsWith('/repositories')) return WORKSPACES.find(ws => ws.id === 'repositories')!;
     if (p.startsWith('/files')) return WORKSPACES.find(ws => ws.id === 'files')!;
@@ -182,6 +184,7 @@ function AppShell() {
             <div className="sidebar-section">
               <div className="sidebar-section-title">Settings</div>
               <NavLink to="/admin" end className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}><span className="nav-icon">🔌</span> Providers</NavLink>
+              <NavLink to="/integrations" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}><span className="nav-icon">🔗</span> Integrations</NavLink>
               <NavLink to="/admin/logs" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}><span className="nav-icon">📝</span> AI Logs</NavLink>
             </div>
           </aside>
@@ -223,6 +226,7 @@ function AppShell() {
             <Route path="/analytics" element={<AnalyticsPage />} />
             <Route path="/admin" element={<AdminPage />} />
             <Route path="/admin/logs" element={<AILogsPage />} />
+            <Route path="/integrations" element={<IntegrationsPage />} />
             <Route path="/roadmap" element={<RoadmapPage />} />
             <Route path="/repositories" element={<RepositoriesPage />} />
             <Route path="/dependencies" element={<DependencyGraphPage />} />
