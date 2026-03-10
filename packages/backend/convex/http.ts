@@ -338,6 +338,7 @@ http.route({
                     "Content-Type": "application/x-www-form-urlencoded",
                 },
                 body: new URLSearchParams({
+                    grant_type: "authorization_code",
                     client_id: clientId,
                     client_secret: clientSecret,
                     code,
