@@ -23,6 +23,6 @@ export function useMinionsSDK(): UseMinionsSDK {
         create: async () => ({ id: '', type: '', data: {} }),
         remove: async () => { },
         search: async () => [],
-        registry: { types: [] },
+        registry: { list: () => [], types: [] },
     };
 }

@@ -19,7 +19,7 @@ export const update = mutation({
     args: {
         orgId: v.id("organizations"),
         action: v.string(), // add | remove | set | clear
-        projectIds: v.optional(v.array(v.id("projects"))),
+        projectIds: v.optional(v.array(v.string())),
     },
     handler: async (ctx, args) => {
         const existing = await ctx.db

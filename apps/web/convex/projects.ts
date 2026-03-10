@@ -60,7 +60,49 @@ export const get = query({
     },
 });
 
-// ─── Get Project Stats ───────────────────────────────────────────────────
+// ─── Get Project by Path (repo URL) ─────────────────────────────────────
+
+export const getByPath = query({
+    args: { path: v.string() },
+    handler: async (ctx, args) => {
+        // path in the frontend is the project's repo field
+        const projects = await ctx.db.query("projects").collect();
+        return projects.find(p => p.repo === args.path) || null;
+    },
+});
+
+// ─── Update Project by Path ─────────────────────────────────────────────
+
+export const updateByPath = mutation({
+    args: {
+        path: v.string(),
+        name: v.optional(v.string()),
+        description: v.optional(v.string()),
+        tier: v.optional(v.string()),
+        lane: v.optional(v.string()),
+        priority: v.optional(v.string()),
+        oss: v.optional(v.boolean()),
+        stack: v.optional(v.array(v.string())),
+        repo: v.optional(v.string()),
+        deployUrl: v.optional(v.string()),
+        tags: v.optional(v.array(v.string())),
+        notes: v.optional(v.string()),
+        healthScore: v.optional(v.number()),
+        syncStatus: v.optional(v.string()),
+    },
+    handler: async (ctx, args) => {
+        const { path, ...updates } = args;
+        const projects = await ctx.db.query("projects").collect();
+        const project = projects.find(p => p.repo === path);
+        if (!project) throw new Error(`Project not found: ${path}`);
+        const clean: Record<string, unknown> = { updatedAt: Date.now() };
+        for (const [k, val] of Object.entries(updates)) {
+            if (val !== undefined) clean[k] = val;
+        }
+        await ctx.db.patch(project._id, clean);
+        return project._id;
+    },
+});
 
 export const getStats = query({
     args: {

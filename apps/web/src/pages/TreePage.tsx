@@ -128,7 +128,7 @@ export default function TreePage({ data }: { data: StatusData }) {
                 search={{ value: search, onChange: setSearch, placeholder: 'Search projects...' }}
                 resultCount={filtered.length}
                 filters={
-                    <DimensionPicker dimensions={dimensions} selected={groupDimension} onChange={setGroupDimension} />
+                    <DimensionPicker dimensions={dimensions} selected={groupDimension} onChange={setGroupDimension} allowNone={false} />
                 }
             />
 

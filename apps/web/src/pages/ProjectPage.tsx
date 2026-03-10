@@ -15,8 +15,8 @@ export default function ProjectPage() {
     const projectId = projectPath ? decodeURIComponent(projectPath) : '';
 
     // Convex queries
-    const project = useQuery(api.projects.get, projectId ? { projectId: projectId as any } : "skip");
-    const updateProject = useMutation(api.projects.update);
+    const project = useQuery(api.projects.getByPath, projectId ? { path: projectId } : "skip");
+    const updateProject = useMutation(api.projects.updateByPath);
 
     // Form state
     const [editedProject, setEditedProject] = useState<Partial<Project> & { deployUrl?: string }>({});
@@ -36,7 +36,7 @@ export default function ProjectPage() {
         setSaveStatus(null);
         try {
             await updateProject({
-                projectId: projectId as any,
+                path: projectId,
                 name: editedProject.name || undefined,
                 description: editedProject.description || undefined,
                 tier: editedProject.tier,

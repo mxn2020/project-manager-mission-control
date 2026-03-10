@@ -230,7 +230,7 @@ export default defineSchema({
     // ─── Focus Groups ────────────────────────────────────────────────────
     focusGroups: defineTable({
         orgId: v.id("organizations"),
-        projectIds: v.array(v.id("projects")),
+        projectIds: v.array(v.string()),
         updatedAt: v.number(),
     }).index("by_org", ["orgId"]),
 

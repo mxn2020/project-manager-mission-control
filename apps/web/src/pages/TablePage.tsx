@@ -1,7 +1,8 @@
-import { useState, useMemo } from 'react';
+import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { StatusData, Tier, Priority } from '../lib/types';
 import { TIER_CONFIG, TIER_ORDER, PRIORITY_CONFIG, PRIORITY_ORDER, LANE_COLORS } from '../lib/types';
+import { useUrlFilters } from '../hooks/useUrlFilters';
 import { PageHeader, FilterBar, Badge } from '../components/ui';
 import SearchableSelect from '../components/SearchableSelect';
 
@@ -10,17 +11,29 @@ type SortDir = 'asc' | 'desc';
 
 export default function TablePage({ data }: { data: StatusData }) {
     const navigate = useNavigate();
-    const [search, setSearch] = useState('');
-    const [tierFilter, setTierFilter] = useState('all');
-    const [sortField, setSortField] = useState<SortField>('name');
-    const [sortDir, setSortDir] = useState<SortDir>('asc');
+    const [filters, setFilter] = useUrlFilters({ search: '', tier: '', sort: 'name', dir: 'asc' });
 
-    const handleSort = (f: SortField) => { if (sortField === f) setSortDir(d => d === 'asc' ? 'desc' : 'asc'); else { setSortField(f); setSortDir('asc'); } };
+    const search = filters.search || '';
+    const tierFilter = filters.tier || '';
+    const sortField = (filters.sort || 'name') as SortField;
+    const sortDir = (filters.dir || 'asc') as SortDir;
+
+    const handleSort = (f: SortField) => {
+        if (sortField === f) {
+            setFilter('dir', sortDir === 'asc' ? 'desc' : 'asc');
+        } else {
+            setFilter('sort', f);
+            setFilter('dir', 'asc');
+        }
+    };
 
     const filtered = useMemo(() => {
         let r = data.projects.filter(p => {
-            if (search && !p.name.toLowerCase().includes(search.toLowerCase()) && !p.path.toLowerCase().includes(search.toLowerCase())) return false;
-            if (tierFilter !== 'all' && p.tier !== tierFilter) return false;
+            if (search) {
+                const q = search.toLowerCase();
+                if (!p.name.toLowerCase().includes(q) && !p.path.toLowerCase().includes(q)) return false;
+            }
+            if (tierFilter && p.tier !== tierFilter) return false;
             return true;
         });
         r.sort((a, b) => {
@@ -49,12 +62,12 @@ export default function TablePage({ data }: { data: StatusData }) {
         <div>
             <PageHeader title="Table View" />
             <FilterBar
-                search={{ value: search, onChange: setSearch }}
+                search={{ value: search, onChange: (v: string) => setFilter('search', v) }}
                 resultCount={filtered.length}
                 filters={
                     <SearchableSelect
-                        options={[{ value: 'all', label: 'All Tiers' }, ...TIER_ORDER.map(t => ({ value: t, label: `${TIER_CONFIG[t].emoji} ${TIER_CONFIG[t].label}` }))]}
-                        value={tierFilter} onChange={setTierFilter} placeholder="Tier" clearable={false} width="150px" />
+                        options={TIER_ORDER.map(t => ({ value: t, label: `${TIER_CONFIG[t].emoji} ${TIER_CONFIG[t].label}` }))}
+                        value={tierFilter} onChange={(v: string) => setFilter('tier', v)} placeholder="All Tiers" width="150px" />
                 }
             />
             <div className="project-table-wrapper">

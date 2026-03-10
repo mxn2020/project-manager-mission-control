@@ -88,7 +88,7 @@ export default function TasksPage() {
     });
 
     const handleCreate = async () => {
-        if (!newTitle.trim() || !newProject.trim() || !orgId) return;
+        if (!newTitle.trim() || !orgId) return;
 
         // Find if projectPath exists in projectData to get projectId
         const projMatch = projectData?.projects.find(p => p.path === newProject.trim());
@@ -96,7 +96,7 @@ export default function TasksPage() {
         await createTask({
             orgId,
             title: newTitle.trim(),
-            projectPath: newProject.trim(),
+            projectPath: newProject.trim() || '(general)',
             projectId: projMatch?.id as any,
             priority: newPriority,
             effort: newEffort,
@@ -377,7 +377,7 @@ export default function TasksPage() {
                         />
                         <div className="flex-1" />
                         <button className="btn btn-secondary text-base" onClick={() => setShowCreate(false)}>Cancel</button>
-                        <button className="btn btn-primary text-base" onClick={handleCreate} disabled={!newTitle.trim() || !newProject.trim()}>Create</button>
+                        <button className="btn btn-primary text-base" onClick={handleCreate} disabled={!newTitle.trim()}>Create</button>
                     </div>
                 </div>
             )}
@@ -401,7 +401,7 @@ export default function TasksPage() {
                     onChange={(v) => setUrlFilter('project', v)}
                     placeholder="All Projects"
                     grouped
-                    width="200px"
+                    width={isMobile ? '100%' : '350px'}
                 />
                 <span className="text-base text-tertiary" style={{ marginLeft: 'auto' }}>{filtered.length} tasks</span>
             </div>

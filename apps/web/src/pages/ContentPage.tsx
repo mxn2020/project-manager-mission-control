@@ -70,6 +70,7 @@ export default function ContentPage() {
     const handleCreate = async () => {
         if (!newProject.trim() || !newTag.trim() || !orgId) return;
         const planId = await createPlan({
+            orgId,
             projectPath: newProject.trim(),
             releaseTag: newTag.trim(),
             releaseTitle: newTitle.trim() || undefined,

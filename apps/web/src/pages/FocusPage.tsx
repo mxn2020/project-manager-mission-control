@@ -112,7 +112,7 @@ export default function FocusPage({ data, onRefresh }: { data: StatusData; onRef
 
     const SAVE_DEBOUNCE = 1500;
 
-    const updateProject = useMutation(api.projects.update);
+    const updateProject = useMutation(api.projects.updateByPath);
 
     const flushSaves = useCallback(async () => {
         const changes = [...pendingRef.current];
@@ -124,7 +124,7 @@ export default function FocusPage({ data, onRefresh }: { data: StatusData; onRef
             for (const c of changes) byProject.set(c.projectPath, c);
             for (const [, change] of byProject) {
                 await updateProject({
-                    projectId: change.projectPath as any,
+                    path: change.projectPath,
                     [change.field]: change.newValue,
                 });
             }

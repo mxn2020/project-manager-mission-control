@@ -5,19 +5,24 @@ import { v } from "convex/values";
 
 export const listPlans = query({
     args: {
+        orgId: v.optional(v.id("organizations")),
         status: v.optional(v.string()),
         projectPath: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
         let plans;
 
-        if (args.status) {
+        if (args.orgId && args.status) {
             plans = await ctx.db.query("contentPlans")
-                .withIndex("by_status", (qb) => qb.eq("status", args.status!))
+                .withIndex("by_org_status", (qb) => qb.eq("orgId", args.orgId!).eq("status", args.status!))
                 .collect();
-        } else if (args.projectPath) {
+        } else if (args.orgId && args.projectPath) {
             plans = await ctx.db.query("contentPlans")
-                .withIndex("by_project", (qb) => qb.eq("projectPath", args.projectPath!))
+                .withIndex("by_org_project", (qb) => qb.eq("orgId", args.orgId!).eq("projectPath", args.projectPath!))
+                .collect();
+        } else if (args.orgId) {
+            plans = await ctx.db.query("contentPlans")
+                .withIndex("by_org", (qb) => qb.eq("orgId", args.orgId!))
                 .collect();
         } else {
             plans = await ctx.db.query("contentPlans").collect();
@@ -42,6 +47,7 @@ export const getPlan = query({
 
 export const createPlan = mutation({
     args: {
+        orgId: v.id("organizations"),
         projectPath: v.string(),
         releaseTag: v.string(),
         releaseTitle: v.optional(v.string()),
@@ -51,6 +57,7 @@ export const createPlan = mutation({
     handler: async (ctx, args) => {
         const now = Date.now();
         return await ctx.db.insert("contentPlans", {
+            orgId: args.orgId,
             projectPath: args.projectPath,
             releaseTag: args.releaseTag,
             releaseTitle: args.releaseTitle,

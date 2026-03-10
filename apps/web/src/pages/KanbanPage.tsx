@@ -7,6 +7,7 @@ import { useDimensions } from '../hooks/useDimensions';
 import { useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { PageHeader, Badge, GripIcon, DimensionPicker } from '../components/ui';
+import { useUrlFilters } from '../hooks/useUrlFilters';
 
 /** Pending change queued for batch save */
 interface PendingChange {
@@ -20,7 +21,9 @@ const SAVE_DEBOUNCE_MS = 1500;
 export default function KanbanPage({ data, onRefresh }: { data: StatusData; onRefresh: () => Promise<void> }) {
     const navigate = useNavigate();
     const { dimensions } = useDimensions(data.projects);
-    const [columnDimension, setColumnDimension] = useState('tier');
+    const [urlFilters, setUrlFilter] = useUrlFilters({ columns: localStorage.getItem('mc-kanban-dim') || 'tier' });
+    const columnDimension = urlFilters.columns || 'tier';
+    const setColumnDimension = (v: string) => { setUrlFilter('columns', v); localStorage.setItem('mc-kanban-dim', v); };
     const [dragOverCol, setDragOverCol] = useState<string | null>(null);
 
     // ── Optimistic state: local overrides for project fields ─────────────
@@ -47,7 +50,7 @@ export default function KanbanPage({ data, onRefresh }: { data: StatusData; onRe
         return groupByDimension(projects, activeDimension);
     }, [projects, activeDimension]);
 
-    const updateProject = useMutation(api.projects.update);
+    const updateProject = useMutation(api.projects.updateByPath);
 
     // ── Debounced batch save ─────────────────────────────────────────────
     const flushSaves = useCallback(async () => {
@@ -65,7 +68,7 @@ export default function KanbanPage({ data, onRefresh }: { data: StatusData; onRe
             // Save each project
             for (const [, change] of byProject) {
                 await updateProject({
-                    projectId: change.projectPath as any,
+                    path: change.projectPath,
                     [change.field]: change.newValue,
                 });
             }
