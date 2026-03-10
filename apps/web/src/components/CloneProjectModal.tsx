@@ -238,10 +238,20 @@ export default function CloneProjectModal({ onClose, onCreated, lanes }: ClonePr
                             <label className="form-label">Priority</label>
                             <SearchableSelect options={priorityOptions} value={priority} onChange={setPriority} placeholder="Priority" clearable={false} />
                         </div>
-                        <label className="flex-row gap-6 text-base" style={{ cursor: 'pointer', padding: '8px 0' }}>
-                            <input type="checkbox" checked={isPrivate} onChange={e => setIsPrivate(e.target.checked)} />
-                            Private
-                        </label>
+                        <button
+                            type="button"
+                            onClick={() => setIsPrivate(!isPrivate)}
+                            style={{
+                                display: 'flex', alignItems: 'center', gap: 6,
+                                padding: '6px 12px', borderRadius: 6, cursor: 'pointer',
+                                background: isPrivate ? 'var(--accent)' : 'var(--bg-primary)',
+                                color: isPrivate ? '#fff' : 'var(--text-secondary)',
+                                border: `1px solid ${isPrivate ? 'var(--accent)' : 'var(--border)'}`,
+                                fontSize: 13, fontWeight: 500, transition: 'all 0.2s ease',
+                            }}
+                        >
+                            {isPrivate ? '🔒' : '🌍'} {isPrivate ? 'Private' : 'Public'}
+                        </button>
                     </div>
 
                     {/* Repo Name */}
@@ -278,28 +288,44 @@ export default function CloneProjectModal({ onClose, onCreated, lanes }: ClonePr
                     </div>
 
                     {/* Deploy to Vercel */}
-                    <div style={{
-                        padding: '12px 16px', borderRadius: 8,
-                        background: 'var(--bg-primary)', border: '1px solid var(--border)',
-                    }}>
-                        <label className="flex-row gap-8" style={{ cursor: vercelConnection?.connected ? 'pointer' : 'not-allowed', opacity: vercelConnection?.connected ? 1 : 0.5 }}>
-                            <input
-                                type="checkbox"
-                                checked={deployToVercel}
-                                onChange={e => setDeployToVercel(e.target.checked)}
-                                disabled={!vercelConnection?.connected}
-                            />
-                            <div>
-                                <div className="text-base font-semibold">▲ Deploy to Vercel</div>
-                                {vercelConnection?.connected ? (
-                                    <div className="text-xs text-tertiary">Creates a Vercel project and deploys the preview branch</div>
-                                ) : (
-                                    <div className="text-xs text-tertiary">
-                                        <a href="/integrations" style={{ color: 'var(--accent)' }}>Connect Vercel</a> to enable deployments
-                                    </div>
-                                )}
-                            </div>
-                        </label>
+                    <div
+                        onClick={() => vercelConnection?.connected && setDeployToVercel(!deployToVercel)}
+                        style={{
+                            padding: '14px 16px', borderRadius: 10,
+                            background: deployToVercel ? 'rgba(99, 102, 241, 0.08)' : 'var(--bg-primary)',
+                            border: `1px solid ${deployToVercel ? 'var(--accent)' : 'var(--border)'}`,
+                            cursor: vercelConnection?.connected ? 'pointer' : 'default',
+                            opacity: vercelConnection?.connected ? 1 : 0.5,
+                            display: 'flex', alignItems: 'center', gap: 12,
+                            transition: 'all 0.2s ease',
+                        }}
+                    >
+                        {/* Toggle Switch */}
+                        <div style={{
+                            width: 44, height: 24, borderRadius: 12,
+                            background: deployToVercel ? 'var(--accent)' : 'var(--bg-tertiary, #3f3f46)',
+                            position: 'relative', flexShrink: 0,
+                            transition: 'background 0.2s ease',
+                        }}>
+                            <div style={{
+                                width: 18, height: 18, borderRadius: '50%',
+                                background: '#fff',
+                                position: 'absolute', top: 3,
+                                left: deployToVercel ? 23 : 3,
+                                transition: 'left 0.2s ease',
+                                boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+                            }} />
+                        </div>
+                        <div style={{ flex: 1 }}>
+                            <div className="text-base font-semibold">▲ Deploy to Vercel</div>
+                            {vercelConnection?.connected ? (
+                                <div className="text-xs text-tertiary" style={{ marginTop: 2 }}>Creates a Vercel project and deploys the preview branch</div>
+                            ) : (
+                                <div className="text-xs text-tertiary" style={{ marginTop: 2 }}>
+                                    <a href="/integrations" style={{ color: 'var(--accent)' }} onClick={e => e.stopPropagation()}>Connect Vercel</a> to enable deployments
+                                </div>
+                            )}
+                        </div>
                     </div>
 
                     {/* Error */}
