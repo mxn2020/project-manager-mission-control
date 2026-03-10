@@ -161,8 +161,20 @@ export const createProject = action({
             throw new Error(`Failed to create Vercel project (${res.status}): ${text}`);
         }
 
-        const project = (await res.json()) as { id: string; name: string };
-        return { id: project.id, name: project.name };
+        const project = (await res.json()) as {
+            id: string;
+            name: string;
+            link?: { repoId?: number; type?: string; repo?: string };
+        };
+
+        // When a project is linked to GitHub, Vercel auto-deploys on push.
+        // The link.repoId is the numeric GitHub repo ID used for manual deployments.
+        return {
+            id: project.id,
+            name: project.name,
+            repoId: project.link?.repoId,
+            linked: !!project.link,
+        };
     },
 });
 
@@ -213,15 +225,27 @@ export const deploy = action({
         const { token, teamId } = await ctx.runQuery(internal.vercel.getOrgVercelToken, { orgId: args.orgId }) as { token?: string; teamId?: string };
         if (!token) throw new Error("No Vercel token.");
 
-        const body: Record<string, unknown> = {
-            name: args.vercelProjectId,
-            target: "production",
+        // Fetch the project to get the linked Git repo's numeric repoId
+        const projectRes = await vercelFetch(`/v9/projects/${args.vercelProjectId}`, token, teamId);
+        if (!projectRes.ok) {
+            throw new Error(`Could not find Vercel project "${args.vercelProjectId}"`);
+        }
+        const projectData = await projectRes.json() as {
+            name: string;
+            link?: { repoId?: number; type?: string };
         };
 
-        if (args.gitRepo) {
+        const body: Record<string, unknown> = {
+            name: projectData.name,
+            project: args.vercelProjectId,
+            target: args.branch && args.branch !== "main" ? "preview" : "production",
+        };
+
+        // Per Vercel docs, gitSource requires numeric repoId from the project link
+        if (projectData.link?.repoId) {
             body.gitSource = {
-                type: "github",
-                repo: args.gitRepo,
+                type: projectData.link.type || "github",
+                repoId: projectData.link.repoId,
                 ref: args.branch || "main",
             };
         }
