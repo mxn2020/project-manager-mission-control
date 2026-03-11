@@ -5,6 +5,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useProjects } from '../hooks/useProjects';
 import type { Id } from '../lib/types';
 import { getErrorMessage } from '../lib/types';
+import { PageHeader, StatCard, FilterBar, Card, EmptyState } from '../components/ui';
 import toast from 'react-hot-toast';
 
 // ─── Types ───────────────────────────────────────────────────────────────
@@ -231,7 +232,7 @@ function ConfirmDeleteDialog({ title, itemName, onConfirm, onCancel, loading }: 
 // ─── GitHub Actions Panel ────────────────────────────────────────────────
 
 function GitHubActionsPanel({ project, orgId }: {
-    project: { id: string; name: string; repo: string | null };
+    project: { id: Id<"projects">; name: string; repo: string | null };
     orgId: Id<"organizations">;
 }) {
     const [showLinkInput, setShowLinkInput] = useState(false);
@@ -242,7 +243,7 @@ function GitHubActionsPanel({ project, orgId }: {
     const [newRepoPrivate, setNewRepoPrivate] = useState(false);
     const [loading, setLoading] = useState(false);
 
-    const linkedRepo = useQuery(api.github.getByProject, { projectId: project.id as Id<"projects"> });
+    const linkedRepo = useQuery(api.github.getByProject, { projectId: project.id });
     const linkRepoMut = useMutation(api.github.linkRepo);
     const unlinkRepoMut = useMutation(api.github.unlinkRepo);
     const updateProject = useMutation(api.projects.update);
@@ -259,10 +260,10 @@ function GitHubActionsPanel({ project, orgId }: {
                 orgId, repoUrl,
                 repoFullName: fullName,
                 defaultBranch: 'main',
-                projectId: project.id as Id<"projects">,
+                projectId: project.id,
             });
             await updateProject({
-                projectId: project.id as Id<"projects">,
+                projectId: project.id,
                 repo: repoUrl,
             });
             toast.success('Repo linked');
@@ -281,10 +282,10 @@ function GitHubActionsPanel({ project, orgId }: {
                 orgId,
                 name: newRepoName,
                 isPrivate: newRepoPrivate,
-                projectId: project.id as Id<"projects">,
+                projectId: project.id,
             });
             await updateProject({
-                projectId: project.id as Id<"projects">,
+                projectId: project.id,
                 repo: result.repoUrl,
             });
             toast.success(`Created ${result.repoFullName}`);
@@ -301,7 +302,7 @@ function GitHubActionsPanel({ project, orgId }: {
         try {
             await unlinkRepoMut({ repoId: linkedRepo._id });
             await updateProject({
-                projectId: project.id as Id<"projects">,
+                projectId: project.id,
                 repo: undefined,
             });
             toast.success('Repo unlinked');
@@ -320,7 +321,7 @@ function GitHubActionsPanel({ project, orgId }: {
                 confirmName,
             });
             await updateProject({
-                projectId: project.id as Id<"projects">,
+                projectId: project.id,
                 repo: undefined,
             });
             toast.success('Repo deleted');
@@ -458,7 +459,7 @@ function GitHubActionsPanel({ project, orgId }: {
 // ─── Vercel Actions Panel ────────────────────────────────────────────────
 
 function VercelActionsPanel({ project, orgId }: {
-    project: { id: string; name: string; vercelProjectId?: string; repo: string | null };
+    project: { id: Id<"projects">; name: string; vercelProjectId?: string; repo: string | null };
     orgId: Id<"organizations">;
 }) {
     const [showLinkInput, setShowLinkInput] = useState(false);
@@ -486,7 +487,7 @@ function VercelActionsPanel({ project, orgId }: {
     const handleLink = async () => {
         setLoading(true);
         try {
-            await linkVercel({ projectId: project.id as Id<"projects">, vercelProjectId: vercelProjId });
+            await linkVercel({ projectId: project.id, vercelProjectId: vercelProjId });
             toast.success('Vercel project linked');
             setShowLinkInput(false);
         } catch (err) {
@@ -503,7 +504,7 @@ function VercelActionsPanel({ project, orgId }: {
                 orgId, name: newProjName,
                 gitRepo: repoFullName || undefined,
             });
-            await linkVercel({ projectId: project.id as Id<"projects">, vercelProjectId: result.id });
+            await linkVercel({ projectId: project.id, vercelProjectId: result.id });
             toast.success(`Created Vercel project: ${result.name}`);
             setShowCreateForm(false);
         } catch (err) {
@@ -515,7 +516,7 @@ function VercelActionsPanel({ project, orgId }: {
     const handleUnlink = async () => {
         setLoading(true);
         try {
-            await unlinkVercel({ projectId: project.id as Id<"projects"> });
+            await unlinkVercel({ projectId: project.id });
             toast.success('Vercel project unlinked');
         } catch (err) {
             toast.error(getErrorMessage(err));
@@ -561,7 +562,7 @@ function VercelActionsPanel({ project, orgId }: {
             await deleteVercelProject({
                 orgId, vercelProjectId: project.vercelProjectId, confirmName,
             });
-            await unlinkVercel({ projectId: project.id as Id<"projects"> });
+            await unlinkVercel({ projectId: project.id });
             toast.success('Vercel project deleted');
             setShowDeleteConfirm(false);
         } catch (err) {
@@ -722,7 +723,7 @@ function VercelActionsPanel({ project, orgId }: {
 
 function ProjectComplianceCard({ project, scan, orgId, onScan }: {
     project: {
-        id: string; name: string; tier: string; lane: string;
+        id: Id<"projects">; name: string; tier: string; lane: string;
         repo: string | null; deploy_url: string | null;
         project_type?: string; vercelProjectId?: string;
         projectCategory?: string;
@@ -969,12 +970,12 @@ export default function CompliancePage() {
             const results = await Promise.allSettled(
                 batch.map(async (p) => {
                     try {
-                        await scanProject({ orgId: typedOrgId, projectId: p.id as Id<"projects"> });
+                        await scanProject({ orgId: typedOrgId, projectId: p.id });
                     } catch {
                         // Retry once after 1s delay
                         await new Promise(r => setTimeout(r, 1000));
                         try {
-                            await scanProject({ orgId: typedOrgId, projectId: p.id as Id<"projects"> });
+                            await scanProject({ orgId: typedOrgId, projectId: p.id });
                         } catch {
                             throw new Error(`Failed: ${p.name}`);
                         }
@@ -992,11 +993,11 @@ export default function CompliancePage() {
         toast.success(`Scanned ${projectList.length} projects${failed > 0 ? ` (${failed} failed)` : ''}`);
     };
 
-    const handleScanProject = async (projectId: string) => {
+    const handleScanProject = async (projectId: Id<"projects">) => {
         if (!typedOrgId || !projectId) return;
         setScanningProject(projectId);
         try {
-            const result = await scanProject({ orgId: typedOrgId, projectId: projectId as Id<"projects"> });
+            const result = await scanProject({ orgId: typedOrgId, projectId: projectId });
             toast.success(`Score: ${result.score}% (${result.passCount}/${result.totalCount})`);
         } catch (err) {
             toast.error(getErrorMessage(err));
@@ -1007,41 +1008,86 @@ export default function CompliancePage() {
     // Summary stats
     const avgScore = summary?.avgScore ?? 0;
     const perfectCount = summary?.perfectCount ?? 0;
-    const totalScanned = summary?.totalProjects ?? 0;
+    const totalScanned = summary?.totalScanned ?? 0;
     const topFailures = summary?.metricFailures
         ? Object.entries(summary.metricFailures).sort((a, b) => b[1] - a[1]).slice(0, 5)
         : [];
 
+    // CSV report generator
+    const handleDownloadReport = () => {
+        if (!scans || scans.length === 0) {
+            toast.error('No scan data to export. Run a full scan first.');
+            return;
+        }
+        // Build project name lookup
+        const projMap = new Map(projects.map(p => [p.id, p]));
+        // Collect all metric IDs from scans
+        const allMetricIds = new Set<string>();
+        for (const scan of scans) {
+            try {
+                const res = JSON.parse(scan.results) as Record<string, MetricResult>;
+                Object.keys(res).forEach(k => allMetricIds.add(k));
+            } catch { /* skip */ }
+        }
+        const metricCols = [...allMetricIds].sort();
+        // CSV header
+        const header = ['Project', 'Category', 'Lane', 'Tier', 'Score', 'Pass', 'Total', 'Scanned At', ...metricCols];
+        const rows: string[][] = [];
+        for (const scan of scans) {
+            const proj = projMap.get(scan.projectId);
+            let results: Record<string, MetricResult> = {};
+            try { results = JSON.parse(scan.results); } catch { /* skip */ }
+            const row = [
+                proj?.name ?? scan.projectId,
+                proj?.projectCategory ?? '',
+                proj?.lane ?? '',
+                proj?.tier ?? '',
+                String(scan.score),
+                String(scan.passCount),
+                String(scan.totalCount),
+                new Date(scan.scannedAt).toISOString(),
+                ...metricCols.map(m => results[m] ? (results[m].pass ? '✅' : '❌') : '—'),
+            ];
+            rows.push(row);
+        }
+        // Sort by score desc
+        rows.sort((a, b) => Number(b[4]) - Number(a[4]));
+        const csvContent = [header, ...rows].map(r => r.map(c => `"${c.replace(/"/g, '""')}"`).join(',')).join('\n');
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `compliance-report-${new Date().toISOString().slice(0, 10)}.csv`;
+        link.click();
+        URL.revokeObjectURL(url);
+        toast.success(`Exported ${rows.length} projects`);
+    };
+
     return (
         <div>
             {/* ── Header ─────────────────────────────────────────── */}
-            <div className="page-header">
-                <div className="flex-between">
-                    <div>
-                        <h1 className="page-title">📏 Compliance Gap Analysis</h1>
-                        <p className="page-description">
-                            Scan all projects against 60 compliance metrics. Goal: 100% across the board.
-                        </p>
-                    </div>
-                    <div className="flex-row gap-8">
-                        <button
-                            className="btn btn-primary"
-                            onClick={handleScanAll}
-                            disabled={scanning}
-                            style={{ fontWeight: 600 }}
-                        >
-                            {scanning ? '⏳ Scanning All...' : '🔍 Run Full Scan'}
+            <PageHeader
+                title="📏 Compliance Gap Analysis"
+                description={`Scan all projects against compliance metrics. Goal: 100% across the board.`}
+                actions={<>
+                    {scans && scans.length > 0 && (
+                        <button className="btn btn-secondary" onClick={handleDownloadReport}>
+                            📥 Download Report
                         </button>
-                    </div>
-                </div>
-            </div>
+                    )}
+                    <button
+                        className="btn btn-primary"
+                        onClick={handleScanAll}
+                        disabled={scanning}
+                    >
+                        {scanning ? '⏳ Scanning All...' : '🔍 Run Full Scan'}
+                    </button>
+                </>}
+            />
 
             {/* ── Scan Progress Bar ────────────────────────────── */}
             {scanning && scanTotal > 0 && (
-                <div className="mb-20" style={{
-                    padding: '16px 20px', borderRadius: 12,
-                    background: 'var(--bg-secondary)', border: '1px solid var(--border)',
-                }}>
+                <Card style={{ marginBottom: 20 }}>
                     <div className="flex-between mb-8">
                         <span className="font-semibold text-md">
                             🔍 Scanning {scanProgress}/{scanTotal} projects...
@@ -1065,48 +1111,41 @@ export default function CompliancePage() {
                     <div className="text-xs text-tertiary mt-4">
                         Running {BATCH_SIZE} scans in parallel with automatic retry
                     </div>
-                </div>
+                </Card>
             )}
 
             {/* ── Summary Grid ───────────────────────────────────── */}
             <div className="grid-auto gap-12 mb-24">
-                <div className="stat-card" style={{ borderLeft: `3px solid ${scoreColor(avgScore)}` }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <StatCard
+                    label="Average Score"
+                    value={<div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                         <ScoreBadge score={avgScore} size="lg" />
-                        <div>
-                            <div className="stat-label">Average Score</div>
-                            <div className="text-sm text-tertiary">{totalScanned} projects scanned</div>
-                        </div>
-                    </div>
-                </div>
-                <div className="stat-card">
-                    <div className="stat-value" style={{ color: '#22c55e' }}>{perfectCount}</div>
-                    <div className="stat-label">At 100%</div>
-                    <div className="text-xs text-tertiary">
-                        {totalScanned > 0 ? Math.round((perfectCount / totalScanned) * 100) : 0}% of total
-                    </div>
-                </div>
-                <div className="stat-card">
-                    <div className="stat-value">{projects.length}</div>
-                    <div className="stat-label">Total Projects</div>
-                    <div className="text-xs text-tertiary">
-                        {projects.length - totalScanned} unscanned
-                    </div>
-                </div>
-                <div className="stat-card">
-                    <div className="stat-value" style={{ color: '#ef4444' }}>60</div>
-                    <div className="stat-label">Metrics Tracked</div>
-                    <div className="text-xs text-tertiary">11 categories</div>
-                </div>
+                    </div>}
+                    sub={`${totalScanned} of ${projects.length} projects scanned`}
+                    color={scoreColor(avgScore)}
+                />
+                <StatCard
+                    label="At 100%"
+                    value={perfectCount}
+                    sub={`${totalScanned > 0 ? Math.round((perfectCount / totalScanned) * 100) : 0}% of scanned`}
+                    color="#22c55e"
+                />
+                <StatCard
+                    label="Total Projects"
+                    value={projects.length}
+                    sub={`${projects.length - totalScanned} unscanned`}
+                />
+                <StatCard
+                    label="Metrics Tracked"
+                    value={61}
+                    sub="11 categories"
+                    color="#818cf8"
+                />
             </div>
 
             {/* ── Top Failures ────────────────────────────────────── */}
             {topFailures.length > 0 && (
-                <div className="mb-24" style={{
-                    padding: 16, borderRadius: 10,
-                    background: 'rgba(239,68,68,0.05)',
-                    border: '1px solid rgba(239,68,68,0.15)',
-                }}>
+                <Card style={{ marginBottom: 24, border: '1px solid rgba(239,68,68,0.15)' }}>
                     <div className="text-sm font-semibold" style={{ marginBottom: 8, color: '#ef4444' }}>
                         🔥 Most Common Failures
                     </div>
@@ -1128,22 +1167,17 @@ export default function CompliancePage() {
                             </span>
                         ))}
                     </div>
-                </div>
+                </Card>
             )}
 
             {/* ── Category Heatmap ────────────────────────────────── */}
             {totalScanned > 0 && (
-                <div className="mb-24" style={{
-                    padding: 16, borderRadius: 10,
-                    background: 'var(--bg-secondary)',
-                    border: '1px solid var(--border)',
-                }}>
+                <Card style={{ marginBottom: 24 }}>
                     <div className="text-sm font-semibold" style={{ marginBottom: 12 }}>
                         📊 Category Overview
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 8 }}>
                         {Object.entries(CATEGORIES).map(([cat, metrics]) => {
-                            // Calculate overall pass rate for this category
                             let totalPass = 0;
                             let totalChecked = 0;
                             scans?.forEach(scan => {
@@ -1178,51 +1212,41 @@ export default function CompliancePage() {
                             );
                         })}
                     </div>
-                </div>
+                </Card>
             )}
 
             {/* ── Filters ─────────────────────────────────────────── */}
-            <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
-                <input
-                    type="text" value={searchQuery}
-                    onChange={e => setSearchQuery(e.target.value)}
-                    placeholder="🔎 Search projects..."
-                    style={{
-                        padding: '7px 12px', borderRadius: 8,
-                        border: '1px solid var(--border)', background: 'var(--bg-secondary)',
-                        color: 'var(--text-primary)', fontSize: 13, minWidth: 200,
-                    }}
-                />
-                <select
-                    value={filterLane} onChange={e => setFilterLane(e.target.value)}
-                    style={{
-                        padding: '7px 12px', borderRadius: 8,
-                        border: '1px solid var(--border)', background: 'var(--bg-secondary)',
-                        color: 'var(--text-primary)', fontSize: 13,
-                    }}
-                >
-                    <option value="">All Lanes</option>
-                    {lanes.map(l => <option key={l} value={l}>{l}</option>)}
-                </select>
-                <select
-                    value={filterScore} onChange={e => setFilterScore(e.target.value)}
-                    style={{
-                        padding: '7px 12px', borderRadius: 8,
-                        border: '1px solid var(--border)', background: 'var(--bg-secondary)',
-                        color: 'var(--text-primary)', fontSize: 13,
-                    }}
-                >
-                    <option value="">All Scores</option>
-                    <option value="100">💯 100%</option>
-                    <option value="70-99">🟢 70–99%</option>
-                    <option value="50-69">🟡 50–69%</option>
-                    <option value="<50">🔴 Below 50%</option>
-                    <option value="unscanned">⬜ Unscanned</option>
-                </select>
-                <span className="text-sm text-tertiary">
-                    {filteredProjects.length} of {projects.length} projects
-                </span>
-            </div>
+            <FilterBar
+                search={{
+                    value: searchQuery,
+                    onChange: setSearchQuery,
+                    placeholder: '🔎 Search projects...',
+                }}
+                filters={<>
+                    <select
+                        value={filterLane} onChange={e => setFilterLane(e.target.value)}
+                        className="search-input"
+                        style={{ minWidth: 120 }}
+                    >
+                        <option value="">All Lanes</option>
+                        {lanes.map(l => <option key={l} value={l}>{l}</option>)}
+                    </select>
+                    <select
+                        value={filterScore} onChange={e => setFilterScore(e.target.value)}
+                        className="search-input"
+                        style={{ minWidth: 120 }}
+                    >
+                        <option value="">All Scores</option>
+                        <option value="100">💯 100%</option>
+                        <option value="70-99">🟢 70–99%</option>
+                        <option value="50-69">🟡 50–69%</option>
+                        <option value="<50">🔴 Below 50%</option>
+                        <option value="unscanned">⬜ Unscanned</option>
+                    </select>
+                </>}
+                resultCount={filteredProjects.length}
+                resultLabel={`of ${projects.length} projects`}
+            />
 
             {/* ── Project List ─────────────────────────────────────── */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -1251,12 +1275,10 @@ export default function CompliancePage() {
             </div>
 
             {filteredProjects.length === 0 && (
-                <div style={{
-                    textAlign: 'center', padding: 40,
-                    color: 'var(--text-tertiary)', fontSize: 14,
-                }}>
-                    {projects.length === 0 ? 'No projects found. Create a project first.' : 'No projects match your filters.'}
-                </div>
+                <EmptyState
+                    icon={projects.length === 0 ? '📦' : '🔎'}
+                    message={projects.length === 0 ? 'No projects found. Create a project first.' : 'No projects match your filters.'}
+                />
             )}
         </div>
     );

@@ -607,14 +607,22 @@ export const getLatestScan = query({
 export const listScans = query({
     args: { orgId: v.id("organizations") },
     handler: async (ctx, args) => {
+        // Load active project IDs to filter out orphaned scans
+        const projects = await ctx.db
+            .query("projects")
+            .withIndex("by_org", (idx) => idx.eq("orgId", args.orgId))
+            .collect();
+        const activeIds = new Set(projects.map(p => p._id as string));
+
         const scans = await ctx.db
             .query("complianceScans")
             .withIndex("by_org", (idx) => idx.eq("orgId", args.orgId))
             .collect();
 
-        // Keep only the latest scan per project
+        // Keep only the latest scan per ACTIVE project
         const latest = new Map<string, typeof scans[number]>();
         for (const scan of scans) {
+            if (!activeIds.has(scan.projectId as string)) continue;
             const key = scan.projectId;
             const existing = latest.get(key);
             if (!existing || scan.scannedAt > existing.scannedAt) {
@@ -628,14 +636,22 @@ export const listScans = query({
 export const getOrgComplianceSummary = query({
     args: { orgId: v.id("organizations") },
     handler: async (ctx, args) => {
+        // Load active project IDs to filter out orphaned scans
+        const projects = await ctx.db
+            .query("projects")
+            .withIndex("by_org", (idx) => idx.eq("orgId", args.orgId))
+            .collect();
+        const activeIds = new Set(projects.map(p => p._id as string));
+
         const scans = await ctx.db
             .query("complianceScans")
             .withIndex("by_org", (idx) => idx.eq("orgId", args.orgId))
             .collect();
 
-        // Keep only latest per project
+        // Keep only latest per ACTIVE project
         const latest = new Map<string, typeof scans[number]>();
         for (const scan of scans) {
+            if (!activeIds.has(scan.projectId as string)) continue;
             const key = scan.projectId;
             const existing = latest.get(key);
             if (!existing || scan.scannedAt > existing.scannedAt) {
@@ -644,9 +660,10 @@ export const getOrgComplianceSummary = query({
         }
 
         const latestScans = Array.from(latest.values());
-        const totalProjects = latestScans.length;
-        const avgScore = totalProjects > 0
-            ? Math.round(latestScans.reduce((s, sc) => s + sc.score, 0) / totalProjects)
+        const totalScanned = latestScans.length;
+        const totalProjects = projects.length;
+        const avgScore = totalScanned > 0
+            ? Math.round(latestScans.reduce((s, sc) => s + sc.score, 0) / totalScanned)
             : 0;
         const perfect = latestScans.filter(s => s.score === 100).length;
 
@@ -665,12 +682,40 @@ export const getOrgComplianceSummary = query({
 
         return {
             totalProjects,
+            totalScanned,
             avgScore,
             perfectCount: perfect,
             metricFailures,
             categories: CATEGORIES,
             projectCategories: PROJECT_CATEGORIES,
         };
+    },
+});
+
+// ─── Cleanup Orphaned Scans ─────────────────────────────────────────────
+
+export const cleanupOrphanedScans = internalMutation({
+    args: { orgId: v.id("organizations") },
+    handler: async (ctx, args) => {
+        const projects = await ctx.db
+            .query("projects")
+            .withIndex("by_org", (idx) => idx.eq("orgId", args.orgId))
+            .collect();
+        const activeIds = new Set(projects.map(p => p._id as string));
+
+        const scans = await ctx.db
+            .query("complianceScans")
+            .withIndex("by_org", (idx) => idx.eq("orgId", args.orgId))
+            .collect();
+
+        let deleted = 0;
+        for (const scan of scans) {
+            if (!activeIds.has(scan.projectId as string)) {
+                await ctx.db.delete(scan._id);
+                deleted++;
+            }
+        }
+        return { deleted, total: scans.length };
     },
 });
 
