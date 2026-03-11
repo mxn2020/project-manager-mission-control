@@ -168,6 +168,7 @@ export const create = mutation({
         deployUrl: v.optional(v.string()),
         tags: v.optional(v.array(v.string())),
         notes: v.optional(v.string()),
+        projectCategory: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
         const now = Date.now();
@@ -189,6 +190,7 @@ export const create = mutation({
             syncStatus: "synced",
             lastSyncedAt: now,
             projectScope: "main",
+            projectCategory: args.projectCategory,
             createdAt: now,
             updatedAt: now,
         });
@@ -213,6 +215,7 @@ export const update = mutation({
         notes: v.optional(v.string()),
         healthScore: v.optional(v.number()),
         syncStatus: v.optional(v.string()),
+        projectCategory: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
         const { projectId, ...updates } = args;

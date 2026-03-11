@@ -52,7 +52,20 @@ const CATEGORY_ICONS: Record<string, string> = {
     "App Quality": "💎",
 };
 
-// ─── Helpers ─────────────────────────────────────────────────────────────
+const CATEGORY_LABELS: Record<string, string> = {
+    'webapp': '🌐 Web App',
+    'fullstack-app': '🏗️ Full-Stack',
+    'monorepo-app': '📦 Monorepo',
+    'oss-tool': '🔓 OSS Tool',
+    'ui-package': '🎨 UI Pkg',
+    'library': '📚 Library',
+    'boilerplate': '🧩 Boilerplate',
+    'minion-toolbox': '🤖 Toolbox',
+    'backend-service': '⚙️ Backend',
+    'client-project': '💼 Client',
+};
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function scoreColor(score: number): string {
     if (score >= 90) return '#22c55e';
@@ -712,6 +725,7 @@ function ProjectComplianceCard({ project, scan, orgId, onScan }: {
         id: string; name: string; tier: string; lane: string;
         repo: string | null; deploy_url: string | null;
         project_type?: string; vercelProjectId?: string;
+        projectCategory?: string;
     };
     scan: ScanData | undefined;
     orgId: Id<"organizations">;
@@ -762,6 +776,13 @@ function ProjectComplianceCard({ project, scan, orgId, onScan }: {
                             background: 'var(--bg-primary)', color: 'var(--text-tertiary)',
                         }}>{project.tier}</span>
                         <span className="text-xs text-tertiary">{project.lane}</span>
+                        {project.projectCategory && (
+                            <span className="text-xs" style={{
+                                padding: '1px 6px', borderRadius: 4,
+                                background: 'rgba(99,102,241,0.12)', color: 'var(--accent)',
+                                fontWeight: 500,
+                            }}>{CATEGORY_LABELS[project.projectCategory] || project.projectCategory}</span>
+                        )}
                     </div>
                     {hasResults && (
                         <div style={{ marginTop: 4 }}>
@@ -1217,6 +1238,7 @@ export default function CompliancePage() {
                                 deploy_url: p.deploy_url,
                                 project_type: (p as unknown as { project_type?: string }).project_type,
                                 vercelProjectId: (p as unknown as { vercelProjectId?: string }).vercelProjectId,
+                                projectCategory: (p as unknown as { projectCategory?: string }).projectCategory,
                             }}
                             scan={scanMap.get(pId)}
                             orgId={typedOrgId!}

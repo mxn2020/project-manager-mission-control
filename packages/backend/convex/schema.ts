@@ -68,6 +68,7 @@ export default defineSchema({
         // ── New fields for main/child differentiation ────────────────────
         projectScope: v.optional(v.string()), // "main" | "child"
         projectType: v.optional(v.string()), // "standalone" | "monorepo" | "package" | "library"
+        projectCategory: v.optional(v.string()), // "webapp" | "fullstack-app" | "monorepo-app" | "oss-tool" | "ui-package" | "library" | "boilerplate" | "minion-toolbox" | "backend-service" | "client-project"
         childType: v.optional(v.string()),   // "web-app" | "mobile-app" | "docs" | "blog" | "cli" | "sdk" | "package" | "api" | "shared"
         parentProject: v.optional(v.string()), // parent project name (for children)
         vercelProjectId: v.optional(v.string()), // linked Vercel project ID

@@ -8,6 +8,19 @@ import { useProjects } from '../hooks/useProjects';
 import SearchableSelect, { type SelectOption } from '../components/SearchableSelect';
 import { TIER_ORDER, PRIORITY_ORDER, TIER_CONFIG, PRIORITY_CONFIG } from '../lib/types';
 
+const CATEGORY_OPTIONS: SelectOption[] = [
+    { value: 'webapp', label: 'Web App', icon: '🌐' },
+    { value: 'fullstack-app', label: 'Full-Stack App', icon: '🏗️' },
+    { value: 'monorepo-app', label: 'Monorepo App', icon: '📦' },
+    { value: 'oss-tool', label: 'Open Source Tool', icon: '🔓' },
+    { value: 'ui-package', label: 'UI Package', icon: '🎨' },
+    { value: 'library', label: 'Library / Package', icon: '📚' },
+    { value: 'boilerplate', label: 'Boilerplate / Template', icon: '🧩' },
+    { value: 'minion-toolbox', label: 'Minion Toolbox', icon: '🤖' },
+    { value: 'backend-service', label: 'Backend Service', icon: '⚙️' },
+    { value: 'client-project', label: 'Client Project', icon: '💼' },
+];
+
 const COMMON_STACKS = [
     'React', 'Next.js', 'Vite', 'TypeScript', 'JavaScript', 'Node.js', 'Express',
     'Python', 'FastAPI', 'Convex', 'Supabase', 'PostgreSQL', 'MongoDB',
@@ -35,6 +48,7 @@ export default function NewProjectPage() {
     const [stackInput, setStackInput] = useState('');
     const [oss, setOss] = useState(false);
     const [repo, setRepo] = useState('');
+    const [projectCategory, setProjectCategory] = useState('webapp');
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState('');
 
@@ -63,6 +77,7 @@ export default function NewProjectPage() {
                 stack,
                 oss,
                 repo: repo.trim() || undefined,
+                projectCategory,
             });
             navigate('/');
         } catch (err: unknown) {
@@ -131,6 +146,11 @@ export default function NewProjectPage() {
                         <label className="mobile-form-label">Priority</label>
                         <SearchableSelect options={priorityOptions} value={priority} onChange={setPriority} clearable={false} />
                     </div>
+                </div>
+
+                <div className="mobile-form-group">
+                    <label className="mobile-form-label">Project Category</label>
+                    <SearchableSelect options={CATEGORY_OPTIONS} value={projectCategory} onChange={setProjectCategory} placeholder="Select category..." clearable={false} />
                 </div>
 
                 <div className="mobile-form-group">

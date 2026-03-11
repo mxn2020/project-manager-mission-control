@@ -8,6 +8,19 @@ import SearchableSelect, { type SelectOption } from './SearchableSelect';
 import { TIER_ORDER, PRIORITY_ORDER, TIER_CONFIG, PRIORITY_CONFIG } from '../lib/types';
 import toast from 'react-hot-toast';
 
+const CATEGORY_OPTIONS: SelectOption[] = [
+    { value: 'webapp', label: 'Web App', icon: '🌐' },
+    { value: 'fullstack-app', label: 'Full-Stack App', icon: '🏗️' },
+    { value: 'monorepo-app', label: 'Monorepo App', icon: '📦' },
+    { value: 'oss-tool', label: 'Open Source Tool', icon: '🔓' },
+    { value: 'ui-package', label: 'UI Package', icon: '🎨' },
+    { value: 'library', label: 'Library / Package', icon: '📚' },
+    { value: 'boilerplate', label: 'Boilerplate / Template', icon: '🧩' },
+    { value: 'minion-toolbox', label: 'Minion Toolbox', icon: '🤖' },
+    { value: 'backend-service', label: 'Backend Service', icon: '⚙️' },
+    { value: 'client-project', label: 'Client Project', icon: '💼' },
+];
+
 interface CloneProjectModalProps {
     onClose: () => void;
     onCreated: (projectId: string) => void;
@@ -40,6 +53,7 @@ export default function CloneProjectModal({ onClose, onCreated, lanes }: ClonePr
     const [selectedRepo, setSelectedRepo] = useState('');
     const [newRepoName, setNewRepoName] = useState('');
     const [deployToVercel, setDeployToVercel] = useState(false);
+    const [projectCategory, setProjectCategory] = useState('webapp');
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState('');
 
@@ -190,6 +204,7 @@ export default function CloneProjectModal({ onClose, onCreated, lanes }: ClonePr
                 stack: [],
                 oss: !isPrivate,
                 repo: repoUrl,
+                projectCategory,
             });
 
             toast.success('Project created!', { id: 'clone-progress' });
@@ -348,6 +363,12 @@ export default function CloneProjectModal({ onClose, onCreated, lanes }: ClonePr
                             <label className="form-label">Priority</label>
                             <SearchableSelect options={priorityOptions} value={priority} onChange={setPriority} placeholder="Priority" clearable={false} />
                         </div>
+                    </div>
+
+                    {/* Category */}
+                    <div>
+                        <label className="form-label">Project Category</label>
+                        <SearchableSelect options={CATEGORY_OPTIONS} value={projectCategory} onChange={setProjectCategory} placeholder="Select category..." clearable={false} />
                     </div>
 
                     {/* Deploy to Vercel */}

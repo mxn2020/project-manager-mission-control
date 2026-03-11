@@ -6,6 +6,19 @@ import type { Id } from '../lib/types';
 import SearchableSelect, { type SelectOption } from './SearchableSelect';
 import { TIER_ORDER, PRIORITY_ORDER, TIER_CONFIG, PRIORITY_CONFIG } from '../lib/types';
 
+const CATEGORY_OPTIONS: SelectOption[] = [
+    { value: 'webapp', label: 'Web App', icon: '🌐' },
+    { value: 'fullstack-app', label: 'Full-Stack App', icon: '🏗️' },
+    { value: 'monorepo-app', label: 'Monorepo App', icon: '📦' },
+    { value: 'oss-tool', label: 'Open Source Tool', icon: '🔓' },
+    { value: 'ui-package', label: 'UI Package', icon: '🎨' },
+    { value: 'library', label: 'Library / Package', icon: '📚' },
+    { value: 'boilerplate', label: 'Boilerplate / Template', icon: '🧩' },
+    { value: 'minion-toolbox', label: 'Minion Toolbox', icon: '🤖' },
+    { value: 'backend-service', label: 'Backend Service', icon: '⚙️' },
+    { value: 'client-project', label: 'Client Project', icon: '💼' },
+];
+
 interface CreateProjectModalProps {
     onClose: () => void;
     onCreated: (path: string) => void;
@@ -28,6 +41,7 @@ export default function CreateProjectModal({ onClose, onCreated, lanes }: Create
     const [stackInput, setStackInput] = useState('');
     const [oss, setOss] = useState(false);
     const [repo, setRepo] = useState('');
+    const [projectCategory, setProjectCategory] = useState('webapp');
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState('');
 
@@ -65,6 +79,7 @@ export default function CreateProjectModal({ onClose, onCreated, lanes }: Create
                 stack,
                 oss,
                 repo: repo.trim() || undefined,
+                projectCategory,
             });
             onCreated(newProjectId as string);
             onClose();
@@ -130,6 +145,12 @@ export default function CreateProjectModal({ onClose, onCreated, lanes }: Create
                             <input type="checkbox" checked={oss} onChange={e => setOss(e.target.checked)} />
                             OSS
                         </label>
+                    </div>
+
+                    {/* Category */}
+                    <div>
+                        <label className="form-label">Project Category</label>
+                        <SearchableSelect options={CATEGORY_OPTIONS} value={projectCategory} onChange={setProjectCategory} placeholder="Select category..." clearable={false} />
                     </div>
 
                     {/* Stack */}

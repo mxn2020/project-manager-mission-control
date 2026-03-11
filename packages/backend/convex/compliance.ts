@@ -56,6 +56,132 @@ const CATEGORIES: Record<string, string[]> = {
     "App Quality": ["ERROR_BOUNDARY", "I18N_SETUP", "SEO_META", "ANALYTICS"],
 };
 
+// ─── Category-Specific Metric Sets ───────────────────────────────────
+
+const PROJECT_CATEGORIES = [
+    "webapp", "fullstack-app", "monorepo-app", "oss-tool", "ui-package",
+    "library", "boilerplate", "minion-toolbox", "backend-service", "client-project",
+] as const;
+
+type ProjectCategory = typeof PROJECT_CATEGORIES[number];
+
+const CATEGORY_METRICS: Record<ProjectCategory, readonly string[]> = {
+    "webapp": [
+        "GIT_REPO", "GIT_REMOTE", "GIT_PUSHED", "GIT_IGNORE", "GIT_BRANCH_PROTECT", "GIT_NO_SECRETS",
+        "GH_WORKFLOW_CI", "GH_WORKFLOW_RELEASE", "GH_DEPENDABOT",
+        "GH_RELEASES", "GH_TAGS", "CHANGELOG",
+        "PKG_JSON", "PKG_NAME", "PKG_DESCRIPTION", "PKG_METADATA", "PKG_SCRIPTS", "PKG_LOCKFILE", "PKG_DEPS_HEALTHY", "PKG_DEPS_CURRENT",
+        "GEENIUS_UI", "NO_INTERNAL_UI",
+        "README", "LICENSE", "CONTRIBUTING", "SECURITY", "CODE_OF_CONDUCT", "SUPPORT",
+        "PROJECT_YAML", "PROJECT_NAME", "PROJECT_DESC", "PROJECT_PRIORITY", "PROJECT_TAGS", "PROJECT_DEPLOY", "ACCOUNT_YAML",
+        "TSCONFIG_STRICT", "ESLINT_CONFIG", "PRETTIER_CONFIG", "NODE_VERSION", "ENV_EXAMPLE",
+        "FAVICON", "LOGO", "OG_IMAGE", "APPLE_ICON", "PWA_ICONS",
+        "DEPLOY_CONFIG", "CONVEX_DEPLOYED", "DOMAIN_CONFIGURED",
+        "ERROR_BOUNDARY", "I18N_SETUP", "SEO_META", "ANALYTICS",
+    ],
+    "fullstack-app": [
+        "GIT_REPO", "GIT_REMOTE", "GIT_PUSHED", "GIT_IGNORE", "GIT_BRANCH_PROTECT", "GIT_NO_SECRETS",
+        "GH_WORKFLOW_CI", "GH_WORKFLOW_RELEASE", "GH_ISSUE_TEMPLATE", "GH_PR_TEMPLATE", "GH_CODEOWNERS", "GH_DEPENDABOT",
+        "GH_RELEASES", "GH_TAGS", "CHANGELOG",
+        "PKG_JSON", "PKG_NAME", "PKG_DESCRIPTION", "PKG_METADATA", "PKG_SCRIPTS", "PKG_LOCKFILE", "PKG_DEPS_HEALTHY", "PKG_DEPS_CURRENT",
+        "GEENIUS_UI", "NO_INTERNAL_UI",
+        "README", "README_BADGES", "LICENSE", "CONTRIBUTING", "SECURITY", "CODE_OF_CONDUCT", "SUPPORT",
+        "PROJECT_YAML", "PROJECT_NAME", "PROJECT_DESC", "PROJECT_PRIORITY", "PROJECT_TAGS", "PROJECT_DEPLOY", "ACCOUNT_YAML",
+        "TSCONFIG_STRICT", "ESLINT_CONFIG", "PRETTIER_CONFIG", "NODE_VERSION", "ENV_EXAMPLE",
+        "FAVICON", "LOGO", "OG_IMAGE", "APPLE_ICON", "PWA_ICONS",
+        "TESTS_EXIST", "TESTS_PASS", "TEST_COVERAGE",
+        "DEPLOY_CONFIG", "CONVEX_DEPLOYED", "DOMAIN_CONFIGURED",
+        "ERROR_BOUNDARY", "I18N_SETUP", "SEO_META", "ANALYTICS",
+    ],
+    "monorepo-app": [
+        "GIT_REPO", "GIT_REMOTE", "GIT_PUSHED", "GIT_IGNORE", "GIT_NO_SECRETS",
+        "PKG_JSON", "PKG_NAME", "PKG_DESCRIPTION", "PKG_METADATA", "PKG_SCRIPTS", "PKG_LOCKFILE", "PKG_DEPS_HEALTHY", "PKG_DEPS_CURRENT",
+        "GEENIUS_UI", "NO_INTERNAL_UI",
+        "README", "LICENSE", "CONTRIBUTING", "SECURITY", "CODE_OF_CONDUCT", "SUPPORT",
+        "PROJECT_YAML", "PROJECT_NAME", "PROJECT_DESC", "PROJECT_PRIORITY", "PROJECT_TAGS", "PROJECT_DEPLOY", "ACCOUNT_YAML",
+        "TSCONFIG_STRICT", "ESLINT_CONFIG", "PRETTIER_CONFIG",
+        "FAVICON", "LOGO", "OG_IMAGE", "APPLE_ICON", "PWA_ICONS",
+        "CONVEX_DEPLOYED", "DOMAIN_CONFIGURED",
+        "ERROR_BOUNDARY", "I18N_SETUP", "SEO_META", "ANALYTICS",
+    ],
+    "oss-tool": [
+        "GIT_REPO", "GIT_REMOTE", "GIT_PUSHED", "GIT_IGNORE", "GIT_BRANCH_PROTECT", "GIT_NO_SECRETS",
+        "GH_WORKFLOW_CI", "GH_WORKFLOW_RELEASE", "GH_ISSUE_TEMPLATE", "GH_PR_TEMPLATE", "GH_DEPENDABOT",
+        "GH_RELEASES", "GH_TAGS", "CHANGELOG",
+        "PKG_JSON", "PKG_NAME", "PKG_DESCRIPTION", "PKG_METADATA", "PKG_SCRIPTS", "PKG_LOCKFILE", "PKG_DEPS_HEALTHY", "PKG_DEPS_CURRENT",
+        "README", "README_BADGES", "LICENSE", "CONTRIBUTING", "SECURITY", "CODE_OF_CONDUCT", "SUPPORT",
+        "PROJECT_YAML", "PROJECT_NAME", "PROJECT_DESC", "PROJECT_PRIORITY", "PROJECT_TAGS", "PROJECT_DEPLOY", "ACCOUNT_YAML",
+        "TSCONFIG_STRICT", "ESLINT_CONFIG", "PRETTIER_CONFIG", "NODE_VERSION", "ENV_EXAMPLE",
+        "FAVICON", "LOGO", "OG_IMAGE", "APPLE_ICON", "PWA_ICONS",
+        "TESTS_EXIST", "TESTS_PASS", "TEST_COVERAGE",
+        "DEPLOY_CONFIG", "CONVEX_DEPLOYED", "DOMAIN_CONFIGURED",
+        "ERROR_BOUNDARY", "I18N_SETUP", "SEO_META", "ANALYTICS",
+    ],
+    "ui-package": [
+        "GIT_REPO", "GIT_REMOTE", "GIT_PUSHED", "GIT_IGNORE", "GIT_BRANCH_PROTECT", "GIT_NO_SECRETS",
+        "GH_WORKFLOW_CI", "GH_WORKFLOW_RELEASE", "GH_ISSUE_TEMPLATE", "GH_PR_TEMPLATE", "GH_CODEOWNERS", "GH_DEPENDABOT",
+        "GH_RELEASES", "GH_TAGS", "CHANGELOG",
+        "PKG_JSON", "PKG_NAME", "PKG_DESCRIPTION", "PKG_METADATA", "PKG_SCRIPTS", "PKG_LOCKFILE", "PKG_DEPS_HEALTHY", "PKG_DEPS_CURRENT", "NPM_PUBLISHED",
+        "README", "README_BADGES", "LICENSE", "CONTRIBUTING", "SECURITY", "CODE_OF_CONDUCT", "SUPPORT",
+        "PROJECT_YAML", "PROJECT_NAME", "PROJECT_DESC", "PROJECT_PRIORITY", "PROJECT_TAGS", "PROJECT_DEPLOY", "ACCOUNT_YAML",
+        "TSCONFIG_STRICT", "ESLINT_CONFIG", "PRETTIER_CONFIG", "NODE_VERSION", "ENV_EXAMPLE",
+        "TESTS_EXIST", "TESTS_PASS", "TEST_COVERAGE",
+    ],
+    "library": [
+        "GIT_REPO", "GIT_REMOTE", "GIT_PUSHED", "GIT_IGNORE", "GIT_BRANCH_PROTECT", "GIT_NO_SECRETS",
+        "GH_WORKFLOW_CI", "GH_WORKFLOW_RELEASE", "GH_ISSUE_TEMPLATE", "GH_PR_TEMPLATE", "GH_CODEOWNERS", "GH_DEPENDABOT",
+        "GH_RELEASES", "GH_TAGS", "CHANGELOG",
+        "PKG_JSON", "PKG_NAME", "PKG_DESCRIPTION", "PKG_METADATA", "PKG_SCRIPTS", "PKG_LOCKFILE", "PKG_DEPS_HEALTHY", "PKG_DEPS_CURRENT", "NPM_PUBLISHED",
+        "README", "README_BADGES", "LICENSE", "CONTRIBUTING", "SECURITY", "CODE_OF_CONDUCT", "SUPPORT",
+        "PROJECT_YAML", "PROJECT_NAME", "PROJECT_DESC", "PROJECT_PRIORITY", "PROJECT_TAGS", "PROJECT_DEPLOY", "ACCOUNT_YAML",
+        "TSCONFIG_STRICT", "ESLINT_CONFIG", "PRETTIER_CONFIG", "NODE_VERSION", "ENV_EXAMPLE",
+        "TESTS_EXIST", "TESTS_PASS", "TEST_COVERAGE",
+    ],
+    "boilerplate": [
+        "GIT_REPO", "GIT_REMOTE", "GIT_PUSHED", "GIT_IGNORE", "GIT_NO_SECRETS",
+        "PKG_JSON", "PKG_NAME", "PKG_DESCRIPTION", "PKG_METADATA", "PKG_SCRIPTS", "PKG_LOCKFILE",
+        "GEENIUS_UI", "NO_INTERNAL_UI",
+        "README", "LICENSE", "CONTRIBUTING", "SECURITY", "CODE_OF_CONDUCT", "SUPPORT",
+        "PROJECT_YAML", "PROJECT_NAME", "PROJECT_DESC", "PROJECT_PRIORITY", "PROJECT_TAGS", "PROJECT_DEPLOY", "ACCOUNT_YAML",
+        "TSCONFIG_STRICT", "ESLINT_CONFIG", "PRETTIER_CONFIG", "NODE_VERSION", "ENV_EXAMPLE",
+    ],
+    "minion-toolbox": [
+        "GIT_REPO", "GIT_REMOTE", "GIT_PUSHED", "GIT_IGNORE", "GIT_NO_SECRETS",
+        "PKG_JSON", "PKG_NAME", "PKG_DESCRIPTION", "PKG_METADATA", "PKG_SCRIPTS", "PKG_LOCKFILE",
+        "GEENIUS_UI", "NO_INTERNAL_UI",
+        "README", "LICENSE", "CONTRIBUTING", "SECURITY", "CODE_OF_CONDUCT", "SUPPORT",
+        "PROJECT_YAML", "PROJECT_NAME", "PROJECT_DESC", "PROJECT_PRIORITY", "PROJECT_TAGS", "PROJECT_DEPLOY", "ACCOUNT_YAML",
+        "TSCONFIG_STRICT", "ESLINT_CONFIG", "PRETTIER_CONFIG",
+    ],
+    "backend-service": [
+        "GIT_REPO", "GIT_REMOTE", "GIT_PUSHED", "GIT_IGNORE", "GIT_BRANCH_PROTECT", "GIT_NO_SECRETS",
+        "GH_WORKFLOW_CI", "GH_WORKFLOW_RELEASE", "GH_ISSUE_TEMPLATE", "GH_PR_TEMPLATE", "GH_CODEOWNERS", "GH_DEPENDABOT",
+        "GH_RELEASES", "GH_TAGS", "CHANGELOG",
+        "PKG_JSON", "PKG_NAME", "PKG_DESCRIPTION", "PKG_METADATA", "PKG_SCRIPTS", "PKG_LOCKFILE", "PKG_DEPS_HEALTHY", "PKG_DEPS_CURRENT",
+        "README", "README_BADGES", "LICENSE", "CONTRIBUTING", "SECURITY", "CODE_OF_CONDUCT", "SUPPORT",
+        "PROJECT_YAML", "PROJECT_NAME", "PROJECT_DESC", "PROJECT_PRIORITY", "PROJECT_TAGS", "PROJECT_DEPLOY", "ACCOUNT_YAML",
+        "TSCONFIG_STRICT", "ESLINT_CONFIG", "PRETTIER_CONFIG", "NODE_VERSION", "ENV_EXAMPLE",
+        "TESTS_EXIST", "TESTS_PASS", "TEST_COVERAGE",
+        "DEPLOY_CONFIG", "CONVEX_DEPLOYED", "DOMAIN_CONFIGURED",
+    ],
+    "client-project": [
+        "GIT_REPO", "GIT_REMOTE", "GIT_PUSHED", "GIT_IGNORE", "GIT_BRANCH_PROTECT", "GIT_NO_SECRETS",
+        "PKG_JSON", "PKG_NAME", "PKG_DESCRIPTION", "PKG_METADATA", "PKG_SCRIPTS", "PKG_LOCKFILE", "PKG_DEPS_HEALTHY", "PKG_DEPS_CURRENT",
+        "PROJECT_YAML", "PROJECT_NAME", "PROJECT_DESC", "PROJECT_PRIORITY", "PROJECT_TAGS", "PROJECT_DEPLOY", "ACCOUNT_YAML",
+        "TSCONFIG_STRICT", "ESLINT_CONFIG", "PRETTIER_CONFIG", "NODE_VERSION", "ENV_EXAMPLE",
+        "FAVICON", "LOGO", "OG_IMAGE", "APPLE_ICON", "PWA_ICONS",
+        "DEPLOY_CONFIG", "CONVEX_DEPLOYED", "DOMAIN_CONFIGURED",
+        "ERROR_BOUNDARY", "I18N_SETUP", "SEO_META", "ANALYTICS",
+    ],
+};
+
+function getMetricsForCategory(category: string | undefined): readonly string[] {
+    if (category && category in CATEGORY_METRICS) {
+        return CATEGORY_METRICS[category as ProjectCategory];
+    }
+    return ALL_METRICS; // fallback: all 60 metrics
+}
+
 // ─── GitHub API Helpers ──────────────────────────────────────────────────
 
 async function ghFetch(url: string, token: string): Promise<Response> {
@@ -543,6 +669,7 @@ export const getOrgComplianceSummary = query({
             perfectCount: perfect,
             metricFailures,
             categories: CATEGORIES,
+            projectCategories: PROJECT_CATEGORIES,
         };
     },
 });
@@ -653,9 +780,11 @@ export const scanProject = action({
             project.projectType || undefined,
         );
 
-        const passCount = Object.values(results).filter(r => r.pass).length;
-        const totalCount = ALL_METRICS.length;
-        const score = Math.round((passCount / totalCount) * 100);
+        const applicableMetrics = getMetricsForCategory(project.projectCategory || undefined);
+        const applicableResults = Object.entries(results).filter(([id]) => applicableMetrics.includes(id));
+        const passCount = applicableResults.filter(([, r]) => r.pass).length;
+        const totalCount = applicableMetrics.length;
+        const score = totalCount > 0 ? Math.round((passCount / totalCount) * 100) : 0;
 
         await ctx.runMutation(internal.compliance.saveScanResult, {
             orgId: args.orgId,
@@ -760,9 +889,11 @@ export const scanProjectInternal = internalAction({
             project.projectType || undefined,
         );
 
-        const passCount = Object.values(results).filter(r => r.pass).length;
-        const totalCount = ALL_METRICS.length;
-        const score = Math.round((passCount / totalCount) * 100);
+        const applicableMetrics = getMetricsForCategory(project.projectCategory || undefined);
+        const applicableResults = Object.entries(results).filter(([id]) => applicableMetrics.includes(id));
+        const passCount = applicableResults.filter(([, r]) => r.pass).length;
+        const totalCount = applicableMetrics.length;
+        const score = totalCount > 0 ? Math.round((passCount / totalCount) * 100) : 0;
 
         await ctx.runMutation(internal.compliance.saveScanResult, {
             orgId: args.orgId,
