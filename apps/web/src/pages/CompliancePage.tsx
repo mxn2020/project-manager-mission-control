@@ -927,7 +927,7 @@ export default function CompliancePage() {
         }
         if (filterScore) {
             list = list.filter(p => {
-                const scan = scanMap.get((p as unknown as { id: string }).id);
+                const scan = scanMap.get(p.id);
                 if (!scan) return filterScore === 'unscanned';
                 if (filterScore === '100') return scan.score === 100;
                 if (filterScore === '70-99') return scan.score >= 70 && scan.score < 100;
@@ -939,8 +939,8 @@ export default function CompliancePage() {
 
         // Sort by score (lowest first = most work needed)
         list.sort((a, b) => {
-            const sa = scanMap.get((a as unknown as { id: string }).id)?.score ?? -1;
-            const sb = scanMap.get((b as unknown as { id: string }).id)?.score ?? -1;
+            const sa = scanMap.get(a.id)?.score ?? -1;
+            const sb = scanMap.get(b.id)?.score ?? -1;
             return sa - sb;
         });
 
@@ -951,7 +951,7 @@ export default function CompliancePage() {
 
     const handleScanAll = async () => {
         if (!typedOrgId) return;
-        const projectList = projects.map(p => ({ id: (p as unknown as { id: string }).id, name: p.name }));
+        const projectList = projects.map(p => ({ id: p.id, name: p.name }));
         if (projectList.length === 0) return;
 
         setScanning(true);
@@ -1225,7 +1225,7 @@ export default function CompliancePage() {
             {/* ── Project List ─────────────────────────────────────── */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {filteredProjects.map(p => {
-                    const pId = (p as unknown as { id: string }).id;
+                    const pId = p.id;
                     return (
                         <ProjectComplianceCard
                             key={pId}
@@ -1236,9 +1236,9 @@ export default function CompliancePage() {
                                 lane: p.lane,
                                 repo: p.repo,
                                 deploy_url: p.deploy_url,
-                                project_type: (p as unknown as { project_type?: string }).project_type,
-                                vercelProjectId: (p as unknown as { vercelProjectId?: string }).vercelProjectId,
-                                projectCategory: (p as unknown as { projectCategory?: string }).projectCategory,
+                                project_type: p.project_type,
+                                vercelProjectId: p.vercelProjectId,
+                                projectCategory: p.projectCategory,
                             }}
                             scan={scanMap.get(pId)}
                             orgId={typedOrgId!}

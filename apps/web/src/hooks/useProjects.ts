@@ -58,6 +58,8 @@ export function useProjects(scope: 'main' | 'child' | 'all' = 'main') {
                 project_type: p.projectType || undefined,
                 child_type: p.childType || undefined,
                 parent_project: p.parentProject || undefined,
+                vercelProjectId: p.vercelProjectId || undefined,
+                projectCategory: p.projectCategory || undefined,
             })),
         };
     }

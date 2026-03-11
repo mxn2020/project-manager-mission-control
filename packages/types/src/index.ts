@@ -5,6 +5,7 @@ export type Priority = 'high' | 'medium' | 'low' | 'parked';
 export type TaskStatus = 'todo' | 'in_progress' | 'done';
 
 export interface Project {
+    id: string;
     name: string;
     description: string;
     tier: Tier | string;
@@ -20,6 +21,15 @@ export interface Project {
     path: string;
     yaml_path: string;
     health_score: number;
+    // Scope & hierarchy
+    project_scope?: string;
+    project_type?: string;
+    child_type?: string;
+    parent_project?: string;
+    // Integrations
+    vercelProjectId?: string;
+    // Compliance category
+    projectCategory?: string;
 }
 
 export interface StatusData {
