@@ -38,9 +38,17 @@ export default function CloneProjectModal({ onClose, onCreated, lanes }: ClonePr
     const [priority, setPriority] = useState('medium');
     const [description, setDescription] = useState('');
     const [selectedRepo, setSelectedRepo] = useState('');
+    const [newRepoName, setNewRepoName] = useState('');
     const [deployToVercel, setDeployToVercel] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState('');
+
+    // Repo name uniqueness check
+    const [repoCheckStatus, setRepoCheckStatus] = useState<'idle' | 'checking' | 'available' | 'taken' | 'error'>('idle');
+    const [repoSlug, setRepoSlug] = useState('');
+    const [repoFullName, setRepoFullName] = useState('');
+    const [repoError, setRepoError] = useState('');
+    const [checkTimer, setCheckTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
 
     // Repo listing
     const [repos, setRepos] = useState<RepoInfo[]>([]);
@@ -48,6 +56,8 @@ export default function CloneProjectModal({ onClose, onCreated, lanes }: ClonePr
     const listOrgRepos = useAction(api.github.listOrgRepos);
 
     const createProject = useMutation(api.projects.create);
+    const createRepo = useAction(api.github.createRepo);
+    const checkAvailability = useAction(api.github.checkRepoAvailability);
     const createVercelProject = useAction(api.vercel.createProject);
     const deployVercel = useAction(api.vercel.deploy);
 
@@ -78,6 +88,37 @@ export default function CloneProjectModal({ onClose, onCreated, lanes }: ClonePr
         group: r.fullName.split('/')[0],
     }));
 
+    // Debounced new repo name uniqueness check
+    const checkRepoName = useCallback(async (repoNameValue: string) => {
+        if (!typedOrgId || !repoNameValue.trim()) {
+            setRepoCheckStatus('idle');
+            return;
+        }
+        setRepoCheckStatus('checking');
+        try {
+            const result = await checkAvailability({
+                orgId: typedOrgId,
+                name: repoNameValue,
+            }) as { available: boolean; slug: string; fullName: string; error?: string };
+            setRepoSlug(result.slug);
+            setRepoFullName(result.fullName);
+            setRepoCheckStatus(result.available ? 'available' : 'taken');
+            setRepoError(result.error || '');
+        } catch (err) {
+            setRepoCheckStatus('error');
+            setRepoError(getErrorMessage(err));
+        }
+    }, [typedOrgId, checkAvailability]);
+
+    useEffect(() => {
+        if (checkTimer) clearTimeout(checkTimer);
+        if (!newRepoName.trim()) { setRepoCheckStatus('idle'); return; }
+        const timer = setTimeout(() => checkRepoName(newRepoName), 500);
+        setCheckTimer(timer);
+        return () => clearTimeout(timer);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [newRepoName]);
+
     // Auto-populate name from selected repo
     useEffect(() => {
         if (selectedRepo) {
@@ -85,21 +126,60 @@ export default function CloneProjectModal({ onClose, onCreated, lanes }: ClonePr
             setName(repoShortName);
             const selected = repos.find(r => r.fullName === selectedRepo);
             if (selected?.description) setDescription(selected.description);
+            // Clear new repo name when existing repo selected
+            setNewRepoName('');
+            setRepoCheckStatus('idle');
         }
     }, [selectedRepo, repos]);
+
+    // When typing a new repo name, clear the selected repo
+    useEffect(() => {
+        if (newRepoName.trim()) {
+            setSelectedRepo('');
+        }
+    }, [newRepoName]);
+
+    // Determine which repo mode: existing or new
+    const isNewRepo = !!newRepoName.trim();
+    const hasValidRepo = isNewRepo ? repoCheckStatus === 'available' : !!selectedRepo;
 
     const handleSubmit = async () => {
         if (!name.trim() || !lane) { setError('Name and lane are required'); return; }
         if (!typedOrgId) { setError('Organization not found'); return; }
-        if (!selectedRepo) { setError('Please select a repository'); return; }
-
-        const selected = repos.find(r => r.fullName === selectedRepo);
-        if (!selected) { setError('Selected repo not found'); return; }
+        if (!hasValidRepo) {
+            setError(isNewRepo ? 'Choose an available repo name' : 'Please select a repository');
+            return;
+        }
 
         setSubmitting(true);
         setError('');
         try {
-            // 1. Create the project in our DB
+            let repoFullNameFinal = selectedRepo;
+            let repoUrl = '';
+            let isPrivate = false;
+
+            if (isNewRepo) {
+                // Create new GitHub repo
+                toast.loading('Creating GitHub repository...', { id: 'clone-progress' });
+                const repoResult = await createRepo({
+                    orgId: typedOrgId,
+                    name: newRepoName,
+                    description: description.trim(),
+                    isPrivate: true,
+                    projectId: undefined,
+                }) as { repoFullName: string; repoUrl: string; slug: string };
+                repoFullNameFinal = repoResult.repoFullName;
+                repoUrl = repoResult.repoUrl;
+                isPrivate = true;
+                toast.loading('Repository created!', { id: 'clone-progress' });
+            } else {
+                const selected = repos.find(r => r.fullName === selectedRepo);
+                if (!selected) { setError('Selected repo not found'); return; }
+                repoUrl = selected.url;
+                isPrivate = selected.isPrivate;
+            }
+
+            // Create the project in our DB
             const newProjectId = await createProject({
                 orgId: typedOrgId,
                 name: name.trim(),
@@ -108,8 +188,8 @@ export default function CloneProjectModal({ onClose, onCreated, lanes }: ClonePr
                 priority,
                 description: description.trim(),
                 stack: [],
-                oss: !selected.isPrivate,
-                repo: selected.url,
+                oss: !isPrivate,
+                repo: repoUrl,
             });
 
             toast.success('Project created!', { id: 'clone-progress' });
@@ -117,11 +197,11 @@ export default function CloneProjectModal({ onClose, onCreated, lanes }: ClonePr
             // 2. Optionally deploy to Vercel
             if (deployToVercel && vercelConnection?.connected) {
                 toast.loading('Creating Vercel project...', { id: 'clone-progress' });
-                const repoSlug = selectedRepo.split('/').pop() || selectedRepo;
+                const repoSlugForVercel = repoFullNameFinal.split('/').pop() || repoFullNameFinal;
                 const vercelProject = await createVercelProject({
                     orgId: typedOrgId,
-                    name: repoSlug,
-                    gitRepo: selectedRepo,
+                    name: repoSlugForVercel,
+                    gitRepo: repoFullNameFinal,
                 }) as { id: string; name: string; repoId?: number; linked: boolean };
 
                 if (vercelProject.linked) {
@@ -129,8 +209,8 @@ export default function CloneProjectModal({ onClose, onCreated, lanes }: ClonePr
                     await deployVercel({
                         orgId: typedOrgId,
                         vercelProjectId: vercelProject.name,
-                        gitRepo: selectedRepo,
-                        branch: selected.defaultBranch || 'main',
+                        gitRepo: repoFullNameFinal,
+                        branch: isNewRepo ? 'main' : (repos.find(r => r.fullName === selectedRepo)?.defaultBranch || 'main'),
                     });
                 }
 
@@ -202,6 +282,38 @@ export default function CloneProjectModal({ onClose, onCreated, lanes }: ClonePr
                                 {repos.find(r => r.fullName === selectedRepo)?.isLinked && (
                                     <span style={{ color: 'var(--warning)', fontWeight: 500 }}> (already linked)</span>
                                 )}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Or Create New Repo */}
+                    <div>
+                        <label className="form-label">Or create a new repository</label>
+                        <input
+                            value={newRepoName}
+                            onChange={e => setNewRepoName(e.target.value)}
+                            placeholder="my-new-project"
+                            className="form-input"
+                            style={{ fontFamily: 'monospace' }}
+                        />
+                        {repoCheckStatus === 'checking' && (
+                            <div className="text-xs text-tertiary" style={{ marginTop: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <span className="ss-loading-spinner" style={{ width: 12, height: 12 }} /> Checking availability...
+                            </div>
+                        )}
+                        {repoCheckStatus === 'available' && (
+                            <div className="text-xs" style={{ marginTop: 4, color: '#22c55e', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                ✅ <code>{repoSlug}</code> is available — {repoFullName}
+                            </div>
+                        )}
+                        {repoCheckStatus === 'taken' && (
+                            <div className="text-xs" style={{ marginTop: 4, color: '#f87171', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                ❌ <code>{repoSlug}</code> is already taken
+                            </div>
+                        )}
+                        {repoCheckStatus === 'error' && (
+                            <div className="text-xs" style={{ marginTop: 4, color: '#f87171' }}>
+                                ⚠️ {repoError}
                             </div>
                         )}
                     </div>
@@ -293,7 +405,7 @@ export default function CloneProjectModal({ onClose, onCreated, lanes }: ClonePr
                     <button
                         className="btn btn-primary"
                         onClick={handleSubmit}
-                        disabled={submitting || !name.trim() || !lane || !selectedRepo}
+                        disabled={submitting || !name.trim() || !lane || !hasValidRepo}
                     >
                         {submitting ? '⏳ Creating...' : '🔗 Clone & Create'}
                     </button>
