@@ -886,7 +886,7 @@ function ProjectComplianceCard({ project, scan, orgId, onScan }: {
 export default function CompliancePage() {
     const { orgId } = useAuth();
     const typedOrgId = orgId as Id<"organizations"> | undefined;
-    const { data } = useProjects('all');
+    const { data } = useProjects();
     const scans = useQuery(api.compliance.listScans, typedOrgId ? { orgId: typedOrgId } : 'skip');
     const summary = useQuery(api.compliance.getOrgComplianceSummary, typedOrgId ? { orgId: typedOrgId } : 'skip');
     const scanProject = useAction(api.compliance.scanProject);
