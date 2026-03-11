@@ -951,7 +951,9 @@ export default function CompliancePage() {
 
     const handleScanAll = async () => {
         if (!typedOrgId) return;
-        const projectList = projects.map(p => ({ id: p.id, name: p.name }));
+        const projectList = projects
+            .filter(p => !!p.id)
+            .map(p => ({ id: p.id, name: p.name }));
         if (projectList.length === 0) return;
 
         setScanning(true);
@@ -991,7 +993,7 @@ export default function CompliancePage() {
     };
 
     const handleScanProject = async (projectId: string) => {
-        if (!typedOrgId) return;
+        if (!typedOrgId || !projectId) return;
         setScanningProject(projectId);
         try {
             const result = await scanProject({ orgId: typedOrgId, projectId: projectId as Id<"projects"> });
