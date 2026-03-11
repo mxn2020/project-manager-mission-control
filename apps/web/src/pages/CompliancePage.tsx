@@ -951,7 +951,7 @@ export default function CompliancePage() {
 
     const handleScanAll = async () => {
         if (!typedOrgId) return;
-        const projectList = projects.map(p => (p as unknown as { _id: string; name: string }));
+        const projectList = projects.map(p => ({ id: (p as unknown as { id: string }).id, name: p.name }));
         if (projectList.length === 0) return;
 
         setScanning(true);
@@ -967,12 +967,12 @@ export default function CompliancePage() {
             const results = await Promise.allSettled(
                 batch.map(async (p) => {
                     try {
-                        await scanProject({ orgId: typedOrgId, projectId: p._id as Id<"projects"> });
+                        await scanProject({ orgId: typedOrgId, projectId: p.id as Id<"projects"> });
                     } catch {
                         // Retry once after 1s delay
                         await new Promise(r => setTimeout(r, 1000));
                         try {
-                            await scanProject({ orgId: typedOrgId, projectId: p._id as Id<"projects"> });
+                            await scanProject({ orgId: typedOrgId, projectId: p.id as Id<"projects"> });
                         } catch {
                             throw new Error(`Failed: ${p.name}`);
                         }
