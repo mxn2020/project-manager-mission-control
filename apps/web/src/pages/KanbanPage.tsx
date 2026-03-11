@@ -163,7 +163,7 @@ export default function KanbanPage({ data, onRefresh }: { data: StatusData; onRe
             return p.name === projectName;
         });
         if (!project) return;
-        const currentValue = ((project as unknown as Record<string, unknown>)[activeDimension.field]);
+        const currentValue = (project[activeDimension.field]);
         if (currentValue === targetValue) return;
 
         // Optimistic update: apply override immediately

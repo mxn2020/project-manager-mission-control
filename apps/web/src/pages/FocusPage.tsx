@@ -210,7 +210,7 @@ export default function FocusPage({ data, onRefresh }: { data: StatusData; onRef
         const projectPath = e.dataTransfer.getData('text/plain');
         if (!projectPath) return;
         const project = focusProjects.find(p => p.path === projectPath);
-        if (!project || ((project as unknown as Record<string, unknown>)[activeDimension.field]) === targetValue) return;
+        if (!project || (project[activeDimension.field]) === targetValue) return;
         setOverrides(prev => ({ ...prev, [projectPath]: { ...prev[projectPath], [activeDimension.field]: targetValue } }));
         pendingRef.current.push({ projectPath, field: activeDimension.field, newValue: targetValue });
         if (timerRef.current) clearTimeout(timerRef.current);

@@ -5,7 +5,7 @@ import { api } from '@mission-control/backend/convex/_generated/api';
 import type { Tier, Priority, Project } from '../lib/types';
 import { TIER_CONFIG, PRIORITY_CONFIG, LANE_COLORS } from '../lib/types';
 import SearchableSelect from '../components/SearchableSelect';
-import type { ConvexProject } from '../lib/types';
+import type { ProjectDoc } from '../lib/types';
 
 const LANES = ['ai-agents', 'web-apps', 'mobile-apps', 'developer-tools', 'templates', 'infrastructure', 'learning', 'uncategorized'];
 
@@ -27,7 +27,7 @@ export default function ProjectPage() {
     // Sync form with project data once loaded
     useEffect(() => {
         if (project && Object.keys(editedProject).length === 0) {
-            setEditedProject(project as Partial<ConvexProject>);
+            setEditedProject(project as Partial<ProjectDoc>);
         }
     }, [project, editedProject]);
 
@@ -92,7 +92,7 @@ export default function ProjectPage() {
                     <div className="yaml-editor-title">📝 Project Settings {hasChanges && <span style={{ color: 'var(--warning)', fontSize: 11, fontWeight: 400 }}>(unsaved)</span>}</div>
                     <div className="yaml-editor-actions">
                         {saveStatus && <span className={`save-status ${saveStatus}`}>{saveStatus === 'success' ? '✓ Saved' : '✗ Error'}</span>}
-                        {hasChanges && <button className="btn btn-secondary" onClick={() => setEditedProject(project as Partial<ConvexProject>)}>Cancel</button>}
+                        {hasChanges && <button className="btn btn-secondary" onClick={() => setEditedProject(project as Partial<ProjectDoc>)}>Cancel</button>}
                         <button className="btn btn-primary" onClick={handleSave} disabled={saving || !hasChanges}>{saving ? '⏳' : '💾'} Save</button>
                     </div>
                 </div>

@@ -65,7 +65,7 @@ export default function NewTaskPage() {
         try {
             await createTask({
                 orgId: orgId as Id<"organizations">,
-                projectId: (project.trim() || undefined),
+                projectId: (project.trim() || undefined) as Id<"projects"> | undefined,
                 title: title.trim(),
                 priority,
                 effort,

@@ -1,8 +1,12 @@
 // ─── Re-export from shared types package ─────────────────────────────────────
 // All shared types and config are defined in @mission-control/types.
-// Web-app-specific additions (e.g. Workspace nav config) are also there.
+// Doc, Id, ProjectDoc, TaskDoc are derived from the Convex schema.
 
 export type {
+    Doc,
+    Id,
+    ProjectDoc,
+    TaskDoc,
     Tier,
     Priority,
     TaskStatus,
@@ -22,10 +26,9 @@ export {
     WORKSPACES,
 } from '@mission-control/types';
 
-// ─── Convex-specific types ───────────────────────────────────────────────────
+// ─── Web-app-specific types ──────────────────────────────────────────────────
 
-import type { Doc, Id } from '@mission-control/backend/convex/_generated/dataModel';
-export type { Doc, Id };
+import type { Id } from '@mission-control/types';
 
 /**
  * Shape returned by `api.auth.me` query.
@@ -39,21 +42,6 @@ export interface AuthUser {
     orgName?: string;
     orgSlug?: string;
 }
-
-/**
- * A project document from Convex, including the `_id` and `_creationTime` fields.
- */
-export type ConvexProject = Doc<'projects'>;
-
-/**
- * A task document from Convex.
- */
-export type ConvexTask = Doc<'tasks'>;
-
-/**
- * A cost entry document from Convex.
- */
-export type ConvexCostEntry = Doc<'costEntries'>;
 
 /**
  * Safely extract an error message from an unknown error value.

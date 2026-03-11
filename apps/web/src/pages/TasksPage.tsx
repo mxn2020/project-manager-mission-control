@@ -98,7 +98,7 @@ export default function TasksPage() {
             orgId,
             title: newTitle.trim(),
             projectPath: newProject.trim() || '(general)',
-            projectId: (projMatch?.path || newProject.trim()) as unknown as Id<"projects">,
+            projectId: (projMatch?.path || newProject.trim()),
             priority: newPriority,
             effort: newEffort,
             description: newDescription.trim(),

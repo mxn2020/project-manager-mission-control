@@ -219,6 +219,10 @@ importers:
         version: 5.9.3
 
   packages/types:
+    dependencies:
+      '@mission-control/backend':
+        specifier: workspace:*
+        version: link:../backend
     devDependencies:
       typescript:
         specifier: ~5.9.3

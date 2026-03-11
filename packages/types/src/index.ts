@@ -1,11 +1,30 @@
+// ─── Convex-derived types ─────────────────────────────────────────────────────
+// Source of truth: packages/backend/convex/schema.ts
+// Doc<T> and Id<T> are auto-generated from the Convex schema.
+
+import type { Doc, Id } from '@mission-control/backend/convex/_generated/dataModel';
+
+/** Re-export Convex document & ID types */
+export type { Doc, Id };
+
+/** Full Convex project document (straight from DB) */
+export type ProjectDoc = Doc<'projects'>;
+
+/** Full Convex task document (straight from DB) */
+export type TaskDoc = Doc<'tasks'>;
+
 // ─── Core Domain Types ────────────────────────────────────────────────────────
 
 export type Tier = 'idea' | 'prototype' | 'building' | 'shipped' | 'maintaining' | 'archived';
 export type Priority = 'high' | 'medium' | 'low' | 'parked';
 export type TaskStatus = 'todo' | 'in_progress' | 'done';
 
+/**
+ * Mapped project shape used by the frontend (from useProjects hook).
+ * Derived from ProjectDoc but with renamed fields for backwards compat.
+ */
 export interface Project {
-    id: string;
+    id: Id<'projects'>;
     name: string;
     description: string;
     tier: Tier | string;
@@ -30,6 +49,25 @@ export interface Project {
     vercelProjectId?: string;
     // Compliance category
     projectCategory?: string;
+    // Allow dynamic field access (e.g. project[dimension.field])
+    [key: string]: unknown;
+}
+
+/**
+ * Mapped task shape used by the frontend.
+ * Derived from TaskDoc.
+ */
+export interface Task {
+    id: Id<'tasks'>;
+    title: string;
+    description?: string;
+    status: TaskStatus;
+    priority: Priority | string;
+    effort: string;
+    projectPath: string;
+    taskType: string;
+    createdAt: number;
+    updatedAt: number;
 }
 
 export interface StatusData {
@@ -42,19 +80,6 @@ export interface StatusData {
         by_stack: Record<string, number>;
     };
     projects: Project[];
-}
-
-export interface Task {
-    id: string;
-    title: string;
-    description?: string;
-    status: TaskStatus;
-    priority: Priority | string;
-    effort: string;
-    projectPath: string;
-    taskType: string;
-    createdAt: number;
-    updatedAt: number;
 }
 
 // ─── Config ──────────────────────────────────────────────────────────────────
