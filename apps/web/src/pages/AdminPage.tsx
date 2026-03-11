@@ -17,7 +17,7 @@ export default function AdminPage() {
     const toggleModel = useMutation(api.aiConfig.toggleModel);
 
     const [searchParams, setSearchParams] = useSearchParams();
-    const tab = (searchParams.get('tab') || 'providers') as 'providers' | 'models' | 'datasources' | 'dimensions' | 'chatbots' | 'system';
+    const tab = (searchParams.get('tab') || 'providers') as 'providers' | 'models' | 'datasources' | 'dimensions' | 'chatbots' | 'prompts' | 'system';
     const setTab = (t: typeof tab) => setSearchParams(prev => { const next = new URLSearchParams(prev); next.set('tab', t); return next; }, { replace: true });
     const { dimensions, saveDimensions } = useDimensions();
     const [newDimName, setNewDimName] = useState('');
@@ -118,9 +118,9 @@ export default function AdminPage() {
 
             {/* Tabs */}
             <div className="filter-bar mb-20">
-                {(['providers', 'models', 'datasources', 'dimensions', 'chatbots', 'system'] as const).map(t => (
+                {(['providers', 'models', 'datasources', 'dimensions', 'chatbots', 'prompts', 'system'] as const).map(t => (
                     <button key={t} className={`btn ${tab === t ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setTab(t)} style={{ textTransform: 'capitalize' }}>
-                        {t === 'providers' ? '🔌 ' : t === 'models' ? '🤖 ' : t === 'datasources' ? '📂 ' : t === 'dimensions' ? '📐 ' : t === 'chatbots' ? '💬 ' : '⚙️ '}
+                        {t === 'providers' ? '🔌 ' : t === 'models' ? '🤖 ' : t === 'datasources' ? '📂 ' : t === 'dimensions' ? '📐 ' : t === 'chatbots' ? '💬 ' : t === 'prompts' ? '📝 ' : '⚙️ '}
                         {t === 'datasources' ? 'Data Sources' : t}
                     </button>
                 ))}
@@ -350,7 +350,7 @@ export default function AdminPage() {
                     <div className="flex-between mb-16" style={{ alignItems: 'center' }}>
                         <h3 className="section-header" style={{ margin: 0 }}>💬 Chatbot Profiles</h3>
                         <div className="flex-row gap-8">
-                            <button className="btn btn-secondary text-sm" onClick={() => setTab('system')}>📝 Manage System Prompts</button>
+                            <button className="btn btn-secondary text-sm" onClick={() => setTab('prompts')}>📝 Manage System Prompts</button>
                             <button className="btn btn-primary text-base" onClick={() => setShowAddChatbot(!showAddChatbot)}>+ Add Profile</button>
                         </div>
                     </div>
@@ -449,114 +449,143 @@ export default function AdminPage() {
             )
             }
 
-            {/* System Tab */}
-            {
-                tab === 'system' && (
-                    <div>
-                        {/* System Prompts CRUD */}
-                        <div className="flex-between mb-16" style={{ alignItems: 'center' }}>
-                            <h3 className="section-header" style={{ margin: 0 }}>📝 System Prompts</h3>
-                            <button className="btn btn-primary text-base" onClick={() => setShowAddPrompt(!showAddPrompt)}>+ New Prompt</button>
+            {/* Prompts Tab */}
+            {tab === 'prompts' && (
+                <div>
+                    <div className="flex-between mb-16" style={{ alignItems: 'center' }}>
+                        <h3 className="section-header" style={{ margin: 0 }}>📝 System Prompts</h3>
+                        <button className="btn btn-primary text-base" onClick={() => setShowAddPrompt(!showAddPrompt)}>+ New Prompt</button>
+                    </div>
+
+                    {showAddPrompt && (
+                        <div className="section-card-sm mb-16">
+                            <div className="flex-col gap-12">
+                                <input placeholder="Prompt Name (e.g. Product Assistant)" value={spName} onChange={e => setSpName(e.target.value)} className="form-input" />
+                                <textarea
+                                    placeholder="Enter system prompt content..."
+                                    value={spContent}
+                                    onChange={e => setSpContent(e.target.value)}
+                                    className="form-textarea"
+                                    rows={6}
+                                    style={{ fontFamily: 'monospace', fontSize: '13px' }}
+                                />
+                            </div>
+                            <div className="flex-row gap-8 mt-12" style={{ justifyContent: 'flex-end' }}>
+                                <button className="btn btn-secondary" onClick={() => { setShowAddPrompt(false); setSpName(''); setSpContent(''); }}>Cancel</button>
+                                <button className="btn btn-primary" disabled={!spName.trim() || !spContent.trim()} onClick={async () => {
+                                    await createPrompt({ orgId, name: spName.trim(), content: spContent.trim() });
+                                    setSpName(''); setSpContent(''); setShowAddPrompt(false);
+                                }}>Create Prompt</button>
+                            </div>
                         </div>
+                    )}
 
-                        {showAddPrompt && (
-                            <div className="section-card-sm mb-16">
-                                <div className="flex-col gap-12">
-                                    <input placeholder="Prompt Name (e.g. Product Assistant)" value={spName} onChange={e => setSpName(e.target.value)} className="form-input" />
-                                    <textarea
-                                        placeholder="Enter system prompt content..."
-                                        value={spContent}
-                                        onChange={e => setSpContent(e.target.value)}
-                                        className="form-textarea"
-                                        rows={6}
-                                        style={{ fontFamily: 'monospace', fontSize: '13px' }}
-                                    />
-                                </div>
-                                <div className="flex-row gap-8 mt-12" style={{ justifyContent: 'flex-end' }}>
-                                    <button className="btn btn-secondary" onClick={() => { setShowAddPrompt(false); setSpName(''); setSpContent(''); }}>Cancel</button>
-                                    <button className="btn btn-primary" disabled={!spName.trim() || !spContent.trim()} onClick={async () => {
-                                        await createPrompt({ orgId, name: spName.trim(), content: spContent.trim() });
-                                        setSpName(''); setSpContent(''); setShowAddPrompt(false);
-                                    }}>Create Prompt</button>
-                                </div>
-                            </div>
-                        )}
-
-                        {!systemPrompts ? <div className="loading"><div className="loading-spinner" /></div> : systemPrompts.length === 0 ? (
-                            <div className="empty-state mb-24">
-                                <div className="empty-state-icon">📝</div>
-                                <div className="empty-state-text">No system prompts yet. Create one to configure chatbot behavior.</div>
-                            </div>
-                        ) : (
-                            <div className="mb-24">
-                                {systemPrompts.map(p => (
-                                    <div key={p._id} className="mb-8" style={{
-                                        background: 'var(--bg-secondary)', borderRadius: 8, border: '1px solid var(--border)',
-                                    }}>
-                                        <div className="flex-row gap-16" style={{ padding: '12px 16px' }}>
-                                            <div style={{ width: 10, height: 10, borderRadius: '50%', background: p.isActive ? '#34d399' : '#6b7280', marginTop: 6 }} />
-                                            <div className="flex-1">
-                                                <div className="font-semibold text-md">{p.name}</div>
-                                                <div className="text-xs text-tertiary">v{p.version} · {p.content.length} chars · {p.isActive ? 'Active' : 'Inactive'}</div>
-                                            </div>
-                                            <div className="flex-row gap-4">
-                                                <button className="btn btn-secondary text-sm" style={{ padding: '4px 8px' }}
-                                                    onClick={() => { setEditingPrompt(editingPrompt === p._id ? null : p._id); setEditPromptContent(p.content); }}>
-                                                    {editingPrompt === p._id ? 'Close' : 'Edit'}
-                                                </button>
-                                                <button className="btn btn-secondary text-sm" style={{ padding: '4px 8px' }}
-                                                    onClick={() => updatePrompt({ promptId: p._id, isActive: !p.isActive })}>
-                                                    {p.isActive ? 'Disable' : 'Enable'}
-                                                </button>
-                                                <button className="btn btn-secondary text-sm text-error" style={{ padding: '4px 8px' }}
-                                                    onClick={() => deletePrompt({ promptId: p._id })}>
-                                                    Delete
-                                                </button>
-                                            </div>
-                                        </div>
-                                        {editingPrompt === p._id && (
-                                            <div style={{ padding: '0 16px 16px', borderTop: '1px solid var(--border)', paddingTop: 12 }}>
-                                                <textarea
-                                                    value={editPromptContent}
-                                                    onChange={e => setEditPromptContent(e.target.value)}
-                                                    className="form-textarea"
-                                                    rows={8}
-                                                    style={{ fontFamily: 'monospace', fontSize: '13px', width: '100%' }}
-                                                />
-                                                <div className="flex-row gap-8 mt-8" style={{ justifyContent: 'flex-end' }}>
-                                                    <button className="btn btn-primary text-sm" disabled={editPromptContent === p.content}
-                                                        onClick={async () => {
-                                                            await updatePrompt({ promptId: p._id, content: editPromptContent });
-                                                            setEditingPrompt(null);
-                                                        }}>Save Changes</button>
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-
-                        {/* System Info */}
-                        <h3 className="section-header mb-16">⚙️ System Information</h3>
-                        <div className="flex-col gap-8">
-                            {[
-                                { label: 'Convex URL', value: import.meta.env.VITE_CONVEX_URL?.replace('https://', '') || '(not configured)' },
-                                { label: 'Frontend', value: window.location.hostname + ' (Vercel)' },
-                                { label: 'Auth', value: 'Convex session tokens' },
-                            ].map(item => (
-                                <div key={item.label} className="flex-between" style={{
-                                    padding: '10px 16px', alignItems: 'center',
+                    {!systemPrompts ? <div className="loading"><div className="loading-spinner" /></div> : systemPrompts.length === 0 ? (
+                        <div className="empty-state mb-24">
+                            <div className="empty-state-icon">📝</div>
+                            <div className="empty-state-text">No system prompts yet. Create one to configure chatbot behavior.</div>
+                        </div>
+                    ) : (
+                        <div className="mb-24">
+                            {systemPrompts.map(p => (
+                                <div key={p._id} className="mb-8" style={{
                                     background: 'var(--bg-secondary)', borderRadius: 8, border: '1px solid var(--border)',
                                 }}>
-                                    <span className="font-medium text-md">{item.label}</span>
-                                    <span className="font-mono text-base text-muted">{item.value}</span>
+                                    <div className="flex-row gap-16" style={{ padding: '12px 16px' }}>
+                                        <div style={{ width: 10, height: 10, borderRadius: '50%', background: p.isActive ? '#34d399' : '#6b7280', marginTop: 6 }} />
+                                        <div className="flex-1">
+                                            <div className="font-semibold text-md">{p.name}</div>
+                                            <div className="text-xs text-tertiary">v{p.version} · {p.content.length} chars · {p.isActive ? 'Active' : 'Inactive'}</div>
+                                        </div>
+                                        <div className="flex-row gap-4">
+                                            <button className="btn btn-secondary text-sm" style={{ padding: '4px 8px' }}
+                                                onClick={() => { setEditingPrompt(editingPrompt === p._id ? null : p._id); setEditPromptContent(p.content); }}>
+                                                {editingPrompt === p._id ? 'Close' : 'Edit'}
+                                            </button>
+                                            <button className="btn btn-secondary text-sm" style={{ padding: '4px 8px' }}
+                                                onClick={() => updatePrompt({ promptId: p._id, isActive: !p.isActive })}>
+                                                {p.isActive ? 'Disable' : 'Enable'}
+                                            </button>
+                                            <button className="btn btn-secondary text-sm text-error" style={{ padding: '4px 8px' }}
+                                                onClick={() => deletePrompt({ promptId: p._id })}>
+                                                Delete
+                                            </button>
+                                        </div>
+                                    </div>
+                                    {editingPrompt === p._id && (
+                                        <div style={{ padding: '0 16px 16px', borderTop: '1px solid var(--border)', paddingTop: 12 }}>
+                                            <textarea
+                                                value={editPromptContent}
+                                                onChange={e => setEditPromptContent(e.target.value)}
+                                                className="form-textarea"
+                                                rows={8}
+                                                style={{ fontFamily: 'monospace', fontSize: '13px', width: '100%' }}
+                                            />
+                                            <div className="flex-row gap-8 mt-8" style={{ justifyContent: 'flex-end' }}>
+                                                <button className="btn btn-primary text-sm" disabled={editPromptContent === p.content}
+                                                    onClick={async () => {
+                                                        await updatePrompt({ promptId: p._id, content: editPromptContent });
+                                                        setEditingPrompt(null);
+                                                    }}>Save Changes</button>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             ))}
                         </div>
+                    )}
+                </div>
+            )}
+
+            {/* System Tab */}
+            {tab === 'system' && (
+                <div>
+                    <h3 className="section-header mb-16">⚙️ System Information</h3>
+                    <div className="flex-col gap-8">
+                        {[
+                            { label: '🌐 Frontend Host', value: window.location.hostname },
+                            { label: '⚡ Convex Backend', value: import.meta.env.VITE_CONVEX_URL?.replace('https://', '') || '(not configured)' },
+                            { label: '🔐 Authentication', value: 'Convex session tokens' },
+                            { label: '🏢 Organization', value: orgId || '(none)' },
+                            { label: '🌍 Environment', value: import.meta.env.MODE || 'production' },
+                            { label: '📦 Build Tool', value: 'Vite + React' },
+                            { label: '🖥️ Platform', value: navigator.platform },
+                            { label: '🌐 Browser', value: navigator.userAgent.split(') ').pop()?.split('/')[0] || navigator.userAgent.slice(0, 50) },
+                            { label: '📐 Screen', value: `${window.screen.width}×${window.screen.height} @ ${window.devicePixelRatio}x` },
+                            { label: '🕐 Timezone', value: Intl.DateTimeFormat().resolvedOptions().timeZone },
+                            { label: '🗓️ Locale', value: navigator.language },
+                        ].map(item => (
+                            <div key={item.label} className="flex-between" style={{
+                                padding: '10px 16px', alignItems: 'center',
+                                background: 'var(--bg-secondary)', borderRadius: 8, border: '1px solid var(--border)',
+                            }}>
+                                <span className="font-medium text-md">{item.label}</span>
+                                <span className="font-mono text-base text-muted" style={{ maxWidth: '60%', textAlign: 'right', wordBreak: 'break-all' }}>{item.value}</span>
+                            </div>
+                        ))}
                     </div>
-                )
-            }
+
+                    <h3 className="section-header mt-24 mb-16">📊 Data Summary</h3>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12 }}>
+                        {[
+                            { label: 'Providers', count: providers?.length ?? '…', icon: '🔌' },
+                            { label: 'Models', count: models?.length ?? '…', icon: '🤖' },
+                            { label: 'Chatbots', count: chatbots?.length ?? '…', icon: '💬' },
+                            { label: 'Prompts', count: systemPrompts?.length ?? '…', icon: '📝' },
+                            { label: 'Dimensions', count: dimensions.length, icon: '📐' },
+                        ].map(item => (
+                            <div key={item.label} style={{
+                                padding: '16px', background: 'var(--bg-secondary)', borderRadius: 10,
+                                border: '1px solid var(--border)', textAlign: 'center',
+                            }}>
+                                <div style={{ fontSize: 28, marginBottom: 4 }}>{item.icon}</div>
+                                <div className="font-bold text-2xl">{item.count}</div>
+                                <div className="text-sm text-tertiary">{item.label}</div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
         </div >
     );
 }

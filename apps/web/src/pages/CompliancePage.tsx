@@ -869,9 +869,11 @@ export default function CompliancePage() {
     const scans = useQuery(api.compliance.listScans, typedOrgId ? { orgId: typedOrgId } : 'skip');
     const summary = useQuery(api.compliance.getOrgComplianceSummary, typedOrgId ? { orgId: typedOrgId } : 'skip');
     const scanProject = useAction(api.compliance.scanProject);
-    const scanAll = useAction(api.compliance.scanAllProjects);
 
     const [scanning, setScanning] = useState(false);
+    const [scanProgress, setScanProgress] = useState(0);
+    const [scanTotal, setScanTotal] = useState(0);
+    const [scanFailed, setScanFailed] = useState(0);
     const [scanningProject, setScanningProject] = useState<string | null>(null);
     const [filterLane, setFilterLane] = useState('');
     const [filterScore, setFilterScore] = useState('');
@@ -924,16 +926,47 @@ export default function CompliancePage() {
         return list;
     }, [projects, searchQuery, filterLane, filterScore, scanMap]);
 
+    const BATCH_SIZE = 6; // parallel concurrency
+
     const handleScanAll = async () => {
         if (!typedOrgId) return;
+        const projectList = projects.map(p => (p as unknown as { _id: string; name: string }));
+        if (projectList.length === 0) return;
+
         setScanning(true);
-        try {
-            const result = await scanAll({ orgId: typedOrgId });
-            toast.success(`Scanned ${result.scanned} projects`);
-        } catch (err) {
-            toast.error(getErrorMessage(err));
+        setScanProgress(0);
+        setScanTotal(projectList.length);
+        setScanFailed(0);
+
+        let failed = 0;
+
+        // Process in parallel batches
+        for (let i = 0; i < projectList.length; i += BATCH_SIZE) {
+            const batch = projectList.slice(i, i + BATCH_SIZE);
+            const results = await Promise.allSettled(
+                batch.map(async (p) => {
+                    try {
+                        await scanProject({ orgId: typedOrgId, projectId: p._id as Id<"projects"> });
+                    } catch {
+                        // Retry once after 1s delay
+                        await new Promise(r => setTimeout(r, 1000));
+                        try {
+                            await scanProject({ orgId: typedOrgId, projectId: p._id as Id<"projects"> });
+                        } catch {
+                            throw new Error(`Failed: ${p.name}`);
+                        }
+                    }
+                })
+            );
+
+            const batchFailed = results.filter(r => r.status === 'rejected').length;
+            failed += batchFailed;
+            setScanProgress(prev => prev + batch.length);
+            setScanFailed(failed);
         }
+
         setScanning(false);
+        toast.success(`Scanned ${projectList.length} projects${failed > 0 ? ` (${failed} failed)` : ''}`);
     };
 
     const handleScanProject = async (projectId: string) => {
@@ -979,6 +1012,38 @@ export default function CompliancePage() {
                     </div>
                 </div>
             </div>
+
+            {/* ── Scan Progress Bar ────────────────────────────── */}
+            {scanning && scanTotal > 0 && (
+                <div className="mb-20" style={{
+                    padding: '16px 20px', borderRadius: 12,
+                    background: 'var(--bg-secondary)', border: '1px solid var(--border)',
+                }}>
+                    <div className="flex-between mb-8">
+                        <span className="font-semibold text-md">
+                            🔍 Scanning {scanProgress}/{scanTotal} projects...
+                        </span>
+                        <span className="font-mono text-sm text-tertiary">
+                            {Math.round((scanProgress / scanTotal) * 100)}%
+                            {scanFailed > 0 && <span style={{ color: '#f87171', marginLeft: 8 }}>⚠ {scanFailed} failed</span>}
+                        </span>
+                    </div>
+                    <div style={{
+                        width: '100%', height: 8, borderRadius: 4,
+                        background: 'var(--bg-primary)', overflow: 'hidden',
+                    }}>
+                        <div style={{
+                            width: `${(scanProgress / scanTotal) * 100}%`,
+                            height: '100%', borderRadius: 4,
+                            background: 'linear-gradient(90deg, #6366f1, #8b5cf6)',
+                            transition: 'width 0.4s ease',
+                        }} />
+                    </div>
+                    <div className="text-xs text-tertiary mt-4">
+                        Running {BATCH_SIZE} scans in parallel with automatic retry
+                    </div>
+                </div>
+            )}
 
             {/* ── Summary Grid ───────────────────────────────────── */}
             <div className="grid-auto gap-12 mb-24">
