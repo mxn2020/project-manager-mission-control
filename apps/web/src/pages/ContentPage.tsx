@@ -112,6 +112,13 @@ export default function ContentPage() {
             {activeTab === 'calendar' && <CalendarTab orgId={orgId} />}
             {activeTab === 'crossproject' && <CrossProjectTab orgId={orgId} />}
             {activeTab === 'releases' && <ReleaseContentTab orgId={orgId} />}
+
+            <AIChatPanel
+                pageContext="Content"
+                profiles={CONTENT_PROFILES}
+                isOpen={showAIChat}
+                onToggle={() => setShowAIChat(false)}
+            />
         </div>
     );
 }
@@ -915,13 +922,6 @@ function ReleaseContentTab({ orgId }: { orgId: Id<"organizations"> | undefined }
                     ))
                 )}
             </div>
-
-            <AIChatPanel
-                pageContext="Content"
-                profiles={CONTENT_PROFILES}
-                isOpen={showAIChat}
-                onToggle={() => setShowAIChat(false)}
-            />
         </div>
     );
 }
