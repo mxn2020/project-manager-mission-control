@@ -4,6 +4,7 @@ import { api } from '@mission-control/backend/convex/_generated/api';
 import { useAuth } from '../hooks/useAuth';
 import type { Id } from '../lib/types';
 import SearchableSelect from '../components/SearchableSelect';
+import { FormInput, FormTextarea } from '../components/ui';
 
 const CATEGORIES = [
     { value: 'standard', label: 'Standards', icon: '📏' },
@@ -58,6 +59,16 @@ export default function WikiPage() {
 
     const articles = rawArticles ? rawArticles.map(a => ({ ...a, id: a._id })) : null;
     const all = articles || [];
+
+    // Filter articles by search text
+    const filteredArticles = all.filter(a => {
+        if (!search) return true;
+        const q = search.toLowerCase();
+        return a.title.toLowerCase().includes(q)
+            || (a.body || '').toLowerCase().includes(q)
+            || (a.tags || []).some((t: string) => t.toLowerCase().includes(q));
+    });
+
     const selectedArticle = selected ? all.find(a => a.id === selected) : null;
 
     // Category counts
@@ -106,10 +117,10 @@ export default function WikiPage() {
             {/* Create Form */}
             {showCreate && (
                 <div className="section-card mb-16">
-                    <input value={newTitle} onChange={e => setNewTitle(e.target.value)} placeholder="Article title *"
-                        className="form-input mb-12" />
-                    <textarea value={newBody} onChange={e => setNewBody(e.target.value)} placeholder="Markdown content..."
-                        className="form-textarea mb-12 font-mono" style={{ minHeight: 120 }} />
+                    <FormInput value={newTitle} onChange={e => setNewTitle(e.target.value)} placeholder="Article title *"
+                        className="mb-12" />
+                    <FormTextarea value={newBody} onChange={e => setNewBody(e.target.value)} placeholder="Markdown content..."
+                        className="mb-12 font-mono" style={{ minHeight: 120 }} />
                     <div className="flex-row flex-wrap gap-12">
                         <SearchableSelect
                             options={CATEGORIES.map(c => ({ value: c.value, label: `${c.icon} ${c.label}` }))}
@@ -117,8 +128,8 @@ export default function WikiPage() {
                         <SearchableSelect
                             options={SCOPES.map(s => ({ value: s.value, label: s.label }))}
                             value={newScope} onChange={setNewScope} placeholder="Scope" clearable={false} width="140px" />
-                        <input value={newTags} onChange={e => setNewTags(e.target.value)} placeholder="Tags (comma-separated)"
-                            className="form-input-sm flex-1" style={{ minWidth: 120 }} />
+                        <FormInput value={newTags} onChange={e => setNewTags(e.target.value)} placeholder="Tags (comma-separated)"
+                            inputSize="sm" className="flex-1" style={{ minWidth: 120 }} />
                         <button className="btn btn-secondary text-base" onClick={() => setShowCreate(false)}>Cancel</button>
                         <button className="btn btn-primary text-base" onClick={handleCreate} disabled={!newTitle.trim()}>Create</button>
                     </div>
@@ -129,8 +140,8 @@ export default function WikiPage() {
             <div className="gap-16 mt-8" style={{ display: 'grid', gridTemplateColumns: '240px 1fr' }}>
                 {/* Sidebar */}
                 <div>
-                    <input value={search} onChange={e => setSearch(e.target.value)} placeholder="🔍 Search..."
-                        className="form-input-sm mb-12" style={{ width: '100%', background: 'var(--bg-secondary)' }} />
+                    <FormInput value={search} onChange={e => setSearch(e.target.value)} placeholder="🔍 Search..."
+                        inputSize="sm" className="mb-12" style={{ width: '100%', background: 'var(--bg-secondary)' }} />
 
                     {/* Scope filter */}
                     <div className="flex-row flex-wrap gap-4 mb-12">
@@ -149,7 +160,7 @@ export default function WikiPage() {
                             display: 'block', width: '100%', textAlign: 'left', padding: '6px 10px', borderRadius: 6,
                             background: !filterCat ? 'var(--accent-bg)' : 'transparent', border: 'none', color: 'inherit',
                             cursor: 'pointer', fontSize: 12, marginBottom: 2,
-                        }}>All ({all.length})</button>
+                        }}>All ({filteredArticles.length})</button>
                     {CATEGORIES.map(c => {
                         const count = catCounts[c.value] || 0;
                         return (
@@ -168,10 +179,10 @@ export default function WikiPage() {
                     <div className="section-label mt-16 mb-6">Articles</div>
                     {articles === null ? (
                         <div className="text-sm text-tertiary">Loading...</div>
-                    ) : all.length === 0 ? (
-                        <div className="text-sm text-tertiary">No articles</div>
+                    ) : filteredArticles.length === 0 ? (
+                        <div className="text-sm text-tertiary">{search ? 'No matches' : 'No articles'}</div>
                     ) : (
-                        all.map(a => (
+                        filteredArticles.map(a => (
                             <div key={a.id} onClick={() => { setSelected(a.id); setEditMode(false); }}
                                 style={{
                                     padding: '8px 10px', borderRadius: 6, cursor: 'pointer', marginBottom: 2,
@@ -231,8 +242,8 @@ export default function WikiPage() {
 
                             {editMode ? (
                                 <div>
-                                    <textarea value={editBody} onChange={e => setEditBody(e.target.value)}
-                                        className="form-textarea font-mono" style={{ minHeight: 300 }} />
+                                    <FormTextarea value={editBody} onChange={e => setEditBody(e.target.value)}
+                                        className="font-mono" style={{ minHeight: 300 }} />
                                     <div className="flex-row gap-8 mt-8" style={{ justifyContent: 'flex-end' }}>
                                         <button className="btn btn-secondary text-base" onClick={() => setEditMode(false)}>Cancel</button>
                                         <button className="btn btn-primary text-base" onClick={handleSaveBody}>Save</button>

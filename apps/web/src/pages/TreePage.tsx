@@ -98,7 +98,7 @@ export default function TreePage({ data }: { data: StatusData }) {
                     <TreeNode key={dim.id} label={dim.label} icon={dim.icon} count={filtered.length} color="var(--accent)" storageKey={`all:${dim.id}`}>
                         {withProjects.map(g => (
                             <TreeNode key={g.key} label={g.sub.label} icon={g.sub.icon} count={g.projects.length} color={g.sub.color} storageKey={`all:${dim.id}:${g.key}`}>
-                                {g.projects.map(p => <TreeLeaf key={p.path} project={p} onClick={() => handleProjectClick(p.path)} />)}
+                                {g.projects.map(p => <TreeLeaf key={p.id || p.path || p.name} project={p} onClick={() => handleProjectClick(p.path)} />)}
                             </TreeNode>
                         ))}
                     </TreeNode>
@@ -114,7 +114,7 @@ export default function TreePage({ data }: { data: StatusData }) {
             <div className="tree-container">
                 {groups.filter(g => g.projects.length > 0).map(g => (
                     <TreeNode key={g.key} label={g.sub.label} icon={g.sub.icon} count={g.projects.length} color={g.sub.color} storageKey={`${dim.id}:${g.key}`}>
-                        {g.projects.map(p => <TreeLeaf key={p.path} project={p} onClick={() => handleProjectClick(p.path)} />)}
+                        {g.projects.map(p => <TreeLeaf key={p.id || p.path || p.name} project={p} onClick={() => handleProjectClick(p.path)} />)}
                     </TreeNode>
                 ))}
             </div>

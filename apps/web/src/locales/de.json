@@ -1,0 +1,58 @@
+{
+  "app": {
+    "name": "Mission Control",
+    "tagline": "Projektmanagement für Entwickler"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "tasks": "Aufgaben",
+    "workflows": "Workflows",
+    "marketing": "Marketing",
+    "content": "Inhalte",
+    "ideas": "Ideen",
+    "wiki": "Wiki",
+    "roadmap": "Roadmap",
+    "files": "Dateien",
+    "minions": "Minions",
+    "analytics": "Analysen",
+    "costs": "Kosten",
+    "dependencies": "Abhängigkeiten",
+    "compliance": "Compliance",
+    "ai": "KI",
+    "playground": "Playground",
+    "agents": "Agents",
+    "repositories": "Repositories",
+    "admin": "Admin",
+    "integrations": "Integrationen"
+  },
+  "nav_groups": {
+    "work": "Arbeit",
+    "knowledge": "Wissen",
+    "data": "Daten",
+    "system": "System"
+  },
+  "views": {
+    "overview": "Übersicht",
+    "grid": "Raster",
+    "table": "Tabelle",
+    "tree": "Baum",
+    "kanban": "Kanban",
+    "focus": "Fokus"
+  },
+  "actions": {
+    "sync": "Synchronisieren",
+    "scanning": "Wird gescannt…",
+    "signOut": "Abmelden",
+    "reload": "Seite neu laden",
+    "newChat": "Neuer Chat"
+  },
+  "auth": {
+    "authenticating": "Authentifizierung…",
+    "loading": "Mission Control wird geladen…"
+  },
+  "errors": {
+    "somethingWentWrong": "Etwas ist schiefgelaufen",
+    "tryRefreshing": "Ein unerwarteter Fehler ist aufgetreten. Bitte versuchen Sie, die Seite neu zu laden.",
+    "failedToConnect": "Verbindung fehlgeschlagen"
+  }
+}

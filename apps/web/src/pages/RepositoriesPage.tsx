@@ -34,6 +34,7 @@ export default function RepositoriesPage() {
     const [loading, setLoading] = useState(false);
     const [cloning, setCloning] = useState<Set<string>>(new Set());
     const [filterLane, setFilterLane] = useState('');
+    const [search, setSearch] = useState('');
     const [showCreate, setShowCreate] = useState(false);
 
     // Correct filtering using hasValue helper
@@ -41,10 +42,15 @@ export default function RepositoriesPage() {
     const withRepo = projects.filter(p => hasValue(p.repo));
     const withoutRepo = projects.filter(p => !hasValue(p.repo));
 
-    // Filter by lane
-    const filteredDeployed = filterLane ? deployed.filter(p => p.lane === filterLane) : deployed;
-    const filteredWithRepo = filterLane ? withRepo.filter(p => p.lane === filterLane) : withRepo;
-    const filteredWithoutRepo = filterLane ? withoutRepo.filter(p => p.lane === filterLane) : withoutRepo;
+    // Filter by lane and search
+    const matchesSearch = (p: typeof projects[0]) => {
+        if (!search) return true;
+        const q = search.toLowerCase();
+        return p.name.toLowerCase().includes(q) || (p.repo || '').toLowerCase().includes(q);
+    };
+    const filteredDeployed = deployed.filter(p => (!filterLane || p.lane === filterLane) && matchesSearch(p));
+    const filteredWithRepo = withRepo.filter(p => (!filterLane || p.lane === filterLane) && matchesSearch(p));
+    const filteredWithoutRepo = withoutRepo.filter(p => (!filterLane || p.lane === filterLane) && matchesSearch(p));
 
     const laneOptions = useMemo(() => {
         const lanes = [...new Set(projects.map(p => p.lane))].sort();
@@ -100,6 +106,13 @@ export default function RepositoriesPage() {
                         <p className="page-description">GitHub repos, deployment status, and sync overview</p>
                     </div>
                     <div className="flex-row gap-8">
+                        <input
+                            className="search-input"
+                            placeholder="🔍 Search..."
+                            value={search}
+                            onChange={e => setSearch(e.target.value)}
+                            style={{ width: 180 }}
+                        />
                         <SearchableSelect
                             options={laneOptions}
                             value={filterLane}

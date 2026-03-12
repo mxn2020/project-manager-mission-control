@@ -381,6 +381,8 @@ export const updateSyncData = internalMutation({
         repoId: v.id("githubRepos"),
         yamlContent: v.optional(v.string()),
         accountsContent: v.optional(v.string()),
+        roadmapContent: v.optional(v.string()),
+        ideasContent: v.optional(v.string()),
         lastCommitSha: v.optional(v.string()),
         syncStatus: v.string(),
     },
@@ -454,7 +456,7 @@ export const syncRepo = action({
         });
         if (!repos) throw new Error("Repo not found");
 
-        const { repoFullName, defaultBranch } = repos;
+        const { repoFullName, defaultBranch, orgId, projectId } = repos;
 
         // Set syncing status
         await ctx.runMutation(internal.github.updateSyncData, {
@@ -463,26 +465,72 @@ export const syncRepo = action({
         });
 
         try {
-            // Fetch PROJECT.yaml from repo
-            const yamlContent = await fetchFileFromGitHub(
+            // ─── PROJECT.yaml: check .project/ first, fallback to root ────
+            let yamlContent = await fetchFileFromGitHub(
                 repoFullName,
-                "PROJECT.yaml",
+                ".project/PROJECT.yaml",
                 defaultBranch,
                 args.githubToken
             );
+            if (!yamlContent) {
+                yamlContent = await fetchFileFromGitHub(
+                    repoFullName,
+                    "PROJECT.yaml",
+                    defaultBranch,
+                    args.githubToken
+                );
+            }
 
-            // Fetch ACCOUNTS.yaml from repo (optional - may not exist)
+            // ─── ACCOUNTS.yaml: check .project/ first, fallback to root ──
             let accountsContent: string | undefined;
             try {
                 const result = await fetchFileFromGitHub(
                     repoFullName,
-                    "ACCOUNTS.yaml",
+                    ".project/ACCOUNTS.yaml",
                     defaultBranch,
                     args.githubToken
                 );
-                accountsContent = result ?? undefined;
+                if (!result) {
+                    const fallback = await fetchFileFromGitHub(
+                        repoFullName,
+                        "ACCOUNTS.yaml",
+                        defaultBranch,
+                        args.githubToken
+                    );
+                    accountsContent = fallback ?? undefined;
+                } else {
+                    accountsContent = result;
+                }
             } catch {
                 // ACCOUNTS.yaml is optional
+            }
+
+            // ─── ROADMAP.yaml: .project/ only ────────────────────────────
+            let roadmapContent: string | undefined;
+            try {
+                const result = await fetchFileFromGitHub(
+                    repoFullName,
+                    ".project/ROADMAP.yaml",
+                    defaultBranch,
+                    args.githubToken
+                );
+                roadmapContent = result ?? undefined;
+            } catch {
+                // ROADMAP.yaml is optional
+            }
+
+            // ─── IDEAS.yaml: .project/ only ──────────────────────────────
+            let ideasContent: string | undefined;
+            try {
+                const result = await fetchFileFromGitHub(
+                    repoFullName,
+                    ".project/IDEAS.yaml",
+                    defaultBranch,
+                    args.githubToken
+                );
+                ideasContent = result ?? undefined;
+            } catch {
+                // IDEAS.yaml is optional
             }
 
             // Fetch latest commit SHA
@@ -496,11 +544,46 @@ export const syncRepo = action({
                 repoId: args.repoId,
                 yamlContent: yamlContent || undefined,
                 accountsContent,
+                roadmapContent,
+                ideasContent,
                 lastCommitSha: commitSha || undefined,
                 syncStatus: "synced",
             });
 
-            return { success: true, hasYaml: !!yamlContent, hasAccounts: !!accountsContent };
+            // ─── Sync features from ROADMAP.yaml ────────────────────────
+            if (roadmapContent && orgId) {
+                try {
+                    await ctx.runMutation(internal.github.syncFeaturesFromYaml, {
+                        orgId,
+                        projectId: projectId || undefined,
+                        yamlContent: roadmapContent,
+                        repoFullName,
+                    });
+                } catch (err) {
+                    console.error("Failed to sync features from ROADMAP.yaml:", err);
+                }
+            }
+
+            // ─── Sync ideas from IDEAS.yaml ──────────────────────────────
+            if (ideasContent && orgId) {
+                try {
+                    await ctx.runMutation(internal.github.syncIdeasFromYaml, {
+                        orgId,
+                        yamlContent: ideasContent,
+                        repoFullName,
+                    });
+                } catch (err) {
+                    console.error("Failed to sync ideas from IDEAS.yaml:", err);
+                }
+            }
+
+            return {
+                success: true,
+                hasYaml: !!yamlContent,
+                hasAccounts: !!accountsContent,
+                hasRoadmap: !!roadmapContent,
+                hasIdeas: !!ideasContent,
+            };
         } catch (err: unknown) {
             const message = err instanceof Error ? err.message : "Unknown error";
             await ctx.runMutation(internal.github.updateSyncData, {
@@ -634,3 +717,283 @@ async function fetchLatestCommitSha(
     const data = await res.json();
     return (data as { sha?: string }).sha || null;
 }
+
+// ─── Lightweight YAML parser for ROADMAP.yaml / IDEAS.yaml ──────────────
+
+interface ParsedFeature {
+    title: string;
+    status: string;
+    priority: string;
+    effort?: string;
+    category?: string;
+    target_release?: string;
+    description?: string;
+    acceptance_criteria?: string;
+    tags?: string[];
+}
+
+interface ParsedIdea {
+    title: string;
+    category: string;
+    score: number;
+    body?: string;
+    tags?: string[];
+}
+
+/**
+ * Simple YAML list parser for our specific formats.
+ * Parses a YAML document with a top-level key containing a list of objects.
+ * Handles basic scalar values, arrays (inline [a,b] or block - item), and multiline | strings.
+ */
+function parseSimpleYamlList(content: string, rootKey: string): Record<string, unknown>[] {
+    const items: Record<string, unknown>[] = [];
+    const lines = content.split('\n');
+    let inRoot = false;
+    let currentItem: Record<string, unknown> | null = null;
+    let multilineKey: string | null = null;
+    let multilineValue: string[] = [];
+    let arrayKey: string | null = null;
+    let arrayValues: string[] = [];
+
+    const flushMultiline = () => {
+        if (multilineKey && currentItem) {
+            currentItem[multilineKey] = multilineValue.join('\n').trim();
+        }
+        multilineKey = null;
+        multilineValue = [];
+    };
+
+    const flushArray = () => {
+        if (arrayKey && currentItem) {
+            currentItem[arrayKey] = arrayValues;
+        }
+        arrayKey = null;
+        arrayValues = [];
+    };
+
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        const trimmed = line.trimEnd();
+
+        // Detect root key (e.g., "features:" or "ideas:")
+        if (trimmed === `${rootKey}:` || trimmed === `${rootKey}: `) {
+            inRoot = true;
+            continue;
+        }
+
+        if (!inRoot) continue;
+
+        // End of root section if we hit a non-indented, non-empty line
+        if (trimmed.length > 0 && !trimmed.startsWith(' ') && !trimmed.startsWith('\t')) {
+            flushMultiline();
+            flushArray();
+            if (currentItem && currentItem.title) items.push(currentItem);
+            break;
+        }
+
+        // New list item: "  - title: ..."
+        const listItemMatch = trimmed.match(/^\s+-\s+(\w[\w_]*):\s*(.*)/);
+        if (listItemMatch) {
+            flushMultiline();
+            flushArray();
+            if (currentItem && currentItem.title) items.push(currentItem);
+            currentItem = {};
+            const key = listItemMatch[1];
+            const val = listItemMatch[2].trim();
+            if (val === '|') {
+                multilineKey = key;
+                multilineValue = [];
+            } else if (val.startsWith('[') && val.endsWith(']')) {
+                // Inline array: [a, b, c]
+                currentItem[key] = val.slice(1, -1).split(',').map(s => s.trim().replace(/^["']|["']$/g, ''));
+            } else {
+                currentItem[key] = val.replace(/^["']|["']$/g, '');
+            }
+            continue;
+        }
+
+        // Continuation property: "    key: value"
+        const propMatch = trimmed.match(/^\s{4,}(\w[\w_]*):\s*(.*)/);
+        if (propMatch && currentItem && !multilineKey) {
+            flushArray();
+            const key = propMatch[1];
+            const val = propMatch[2].trim();
+            if (val === '|') {
+                multilineKey = key;
+                multilineValue = [];
+            } else if (val.startsWith('[') && val.endsWith(']')) {
+                currentItem[key] = val.slice(1, -1).split(',').map(s => s.trim().replace(/^["']|["']$/g, ''));
+            } else {
+                currentItem[key] = val.replace(/^["']|["']$/g, '');
+            }
+            continue;
+        }
+
+        // Block array items: "      - value"
+        const arrayItemMatch = trimmed.match(/^\s{6,}-\s+(.*)/);
+        if (arrayItemMatch && currentItem && !multilineKey) {
+            if (!arrayKey) {
+                // This is a continuation of the last key that was set
+                // Find the last key — it should have been the array key
+                const keys = Object.keys(currentItem);
+                const lastKey = keys[keys.length - 1];
+                if (lastKey) {
+                    arrayKey = lastKey;
+                    const existingVal = currentItem[lastKey];
+                    if (typeof existingVal === 'string' && existingVal === '') {
+                        arrayValues = [];
+                    } else if (Array.isArray(existingVal)) {
+                        arrayValues = existingVal as string[];
+                    }
+                    delete currentItem[lastKey];
+                }
+            }
+            if (arrayKey) {
+                arrayValues.push(arrayItemMatch[1].trim().replace(/^["']|["']$/g, ''));
+            }
+            continue;
+        }
+
+        // Multiline content continuation
+        if (multilineKey && trimmed.match(/^\s{6,}/)) {
+            multilineValue.push(trimmed.trim());
+            continue;
+        }
+
+        // End of multiline
+        if (multilineKey && !trimmed.match(/^\s{6,}/)) {
+            flushMultiline();
+        }
+    }
+
+    // Flush remaining
+    flushMultiline();
+    flushArray();
+    if (currentItem && currentItem.title) items.push(currentItem);
+
+    return items;
+}
+
+// ─── Sync Features from ROADMAP.yaml ────────────────────────────────────
+
+export const syncFeaturesFromYaml = internalMutation({
+    args: {
+        orgId: v.id("organizations"),
+        projectId: v.optional(v.id("projects")),
+        yamlContent: v.string(),
+        repoFullName: v.string(),
+    },
+    handler: async (ctx, args) => {
+        const parsed = parseSimpleYamlList(args.yamlContent, "features") as ParsedFeature[];
+        if (!parsed.length) return { synced: 0 };
+
+        const now = Date.now();
+        let synced = 0;
+
+        for (const feature of parsed) {
+            if (!feature.title) continue;
+
+            // Check if feature with same title already exists for this org
+            const existing = await ctx.db
+                .query("features")
+                .withIndex("by_org", (idx) => idx.eq("orgId", args.orgId))
+                .collect();
+
+            const match = existing.find(f => f.title === feature.title);
+
+            if (match) {
+                // Update existing feature
+                await ctx.db.patch(match._id, {
+                    status: feature.status || match.status,
+                    priority: feature.priority || match.priority,
+                    effort: feature.effort || match.effort,
+                    category: feature.category || match.category,
+                    targetRelease: feature.target_release || match.targetRelease,
+                    description: feature.description || match.description,
+                    acceptanceCriteria: feature.acceptance_criteria || match.acceptanceCriteria,
+                    tags: feature.tags || match.tags,
+                    updatedAt: now,
+                });
+            } else {
+                // Create new feature
+                await ctx.db.insert("features", {
+                    orgId: args.orgId,
+                    projectId: args.projectId,
+                    title: feature.title,
+                    description: feature.description || "",
+                    status: feature.status || "proposed",
+                    priority: feature.priority || "medium",
+                    effort: feature.effort,
+                    category: feature.category,
+                    targetRelease: feature.target_release,
+                    tags: feature.tags || [],
+                    acceptanceCriteria: feature.acceptance_criteria,
+                    createdAt: now,
+                    updatedAt: now,
+                });
+            }
+            synced++;
+        }
+
+        return { synced };
+    },
+});
+
+// ─── Sync Ideas from IDEAS.yaml ─────────────────────────────────────────
+
+export const syncIdeasFromYaml = internalMutation({
+    args: {
+        orgId: v.id("organizations"),
+        yamlContent: v.string(),
+        repoFullName: v.string(),
+    },
+    handler: async (ctx, args) => {
+        const parsed = parseSimpleYamlList(args.yamlContent, "ideas") as ParsedIdea[];
+        if (!parsed.length) return { synced: 0 };
+
+        const now = Date.now();
+        let synced = 0;
+
+        for (const idea of parsed) {
+            if (!idea.title) continue;
+
+            // Check if idea with same title already exists for this org
+            const existing = await ctx.db
+                .query("ideas")
+                .withIndex("by_org", (idx) => idx.eq("orgId", args.orgId))
+                .collect();
+
+            const match = existing.find(i => i.title === idea.title);
+
+            if (match) {
+                // Update existing idea
+                await ctx.db.patch(match._id, {
+                    body: idea.body || match.body,
+                    category: idea.category || match.category,
+                    score: typeof idea.score === 'number' ? idea.score : (typeof idea.score === 'string' ? parseInt(idea.score, 10) || match.score : match.score),
+                    tags: idea.tags || match.tags,
+                    updatedAt: now,
+                });
+            } else {
+                // Create new idea
+                await ctx.db.insert("ideas", {
+                    orgId: args.orgId,
+                    title: idea.title,
+                    body: idea.body || "",
+                    category: idea.category || "product",
+                    score: typeof idea.score === 'number' ? idea.score : (typeof idea.score === 'string' ? parseInt(idea.score, 10) || 5 : 5),
+                    tags: idea.tags || [],
+                    linkedProjects: [args.repoFullName],
+                    linkedIdeas: [],
+                    archived: false,
+                    status: "active",
+                    createdAt: now,
+                    updatedAt: now,
+                });
+            }
+            synced++;
+        }
+
+        return { synced };
+    },
+});

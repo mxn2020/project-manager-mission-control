@@ -7,6 +7,7 @@ import { getErrorMessage } from '../lib/types';
 import SearchableSelect, { type SelectOption } from './SearchableSelect';
 import { TIER_ORDER, PRIORITY_ORDER, TIER_CONFIG, PRIORITY_CONFIG } from '../lib/types';
 import toast from 'react-hot-toast';
+import { FormInput, FormTextarea } from './ui';
 
 const CATEGORY_OPTIONS: SelectOption[] = [
     { value: 'webapp', label: 'Web App', icon: '🌐' },
@@ -304,11 +305,10 @@ export default function CloneProjectModal({ onClose, onCreated, lanes }: ClonePr
                     {/* Or Create New Repo */}
                     <div>
                         <label className="form-label">Or create a new repository</label>
-                        <input
+                        <FormInput
                             value={newRepoName}
                             onChange={e => setNewRepoName(e.target.value)}
                             placeholder="my-new-project"
-                            className="form-input"
                             style={{ fontFamily: 'monospace' }}
                         />
                         {repoCheckStatus === 'checking' && (
@@ -337,8 +337,7 @@ export default function CloneProjectModal({ onClose, onCreated, lanes }: ClonePr
                     <div className="grid-2 gap-12">
                         <div>
                             <label className="form-label">Project Name *</label>
-                            <input value={name} onChange={e => setName(e.target.value)} placeholder="my-awesome-project"
-                                className="form-input" />
+                            <FormInput value={name} onChange={e => setName(e.target.value)} placeholder="my-awesome-project" />
                         </div>
                         <div>
                             <label className="form-label">Lane *</label>
@@ -349,8 +348,8 @@ export default function CloneProjectModal({ onClose, onCreated, lanes }: ClonePr
                     {/* Description */}
                     <div>
                         <label className="form-label">Description</label>
-                        <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="What does this project do?"
-                            rows={2} className="form-textarea" />
+                        <FormTextarea value={description} onChange={e => setDescription(e.target.value)} placeholder="What does this project do?"
+                            rows={2} />
                     </div>
 
                     {/* Tier + Priority */}

@@ -6,7 +6,7 @@ import { groupByDimension } from '../lib/dimensions';
 import { useDimensions } from '../hooks/useDimensions';
 import { useMutation } from 'convex/react';
 import { api } from '@mission-control/backend/convex/_generated/api';
-import { PageHeader, Badge, GripIcon, DimensionPicker } from '../components/ui';
+import { PageHeader, Badge, GripIcon, DimensionPicker, FilterBar } from '../components/ui';
 import { useUrlFilters } from '../hooks/useUrlFilters';
 
 /** Pending change queued for batch save */
@@ -24,6 +24,7 @@ export default function KanbanPage({ data, onRefresh }: { data: StatusData; onRe
     const [urlFilters, setUrlFilter] = useUrlFilters({ columns: localStorage.getItem('mc-kanban-dim') || 'tier' });
     const columnDimension = urlFilters.columns || 'tier';
     const setColumnDimension = (v: string) => { setUrlFilter('columns', v); localStorage.setItem('mc-kanban-dim', v); };
+    const [search, setSearch] = useState('');
     const [dragOverCol, setDragOverCol] = useState<string | null>(null);
 
     // ── Optimistic state: local overrides for project fields ─────────────
@@ -43,12 +44,19 @@ export default function KanbanPage({ data, onRefresh }: { data: StatusData; onRe
         });
     }, [data.projects, overrides]);
 
+    // Filter by search
+    const filteredProjects = useMemo(() => {
+        if (!search) return projects;
+        const q = search.toLowerCase();
+        return projects.filter(p => p.name.toLowerCase().includes(q) || (p.description || '').toLowerCase().includes(q));
+    }, [projects, search]);
+
     const activeDimension = dimensions.find(d => d.id === columnDimension);
 
     const columns = useMemo(() => {
         if (!activeDimension) return [];
-        return groupByDimension(projects, activeDimension);
-    }, [projects, activeDimension]);
+        return groupByDimension(filteredProjects, activeDimension);
+    }, [filteredProjects, activeDimension]);
 
     const updateProject = useMutation(api.projects.updateByPath);
 
@@ -188,7 +196,11 @@ export default function KanbanPage({ data, onRefresh }: { data: StatusData; onRe
             <PageHeader
                 title="Kanban Board"
                 description={`Projects by ${activeDimension?.label || 'dimension'} · ${canDrag ? 'Drag to change' : 'Read only'}`}
-                actions={
+            />
+            <FilterBar
+                search={{ value: search, onChange: setSearch, placeholder: 'Search projects...' }}
+                resultCount={filteredProjects.length}
+                filters={
                     <DimensionPicker dimensions={dimensions} selected={columnDimension} onChange={setColumnDimension} label="Columns" allowNone={false} />
                 }
             />
@@ -215,7 +227,7 @@ export default function KanbanPage({ data, onRefresh }: { data: StatusData; onRe
                         <div className="kanban-cards">
                             {col.projects.map(p => (
                                 <div
-                                    key={p.path}
+                                    key={p.id || p.path || p.name}
                                     className="kanban-card"
                                     data-project-path={p.path}
                                     draggable={!!canDrag}

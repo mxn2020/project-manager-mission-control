@@ -91,6 +91,8 @@ export default defineSchema({
         syncStatus: v.string(), // synced | syncing | error
         yamlContent: v.optional(v.string()), // cached PROJECT.yaml
         accountsContent: v.optional(v.string()), // cached ACCOUNTS.yaml
+        roadmapContent: v.optional(v.string()), // cached .project/ROADMAP.yaml
+        ideasContent: v.optional(v.string()), // cached .project/IDEAS.yaml
         lastCommitSha: v.optional(v.string()),
         createdAt: v.number(),
     })
@@ -112,13 +114,19 @@ export default defineSchema({
         dueDate: v.optional(v.number()),
         githubIssueUrl: v.optional(v.string()),
         tags: v.optional(v.array(v.string())),
+        // ── Workflow linking fields ──────────────────────────────────────
+        category: v.optional(v.string()),         // "development" | "marketing" | "general"
+        featureId: v.optional(v.id("features")),
+        sprintId: v.optional(v.id("devSprints")),
+        campaignId: v.optional(v.id("campaigns")),
         createdAt: v.number(),
         updatedAt: v.number(),
     })
         .index("by_org", ["orgId"])
         .index("by_org_project", ["orgId", "projectPath"])
         .index("by_org_status", ["orgId", "status"])
-        .index("by_org_priority", ["orgId", "priority"]),
+        .index("by_org_priority", ["orgId", "priority"])
+        .index("by_org_category", ["orgId", "category"]),
 
     taskRelations: defineTable({
         sourceTaskId: v.id("tasks"),
@@ -162,6 +170,59 @@ export default defineSchema({
         updatedAt: v.number(),
     }).index("by_org", ["orgId"]),
 
+    // ─── Marketing Strategies (Templates) ────────────────────────────────
+    marketingStrategies: defineTable({
+        orgId: v.id("organizations"),
+        name: v.string(),
+        description: v.optional(v.string()),
+        projectCategory: v.string(), // "webapp" | "oss-tool" | "boilerplate" | etc.
+        targetAudience: v.optional(v.string()),
+        channels: v.array(v.string()), // ["tiktok", "x", "reddit", "blog", ...]
+        contentTypes: v.array(v.string()), // ["slideshow", "video", "post", "article", ...]
+        cadence: v.string(), // "daily" | "2x-week" | "weekly" | "biweekly" | "monthly"
+        tactics: v.string(), // JSON array of tactic objects
+        isTemplate: v.boolean(), // system-provided vs user-created
+        tags: v.array(v.string()),
+        status: v.string(), // "active" | "paused" | "archived"
+        createdAt: v.number(),
+        updatedAt: v.number(),
+    })
+        .index("by_org", ["orgId"])
+        .index("by_category", ["projectCategory"]),
+
+    // ─── Marketing Tasks (Content Pipeline) ──────────────────────────────
+    marketingTasks: defineTable({
+        orgId: v.id("organizations"),
+        strategyId: v.optional(v.id("marketingStrategies")),
+        planId: v.optional(v.id("marketingPlans")),
+        projectId: v.optional(v.id("projects")),
+        projectPath: v.string(),
+        title: v.string(),
+        description: v.optional(v.string()),
+        platform: v.string(), // "tiktok" | "x" | "reddit" | "youtube" | "blog" | "medium"
+        contentType: v.string(), // "slideshow" | "video" | "post" | "article" | "thread" | "vlog"
+        tone: v.optional(v.string()), // "controversy" | "motivational" | "educational" | "storytelling" | "how-to"
+        status: v.string(), // "idea" | "draft" | "in-review" | "scheduled" | "posted" | "archived"
+        priority: v.string(), // "high" | "medium" | "low"
+        dueDate: v.optional(v.number()),
+        scheduledDate: v.optional(v.number()),
+        postedDate: v.optional(v.number()),
+        contentDraft: v.optional(v.string()),
+        aiGenerated: v.optional(v.boolean()),
+        aiPrompt: v.optional(v.string()),
+        assets: v.optional(v.string()), // JSON array of asset descriptors
+        campaignId: v.optional(v.id("campaigns")),
+        tags: v.array(v.string()),
+        createdAt: v.number(),
+        updatedAt: v.number(),
+    })
+        .index("by_org", ["orgId"])
+        .index("by_org_status", ["orgId", "status"])
+        .index("by_org_project", ["orgId", "projectPath"])
+        .index("by_org_platform", ["orgId", "platform"])
+        .index("by_strategy", ["strategyId"])
+        .index("by_campaign", ["campaignId"]),
+
     // ─── Ideas ───────────────────────────────────────────────────────────
     ideas: defineTable({
         orgId: v.id("organizations"),
@@ -174,9 +235,73 @@ export default defineSchema({
         linkedIdeas: v.array(v.string()),
         archived: v.boolean(),
         status: v.string(),
+        promotedTo: v.optional(v.string()),   // "feature" | "task" | "strategy"
+        promotedEntityId: v.optional(v.string()), // ID of the promoted entity
         createdAt: v.number(),
         updatedAt: v.number(),
     }).index("by_org", ["orgId"]),
+
+    // ─── Features (Roadmap Items) ────────────────────────────────────────
+    features: defineTable({
+        orgId: v.id("organizations"),
+        projectId: v.optional(v.id("projects")),
+        title: v.string(),
+        description: v.optional(v.string()),
+        status: v.string(),           // "proposed" | "planned" | "in-progress" | "shipped" | "cancelled"
+        priority: v.string(),         // "critical" | "high" | "medium" | "low"
+        effort: v.optional(v.string()), // "XS" | "S" | "M" | "L" | "XL"
+        category: v.optional(v.string()), // "core" | "ux" | "infra" | "integration" | "perf"
+        targetRelease: v.optional(v.string()),
+        sourceIdeaId: v.optional(v.id("ideas")),
+        tags: v.array(v.string()),
+        acceptanceCriteria: v.optional(v.string()), // markdown
+        createdAt: v.number(),
+        updatedAt: v.number(),
+    })
+        .index("by_org", ["orgId"])
+        .index("by_project", ["projectId"])
+        .index("by_org_status", ["orgId", "status"])
+        .index("by_source_idea", ["sourceIdeaId"]),
+
+    // ─── Campaigns (Marketing Execution) ─────────────────────────────────
+    campaigns: defineTable({
+        orgId: v.id("organizations"),
+        strategyId: v.id("marketingStrategies"),
+        projectId: v.optional(v.id("projects")),
+        name: v.string(),
+        description: v.optional(v.string()),
+        schedule: v.string(),         // "one-time" | "daily" | "weekly" | "custom"
+        scheduleDays: v.optional(v.array(v.string())), // ["mon","wed","fri"]
+        startDate: v.optional(v.number()),
+        endDate: v.optional(v.number()),
+        status: v.string(),           // "draft" | "active" | "paused" | "completed"
+        sourceFeatureId: v.optional(v.id("features")),
+        sourceIdeaId: v.optional(v.id("ideas")),
+        tags: v.array(v.string()),
+        createdAt: v.number(),
+        updatedAt: v.number(),
+    })
+        .index("by_org", ["orgId"])
+        .index("by_strategy", ["strategyId"])
+        .index("by_org_status", ["orgId", "status"]),
+
+    // ─── Development Sprints ─────────────────────────────────────────────
+    devSprints: defineTable({
+        orgId: v.id("organizations"),
+        projectId: v.optional(v.id("projects")),
+        name: v.string(),
+        description: v.optional(v.string()),
+        status: v.string(),           // "planning" | "active" | "completed" | "cancelled"
+        startDate: v.optional(v.number()),
+        endDate: v.optional(v.number()),
+        featureIds: v.array(v.id("features")),
+        tags: v.array(v.string()),
+        createdAt: v.number(),
+        updatedAt: v.number(),
+    })
+        .index("by_org", ["orgId"])
+        .index("by_project", ["projectId"])
+        .index("by_org_status", ["orgId", "status"]),
 
     // ─── Wiki Articles ───────────────────────────────────────────────────
     wikiArticles: defineTable({

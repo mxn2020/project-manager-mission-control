@@ -6,6 +6,8 @@ import { useAuth } from '../hooks/useAuth';
 import { useUrlFilters } from '../hooks/useUrlFilters';
 import SearchableSelect, { type SelectOption } from '../components/SearchableSelect';
 import PromptDialog from '../components/PromptDialog';
+import AIChatPanel, { IDEAS_PROFILES } from '../components/AIChatPanel';
+import { FormInput, FormTextarea, FormCheckbox } from '../components/ui';
 import type { Id, Doc } from '../lib/types';
 
 type IdeaView = 'cards' | 'pipeline' | 'list' | 'kanban' | 'canvas';
@@ -58,9 +60,10 @@ function saveCanvasPositions(key: string, positions: Record<string, { x: number;
 
 // ─── IdeaCard (shared across views) ────────────────────────────────────────
 
-function IdeaCard({ idea, selected, onToggleSelect, onUpdate, onArchive, onDelete, onPromote, onLinkProject, projectOptions, compact }: {
+function IdeaCard({ idea, selected, onToggleSelect, onUpdate, onArchive, onDelete, onPromote, onPromoteToFeature, onCreateStrategy, onLinkProject, projectOptions, compact }: {
     idea: Doc<"ideas"> & { id: string }; selected: boolean; onToggleSelect: () => void; onUpdate: (data: Record<string, unknown>) => void;
     onArchive: () => void; onDelete: () => void; onPromote: () => void;
+    onPromoteToFeature: () => void; onCreateStrategy: () => void;
     onLinkProject: (proj: string) => void; projectOptions: SelectOption[]; compact?: boolean;
 }) {
     const cat = CAT_MAP[idea.category] || CAT_MAP.other;
@@ -78,8 +81,8 @@ function IdeaCard({ idea, selected, onToggleSelect, onUpdate, onArchive, onDelet
             onMouseEnter={() => setShowActions(true)} onMouseLeave={() => setShowActions(false)}
         >
             <div className="flex-row gap-8" style={{ alignItems: 'flex-start' }}>
-                <input type="checkbox" checked={selected} onChange={onToggleSelect}
-                    style={{ marginTop: 3, cursor: 'pointer', accentColor: 'var(--accent)' }} />
+                <FormCheckbox checked={selected} onChange={onToggleSelect}
+                    style={{ marginTop: 3 }} />
                 <div className="flex-1 min-w-0">
                     <div className="font-semibold" style={{ fontSize: compact ? 12 : 14 }}>{idea.title}</div>
                     {!compact && (
@@ -97,6 +100,19 @@ function IdeaCard({ idea, selected, onToggleSelect, onUpdate, onArchive, onDelet
                 }}>{idea.score || 5}</span>
             </div>
 
+            {/* Promoted badge */}
+            {!compact && idea.promotedTo && (
+                <div className="flex-row gap-4 mt-4">
+                    <span className="text-xs font-semibold" style={{
+                        padding: '2px 8px', borderRadius: 4,
+                        background: idea.promotedTo === 'feature' ? 'rgba(129,140,248,0.15)' : idea.promotedTo === 'strategy' ? 'rgba(52,211,153,0.15)' : 'rgba(251,191,36,0.15)',
+                        color: idea.promotedTo === 'feature' ? '#818cf8' : idea.promotedTo === 'strategy' ? '#34d399' : '#fbbf24',
+                    }}>
+                        → {idea.promotedTo === 'feature' ? '✨ Feature' : idea.promotedTo === 'strategy' ? '📣 Strategy' : '📋 Task'}
+                    </span>
+                </div>
+            )}
+
             {!compact && !editing && idea.body && (
                 <div onClick={() => { setEditing(true); setEditBody(idea.body || ''); }}
                     className="text-base text-muted whitespace-pre mt-8" style={{ cursor: 'pointer', maxHeight: 60, overflow: 'hidden' }}>
@@ -106,8 +122,8 @@ function IdeaCard({ idea, selected, onToggleSelect, onUpdate, onArchive, onDelet
 
             {editing && (
                 <div className="mt-8">
-                    <textarea value={editBody} onChange={e => setEditBody(e.target.value)}
-                        className="form-textarea text-base" style={{ minHeight: 60 }} />
+                    <FormTextarea value={editBody} onChange={e => setEditBody(e.target.value)}
+                        className="text-base" style={{ minHeight: 60 }} />
                     <div className="flex-row gap-6 mt-4">
                         <button className="btn btn-primary text-xs" onClick={() => { onUpdate({ body: editBody }); setEditing(false); }} style={{ padding: '3px 8px' }}>Save</button>
                         <button className="btn btn-secondary text-xs" onClick={() => setEditing(false)} style={{ padding: '3px 8px' }}>Cancel</button>
@@ -138,6 +154,8 @@ function IdeaCard({ idea, selected, onToggleSelect, onUpdate, onArchive, onDelet
                     border: '1px solid var(--border)', boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
                 }}>
                     <button onClick={onPromote} title="Promote to Task" className="icon-btn">📋</button>
+                    <button onClick={onPromoteToFeature} title="Promote to Feature" className="icon-btn">🚀</button>
+                    <button onClick={onCreateStrategy} title="Create Marketing Strategy" className="icon-btn">📣</button>
                     <button onClick={onArchive} title={idea.archived ? 'Unarchive' : 'Archive'} className="icon-btn">{idea.archived ? '📤' : '📥'}</button>
                     <button onClick={onDelete} title="Delete" className="icon-btn">🗑️</button>
                 </div>
@@ -167,6 +185,7 @@ export default function IdeasPage() {
     const view = (urlFilters.view || 'cards') as IdeaView;
     const sortBy = (urlFilters.sort || 'date') as 'score' | 'date' | 'title';
     const [showCreate, setShowCreate] = useState(false);
+    const [showAIChat, setShowAIChat] = useState(false);
     const [selected, setSelected] = useState<Set<string>>(new Set());
     const { data: projectData } = useProjects();
 
@@ -198,6 +217,8 @@ export default function IdeasPage() {
     const deleteIdea = useMutation(api.ideas.remove);
     const promoteIdea = useMutation(api.ideas.promote);
     const combineIdeas = useMutation(api.ideas.combine);
+    const promoteToFeature = useMutation(api.features.promoteFromIdea);
+    const createFromIdea = useMutation(api.marketingStrategies.createFromIdea);
 
     const ideas = rawIdeas ? rawIdeas.map(i => ({ ...i, id: i._id })) : null;
 
@@ -214,12 +235,20 @@ export default function IdeasPage() {
 
     const allIdeas = useMemo(() => {
         let list = [...(ideas || [])];
+        if (search) {
+            const q = search.toLowerCase();
+            list = list.filter(i =>
+                (i.title || '').toLowerCase().includes(q)
+                || (i.body || '').toLowerCase().includes(q)
+                || (i.tags || []).some((t: string) => t.toLowerCase().includes(q))
+            );
+        }
         if (filterProject) list = list.filter(i => (i.linkedProjects || []).includes(filterProject));
         if (sortBy === 'score') list.sort((a, b) => (b.score || 5) - (a.score || 5));
         else if (sortBy === 'title') list.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
         else list.sort((a, b) => new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime());
         return list;
-    }, [ideas, filterProject, sortBy]);
+    }, [ideas, search, filterProject, sortBy]);
 
     // ─── Handlers ────────────────────────────────
     const handleCreate = async () => {
@@ -244,6 +273,16 @@ export default function IdeasPage() {
 
     const handlePromote = async (id: string) => {
         await promoteIdea({ orgId: orgId!, ideaId: id as Id<"ideas"> });
+        selected.delete(id); setSelected(new Set(selected));
+    };
+
+    const handlePromoteToFeature = async (id: string) => {
+        await promoteToFeature({ ideaId: id as Id<"ideas">, orgId: orgId! });
+        selected.delete(id); setSelected(new Set(selected));
+    };
+
+    const handleCreateStrategy = async (id: string) => {
+        await createFromIdea({ ideaId: id as Id<"ideas">, orgId: orgId! });
         selected.delete(id); setSelected(new Set(selected));
     };
 
@@ -314,6 +353,8 @@ export default function IdeasPage() {
         idea, selected: selected.has(idea.id), onToggleSelect: () => toggleSelect(idea.id),
         onUpdate: (d: Record<string, unknown>) => handleUpdate(idea.id, d), onArchive: () => handleArchive(idea.id, !idea.archived),
         onDelete: () => handleDelete(idea.id), onPromote: () => handlePromote(idea.id),
+        onPromoteToFeature: () => handlePromoteToFeature(idea.id),
+        onCreateStrategy: () => handleCreateStrategy(idea.id),
         onLinkProject: (p: string) => handleLinkProject(idea.id, p), projectOptions,
     });
 
@@ -345,7 +386,7 @@ export default function IdeasPage() {
     const renderList = () => (
         <div style={{ background: 'var(--bg-secondary)', borderRadius: 10, border: '1px solid var(--border)', overflow: 'hidden' }}>
             <div className="section-label" style={{ display: 'grid', gridTemplateColumns: '30px 1fr 80px 60px 120px 100px 60px', gap: 8, padding: '8px 12px', borderBottom: '1px solid var(--border)', marginBottom: 0 }}>
-                <span><input type="checkbox" checked={selected.size === allIdeas.length && allIdeas.length > 0} onChange={() => selected.size === allIdeas.length ? selectNone() : selectAll()} /></span>
+                <span><FormCheckbox checked={selected.size === allIdeas.length && allIdeas.length > 0} onChange={() => selected.size === allIdeas.length ? selectNone() : selectAll()} /></span>
                 <span>Title</span><span>Category</span><span>Score</span><span>Tags</span><span>Updated</span><span>Actions</span>
             </div>
             {allIdeas.map(idea => {
@@ -356,7 +397,7 @@ export default function IdeasPage() {
                         padding: '8px 12px', borderBottom: '1px solid var(--border)',
                         background: selected.has(idea.id) ? 'var(--accent-bg)' : 'transparent', opacity: idea.archived ? 0.5 : 1,
                     }}>
-                        <span><input type="checkbox" checked={selected.has(idea.id)} onChange={() => toggleSelect(idea.id)} /></span>
+                        <span><FormCheckbox checked={selected.has(idea.id)} onChange={() => toggleSelect(idea.id)} /></span>
                         <span className="font-medium truncate">{idea.title}</span>
                         <span className="text-xs" style={{ color: cat.color }}>{cat.icon} {cat.label}</span>
                         <span className="font-bold" style={{ color: (idea.score || 5) >= 8 ? '#34d399' : (idea.score || 5) >= 5 ? '#fbbf24' : '#f87171' }}>{idea.score || 5}</span>
@@ -432,7 +473,10 @@ export default function IdeasPage() {
                         <h1 className="page-title">💡 Ideas & Brainstorming</h1>
                         <p className="page-description">Capture, score, combine, and promote ideas</p>
                     </div>
-                    <button className="btn btn-primary" onClick={() => setShowCreate(!showCreate)}>+ New Idea</button>
+                    <div className="flex-row gap-8">
+                        <button className="btn btn-secondary" onClick={() => setShowAIChat(!showAIChat)} title="AI Assistant">🤖 AI</button>
+                        <button className="btn btn-primary" onClick={() => setShowCreate(!showCreate)}>+ New Idea</button>
+                    </div>
                 </div>
             </div>
 
@@ -452,8 +496,8 @@ export default function IdeasPage() {
                 <div style={{ width: 1, height: 20, background: 'var(--border)' }} />
 
                 {/* Search */}
-                <input value={search} onChange={e => setSearch(e.target.value)} placeholder="🔍 Search..."
-                    className="form-input-sm" style={{ width: 150, background: 'var(--bg-secondary)' }} />
+                <FormInput value={search} onChange={e => setSearch(e.target.value)} placeholder="🔍 Search..."
+                    inputSize="sm" style={{ width: 150, background: 'var(--bg-secondary)' }} />
 
                 {/* Category filter */}
                 <div className="flex-row gap-2">
@@ -473,9 +517,7 @@ export default function IdeasPage() {
                     options={[{ value: 'date', label: 'Newest' }, { value: 'score', label: 'Score ↓' }, { value: 'title', label: 'A-Z' }]}
                     value={sortBy} onChange={v => setUrlFilter('sort', v)} placeholder="Sort" clearable={false} width="110px" />
 
-                <label className="flex-row gap-4 text-sm text-tertiary">
-                    <input type="checkbox" checked={showArchived} onChange={e => setUrlFilter('archived', e.target.checked ? 'true' : '')} /> Archived
-                </label>
+                    <FormCheckbox checked={showArchived} onChange={e => setUrlFilter('archived', e.target.checked ? 'true' : '')} label="Archived" checkboxSize="sm" />
 
                 <span className="text-sm text-tertiary" style={{ marginLeft: 'auto' }}>{allIdeas.length} ideas</span>
             </div>
@@ -499,10 +541,10 @@ export default function IdeasPage() {
             {/* Create Form */}
             {showCreate && (
                 <div className="section-card mb-16">
-                    <input value={newTitle} onChange={e => setNewTitle(e.target.value)} placeholder="Idea title *"
-                        className="form-input mb-12" />
-                    <textarea value={newBody} onChange={e => setNewBody(e.target.value)} placeholder="Describe the idea..."
-                        className="form-textarea mb-12" style={{ minHeight: 80 }} />
+                    <FormInput value={newTitle} onChange={e => setNewTitle(e.target.value)} placeholder="Idea title *"
+                        className="mb-12" />
+                    <FormTextarea value={newBody} onChange={e => setNewBody(e.target.value)} placeholder="Describe the idea..."
+                        className="mb-12" style={{ minHeight: 80 }} />
                     <div className="flex-row flex-wrap gap-12">
                         <SearchableSelect
                             options={CATEGORIES.map(c => ({ value: c.value, label: `${c.icon} ${c.label}` }))}
@@ -513,8 +555,8 @@ export default function IdeasPage() {
                             <span className="text-md font-semibold" style={{ minWidth: 20 }}>{newScore}</span>
                         </div>
                         <SearchableSelect options={projectOptions} value={newProject} onChange={setNewProject} placeholder="📁 Project" width="160px" grouped />
-                        <input value={newTags} onChange={e => setNewTags(e.target.value)} placeholder="Tags (comma-separated)"
-                            className="form-input-sm flex-1" style={{ minWidth: 100 }} />
+                        <FormInput value={newTags} onChange={e => setNewTags(e.target.value)} placeholder="Tags (comma-separated)"
+                            inputSize="sm" className="flex-1" style={{ minWidth: 100 }} />
                         <button className="btn btn-secondary text-base" onClick={() => setShowCreate(false)}>Cancel</button>
                         <button className="btn btn-primary text-base" onClick={handleCreate} disabled={!newTitle.trim()}>Save</button>
                     </div>
@@ -547,6 +589,13 @@ export default function IdeasPage() {
                 title="Combine Ideas"
                 placeholder="Title for combined idea…"
                 defaultValue="Combined Idea"
+            />
+
+            <AIChatPanel
+                pageContext="Ideas"
+                profiles={IDEAS_PROFILES}
+                isOpen={showAIChat}
+                onToggle={() => setShowAIChat(false)}
             />
         </div>
     );

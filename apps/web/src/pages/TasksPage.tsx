@@ -7,8 +7,15 @@ import { useAuth } from '../hooks/useAuth';
 import { useUrlFilters } from '../hooks/useUrlFilters';
 import { useIsMobile } from '../hooks/useMediaQuery';
 import SearchableSelect, { type SelectOption } from '../components/SearchableSelect';
-import { PageHeader, GripIcon } from '../components/ui';
+import { PageHeader, GripIcon, FormInput, FormTextarea, EmptyState } from '../components/ui';
 import type { Id } from '../lib/types';
+
+// ─── Lineage Config ──────────────────────────────────────────────────────
+const LINEAGE_CONFIG = {
+    sprint: { icon: '🏃', label: 'Sprint', color: '#60a5fa', path: '/development' },
+    feature: { icon: '✨', label: 'Feature', color: '#818cf8', path: '/roadmap' },
+    campaign: { icon: '📢', label: 'Campaign', color: '#f472b6', path: '/marketing' },
+} as const;
 
 const STATUS_COLS = [
     { key: 'todo', label: 'To Do', icon: '📋', color: '#60a5fa' },
@@ -30,14 +37,16 @@ export default function TasksPage() {
     const navigate = useNavigate();
     const isMobile = useIsMobile();
 
-    const [urlFilters, setUrlFilter] = useUrlFilters({ view: 'kanban', priority: '', project: '' });
+    const [urlFilters, setUrlFilter] = useUrlFilters({ view: 'kanban', priority: '', project: '', category: '' });
     const view = (urlFilters.view || 'kanban') as 'kanban' | 'list';
     const [showCreate, setShowCreate] = useState(false);
+    const [search, setSearch] = useState('');
     const filterPriority = urlFilters.priority;
     const filterProject = urlFilters.project;
+    const filterCategory = urlFilters.category;
 
     // Convex queries & mutations
-    const rawTasks = useQuery(api.tasks.list, orgId ? { orgId, status: undefined, priority: undefined, projectPath: undefined } : "skip");
+    const rawTasks = useQuery(api.tasks.list, orgId ? { orgId, status: undefined, priority: undefined, projectPath: undefined, category: filterCategory || undefined } : "skip");
     const stats = useQuery(api.tasks.getStats, orgId ? { orgId } : "skip");
     const createTask = useMutation(api.tasks.create);
     const updateTask = useMutation(api.tasks.update);
@@ -83,6 +92,10 @@ export default function TasksPage() {
     ];
 
     const filtered = allTasks.filter(t => {
+        if (search) {
+            const q = search.toLowerCase();
+            if (!t.title.toLowerCase().includes(q) && !(t.description || '').toLowerCase().includes(q)) return false;
+        }
         if (filterPriority && t.priority !== filterPriority) return false;
         if (filterProject && t.projectPath !== filterProject) return false;
         return true;
@@ -209,6 +222,20 @@ export default function TasksPage() {
                                                     {task.projectPath}
                                                 </span>
                                             </div>
+                                            {/* Lineage Breadcrumbs */}
+                                            {(task.sprintId || task.featureId || task.campaignId) && (
+                                                <div className="flex-row flex-wrap gap-4 mt-4">
+                                                    {task.featureId && (
+                                                        <span className="text-xs" style={{ padding: '1px 5px', borderRadius: 3, background: `${LINEAGE_CONFIG.feature.color}15`, color: LINEAGE_CONFIG.feature.color, cursor: 'pointer' }} onClick={(e) => { e.stopPropagation(); navigate(LINEAGE_CONFIG.feature.path); }} title="View Feature">{LINEAGE_CONFIG.feature.icon} Feature</span>
+                                                    )}
+                                                    {task.sprintId && (
+                                                        <span className="text-xs" style={{ padding: '1px 5px', borderRadius: 3, background: `${LINEAGE_CONFIG.sprint.color}15`, color: LINEAGE_CONFIG.sprint.color, cursor: 'pointer' }} onClick={(e) => { e.stopPropagation(); navigate(LINEAGE_CONFIG.sprint.path); }} title="View Sprint">{LINEAGE_CONFIG.sprint.icon} Sprint</span>
+                                                    )}
+                                                    {task.campaignId && (
+                                                        <span className="text-xs" style={{ padding: '1px 5px', borderRadius: 3, background: `${LINEAGE_CONFIG.campaign.color}15`, color: LINEAGE_CONFIG.campaign.color, cursor: 'pointer' }} onClick={(e) => { e.stopPropagation(); navigate(LINEAGE_CONFIG.campaign.path); }} title="View Campaign">{LINEAGE_CONFIG.campaign.icon} Campaign</span>
+                                                    )}
+                                                </div>
+                                            )}
                                             <div className="flex-row gap-4 mt-8">
                                                 {STATUS_COLS.filter(s => s.key !== task.status).map(s => (
                                                     <button
@@ -249,10 +276,7 @@ export default function TasksPage() {
     const renderList = () => (
         <div className="mt-16">
             {filtered.length === 0 ? (
-                <div className="empty-state">
-                    <div className="empty-state-icon">📋</div>
-                    <div className="empty-state-text">No tasks yet — create one to get started</div>
-                </div>
+                <EmptyState icon="📋" message="No tasks yet — create one to get started" />
             ) : (
                 filtered.map(task => (
                     <div key={task.id} className="flex-row gap-12" style={{ padding: '10px 16px', borderBottom: '1px solid var(--border)', alignItems: 'center' }}>
@@ -276,6 +300,20 @@ export default function TasksPage() {
                             <div className="text-sm text-tertiary mt-4">
                                 {task.projectPath} · {task.taskType}
                             </div>
+                            {/* Lineage Breadcrumbs */}
+                            {(task.sprintId || task.featureId || task.campaignId) && (
+                                <div className="flex-row flex-wrap gap-4 mt-4">
+                                    {task.featureId && (
+                                        <span className="text-xs" style={{ padding: '1px 5px', borderRadius: 3, background: `${LINEAGE_CONFIG.feature.color}15`, color: LINEAGE_CONFIG.feature.color, cursor: 'pointer' }} onClick={() => navigate(LINEAGE_CONFIG.feature.path)} title="View Feature">{LINEAGE_CONFIG.feature.icon} Feature</span>
+                                    )}
+                                    {task.sprintId && (
+                                        <span className="text-xs" style={{ padding: '1px 5px', borderRadius: 3, background: `${LINEAGE_CONFIG.sprint.color}15`, color: LINEAGE_CONFIG.sprint.color, cursor: 'pointer' }} onClick={() => navigate(LINEAGE_CONFIG.sprint.path)} title="View Sprint">{LINEAGE_CONFIG.sprint.icon} Sprint</span>
+                                    )}
+                                    {task.campaignId && (
+                                        <span className="text-xs" style={{ padding: '1px 5px', borderRadius: 3, background: `${LINEAGE_CONFIG.campaign.color}15`, color: LINEAGE_CONFIG.campaign.color, cursor: 'pointer' }} onClick={() => navigate(LINEAGE_CONFIG.campaign.path)} title="View Campaign">{LINEAGE_CONFIG.campaign.icon} Campaign</span>
+                                    )}
+                                </div>
+                            )}
                         </div>
                         <span className="text-xs font-semibold" style={{
                             padding: '2px 8px', borderRadius: 4,
@@ -304,6 +342,20 @@ export default function TasksPage() {
                 }
             />
 
+            {/* Category Tabs */}
+            <div className="flex-row gap-4 mb-16">
+                {[{ key: '', label: 'All', icon: '📋' }, { key: 'development', label: 'Development', icon: '🏗️' }, { key: 'marketing', label: 'Marketing', icon: '📣' }, { key: 'general', label: 'General', icon: '📌' }].map(tab => (
+                    <button
+                        key={tab.key}
+                        className={`btn text-sm ${filterCategory === tab.key ? 'btn-primary' : 'btn-secondary'}`}
+                        onClick={() => setUrlFilter('category', tab.key)}
+                        style={{ padding: '6px 14px' }}
+                    >
+                        {tab.icon} {tab.label}
+                    </button>
+                ))}
+            </div>
+
             {/* Stats Row */}
             {stats && (
                 <div className="flex-row flex-wrap gap-12 mb-16">
@@ -320,15 +372,21 @@ export default function TasksPage() {
                 </div>
             )}
 
+            {/* Search + Filters */}
+            <div className="filter-bar flex-row flex-wrap gap-8 mb-16">
+                <FormInput value={search} onChange={e => setSearch(e.target.value)} placeholder="🔍 Search tasks..."
+                    inputSize="sm" style={{ width: 200, background: 'var(--bg-secondary)' }} />
+                <span className="text-sm text-tertiary" style={{ lineHeight: '32px' }}>{filtered.length} tasks</span>
+            </div>
+
             {/* Create Form */}
             {showCreate && (
                 <div className="section-card mb-16">
                     <div className="grid-2 gap-12 mb-12">
-                        <input
+                        <FormInput
                             placeholder="Task title *"
                             value={newTitle}
                             onChange={e => setNewTitle(e.target.value)}
-                            className="form-input"
                         />
                         <SearchableSelect
                             options={projectOptions}
@@ -340,11 +398,11 @@ export default function TasksPage() {
                             onCreateNew={(v) => setNewProject(v)}
                         />
                     </div>
-                    <textarea
+                    <FormTextarea
                         placeholder="Description (optional)"
                         value={newDescription}
                         onChange={e => setNewDescription(e.target.value)}
-                        className="form-textarea mb-12" style={{ minHeight: 60 }}
+                        className="mb-12" style={{ minHeight: 60 }}
                     />
                     <div className="flex-row gap-12">
                         <SearchableSelect

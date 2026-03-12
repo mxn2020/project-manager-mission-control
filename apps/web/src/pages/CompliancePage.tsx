@@ -5,7 +5,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useProjects } from '../hooks/useProjects';
 import type { Id } from '../lib/types';
 import { getErrorMessage } from '../lib/types';
-import { PageHeader, StatCard, FilterBar, Card, EmptyState } from '../components/ui';
+import { PageHeader, StatCard, FilterBar, Card, EmptyState, FormInput, FormCheckbox, FormSelect } from '../components/ui';
 import toast from 'react-hot-toast';
 
 // ─── Types ───────────────────────────────────────────────────────────────
@@ -196,17 +196,12 @@ function ConfirmDeleteDialog({ title, itemName, onConfirm, onCancel, loading }: 
                         color: '#ef4444', fontWeight: 600,
                     }}>{itemName}</code> to confirm.
                 </p>
-                <input
+                <FormInput
                     type="text"
                     value={confirmText}
                     onChange={e => setConfirmText(e.target.value)}
                     placeholder={`Type "${itemName}" to confirm`}
-                    style={{
-                        width: '100%', padding: '8px 12px', borderRadius: 6,
-                        border: '1px solid var(--border)', background: 'var(--bg-primary)',
-                        color: 'var(--text-primary)', fontSize: 14, marginBottom: 16,
-                        boxSizing: 'border-box',
-                    }}
+                    style={{ width: '100%', marginBottom: 16 }}
                 />
                 <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                     <button className="btn btn-secondary" onClick={onCancel} disabled={loading}>Cancel</button>
@@ -394,14 +389,11 @@ function GitHubActionsPanel({ project, orgId }: {
             {/* Link Input */}
             {showLinkInput && (
                 <div style={{ marginTop: 8, display: 'flex', gap: 6 }}>
-                    <input
+                    <FormInput
                         type="text" value={repoUrl} onChange={e => setRepoUrl(e.target.value)}
                         placeholder="https://github.com/owner/repo"
-                        style={{
-                            flex: 1, padding: '6px 10px', borderRadius: 6,
-                            border: '1px solid var(--border)', background: 'var(--bg-primary)',
-                            color: 'var(--text-primary)', fontSize: 12,
-                        }}
+                        inputSize="sm"
+                        style={{ flex: 1 }}
                     />
                     <button className="btn btn-primary text-xs" onClick={handleLink} disabled={loading || !repoUrl}
                         style={{ padding: '6px 12px', borderRadius: 6 }}>
@@ -415,22 +407,15 @@ function GitHubActionsPanel({ project, orgId }: {
             {/* Create Form */}
             {showCreateForm && (
                 <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    <input
+                    <FormInput
                         type="text" value={newRepoName} onChange={e => setNewRepoName(e.target.value)}
                         placeholder="Repository name"
-                        style={{
-                            padding: '6px 10px', borderRadius: 6,
-                            border: '1px solid var(--border)', background: 'var(--bg-primary)',
-                            color: 'var(--text-primary)', fontSize: 12,
-                        }}
+                        inputSize="sm"
                     />
                     <div className="text-xs text-tertiary" style={{ fontFamily: 'monospace' }}>
                         Slug: {newRepoName.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '')}
                     </div>
-                    <label className="text-xs" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <input type="checkbox" checked={newRepoPrivate} onChange={e => setNewRepoPrivate(e.target.checked)} />
-                        Private repository
-                    </label>
+                    <FormCheckbox checked={newRepoPrivate} onChange={e => setNewRepoPrivate(e.target.checked)} label="Private repository" checkboxSize="sm" />
                     <div style={{ display: 'flex', gap: 6 }}>
                         <button className="btn btn-primary text-xs" onClick={handleCreate} disabled={loading || !newRepoName}
                             style={{ padding: '6px 12px', borderRadius: 6 }}>
@@ -637,13 +622,10 @@ function VercelActionsPanel({ project, orgId }: {
             {/* Link Input */}
             {showLinkInput && (
                 <div style={{ marginTop: 8, display: 'flex', gap: 6 }}>
-                    <input type="text" value={vercelProjId} onChange={e => setVercelProjId(e.target.value)}
+                    <FormInput type="text" value={vercelProjId} onChange={e => setVercelProjId(e.target.value)}
                         placeholder="Vercel Project ID"
-                        style={{
-                            flex: 1, padding: '6px 10px', borderRadius: 6,
-                            border: '1px solid var(--border)', background: 'var(--bg-primary)',
-                            color: 'var(--text-primary)', fontSize: 12,
-                        }} />
+                        inputSize="sm"
+                        style={{ flex: 1 }} />
                     <button className="btn btn-primary text-xs" onClick={handleLink} disabled={loading || !vercelProjId}
                         style={{ padding: '6px 12px', borderRadius: 6 }}>{loading ? '⏳' : '✓'}</button>
                     <button className="btn btn-secondary text-xs" onClick={() => { setShowLinkInput(false); setVercelProjId(''); }}
@@ -654,13 +636,9 @@ function VercelActionsPanel({ project, orgId }: {
             {/* Create Form */}
             {showCreateForm && (
                 <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    <input type="text" value={newProjName} onChange={e => setNewProjName(e.target.value)}
+                    <FormInput type="text" value={newProjName} onChange={e => setNewProjName(e.target.value)}
                         placeholder="Vercel project name"
-                        style={{
-                            padding: '6px 10px', borderRadius: 6,
-                            border: '1px solid var(--border)', background: 'var(--bg-primary)',
-                            color: 'var(--text-primary)', fontSize: 12,
-                        }} />
+                        inputSize="sm" />
                     <div style={{ display: 'flex', gap: 6 }}>
                         <button className="btn btn-primary text-xs" onClick={handleCreate} disabled={loading || !newProjName}
                             style={{ padding: '6px 12px', borderRadius: 6 }}>{loading ? '⏳ Creating...' : '✨ Create'}</button>
@@ -1223,26 +1201,26 @@ export default function CompliancePage() {
                     placeholder: '🔎 Search projects...',
                 }}
                 filters={<>
-                    <select
+                    <FormSelect
                         value={filterLane} onChange={e => setFilterLane(e.target.value)}
                         className="search-input"
                         style={{ minWidth: 120 }}
-                    >
-                        <option value="">All Lanes</option>
-                        {lanes.map(l => <option key={l} value={l}>{l}</option>)}
-                    </select>
-                    <select
+                        placeholderText="All Lanes"
+                        options={lanes.map(l => ({ value: l, label: l }))}
+                    />
+                    <FormSelect
                         value={filterScore} onChange={e => setFilterScore(e.target.value)}
                         className="search-input"
                         style={{ minWidth: 120 }}
-                    >
-                        <option value="">All Scores</option>
-                        <option value="100">💯 100%</option>
-                        <option value="70-99">🟢 70–99%</option>
-                        <option value="50-69">🟡 50–69%</option>
-                        <option value="<50">🔴 Below 50%</option>
-                        <option value="unscanned">⬜ Unscanned</option>
-                    </select>
+                        placeholderText="All Scores"
+                        options={[
+                            { value: '100', label: '💯 100%' },
+                            { value: '70-99', label: '🟢 70–99%' },
+                            { value: '50-69', label: '🟡 50–69%' },
+                            { value: '<50', label: '🔴 Below 50%' },
+                            { value: 'unscanned', label: '⬜ Unscanned' },
+                        ]}
+                    />
                 </>}
                 resultCount={filteredProjects.length}
                 resultLabel={`of ${projects.length} projects`}

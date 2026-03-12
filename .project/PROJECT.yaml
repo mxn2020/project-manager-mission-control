@@ -1,0 +1,16 @@
+name: mission-control
+project_scope: main
+project_type: monorepo
+description: Developer-first project management dashboard with Turborepo monorepo, Convex backend, and React web + Expo mobile apps
+tier: production
+lane: claw-platform
+priority: high
+oss: false
+stack: [typescript, react, convex, vite, turborepo, expo]
+repo: "https://github.com/mxn2020/project-manager-mission-control"
+deploy_url: "https://mission-control-app-green.vercel.app"
+last_active: 2026-03-11
+tags: [project-management, dashboard, monorepo, convex, react, developer-tools]
+notes: null
+id: n177fs9jsg3kdcf1eg4925mkqs82p3k7
+category: webapp

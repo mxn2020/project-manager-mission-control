@@ -7,6 +7,7 @@ import SearchableSelect from '../components/SearchableSelect';
 import { useDimensions } from '../hooks/useDimensions';
 import { DEFAULT_DIMENSIONS, type Dimension, type SubDimension } from '../lib/dimensions';
 import { useAuth } from '../hooks/useAuth';
+import { FormInput, FormTextarea, FormCheckbox } from '../components/ui';
 
 export default function AdminPage() {
     const providers = useQuery(api.aiConfig.listProviders);
@@ -137,10 +138,10 @@ export default function AdminPage() {
                     {showAddProvider && (
                         <div className="section-card-sm mb-16">
                             <div className="grid-2 gap-12 mb-12">
-                                <input placeholder="Name (e.g. NVIDIA NIM)" value={pName} onChange={e => setPName(e.target.value)} className="form-input" />
-                                <input placeholder="Slug (e.g. nvidia)" value={pSlug} onChange={e => setPSlug(e.target.value)} className="form-input" />
-                                <input placeholder="Base URL" value={pUrl} onChange={e => setPUrl(e.target.value)} className="form-input" />
-                                <input placeholder="API Key Env Var (e.g. NVIDIA_API_KEY)" value={pKey} onChange={e => setPKey(e.target.value)} className="form-input" />
+                                <FormInput placeholder="Name (e.g. NVIDIA NIM)" value={pName} onChange={e => setPName(e.target.value)} />
+                                <FormInput placeholder="Slug (e.g. nvidia)" value={pSlug} onChange={e => setPSlug(e.target.value)} />
+                                <FormInput placeholder="Base URL" value={pUrl} onChange={e => setPUrl(e.target.value)} />
+                                <FormInput placeholder="API Key Env Var (e.g. NVIDIA_API_KEY)" value={pKey} onChange={e => setPKey(e.target.value)} />
                             </div>
                             <div className="flex-row gap-8" style={{ justifyContent: 'flex-end' }}>
                                 <button className="btn btn-secondary" onClick={() => setShowAddProvider(false)}>Cancel</button>
@@ -187,11 +188,11 @@ export default function AdminPage() {
                                 <SearchableSelect
                                     options={[{ value: '', label: 'Select Provider' }, ...(providers || []).map(p => ({ value: p._id, label: p.name }))]}
                                     value={mProviderId} onChange={setMProviderId} placeholder="Provider" clearable={false} />
-                                <input placeholder="Model ID" value={mModelId} onChange={e => setMModelId(e.target.value)} className="form-input" />
-                                <input placeholder="Display Name" value={mDisplayName} onChange={e => setMDisplayName(e.target.value)} className="form-input" />
-                                <input placeholder="Max Tokens" type="number" value={mMaxTokens} onChange={e => setMMaxTokens(e.target.value)} className="form-input" />
-                                <input placeholder="Context Window" type="number" value={mContextWindow} onChange={e => setMContextWindow(e.target.value)} className="form-input" />
-                                <input placeholder="Cost/M Input (cents)" type="number" step="0.01" value={mCostInput} onChange={e => setMCostInput(e.target.value)} className="form-input" />
+                                <FormInput placeholder="Model ID" value={mModelId} onChange={e => setMModelId(e.target.value)} />
+                                <FormInput placeholder="Display Name" value={mDisplayName} onChange={e => setMDisplayName(e.target.value)} />
+                                <FormInput placeholder="Max Tokens" type="number" value={mMaxTokens} onChange={e => setMMaxTokens(e.target.value)} />
+                                <FormInput placeholder="Context Window" type="number" value={mContextWindow} onChange={e => setMContextWindow(e.target.value)} />
+                                <FormInput placeholder="Cost/M Input (cents)" type="number" step="0.01" value={mCostInput} onChange={e => setMCostInput(e.target.value)} />
                             </div>
                             <div className="flex-row gap-8" style={{ justifyContent: 'flex-end' }}>
                                 <button className="btn btn-secondary" onClick={() => setShowAddModel(false)}>Cancel</button>
@@ -288,7 +289,7 @@ export default function AdminPage() {
                                 </div>
                                 {/* Sub-dimension add (always available, even for built-in) */}
                                 <div className="flex-row gap-8">
-                                    <input
+                                    <FormInput
                                         value={newSubKey[dim.id] || ''}
                                         onChange={e => setNewSubKey(prev => ({ ...prev, [dim.id]: e.target.value }))}
                                         onKeyDown={e => {
@@ -300,7 +301,6 @@ export default function AdminPage() {
                                             }
                                         }}
                                         placeholder="Add sub-dimension..."
-                                        className="form-input"
                                     />
                                     <button className="btn btn-primary text-base"
                                         onClick={() => {
@@ -320,12 +320,12 @@ export default function AdminPage() {
                     <div className="section-card-sm mt-16" style={{ border: '1px dashed var(--border)' }}>
                         <h4 className="font-semibold text-md mb-12" style={{ margin: 0 }}>+ Add Custom Dimension</h4>
                         <div className="gap-12" style={{ display: 'grid', gridTemplateColumns: 'auto 1fr 1fr', alignItems: 'center' }}>
-                            <input value={newDimIcon} onChange={e => setNewDimIcon(e.target.value)}
-                                className="form-input text-2xl text-center" style={{ width: 50 }} />
-                            <input placeholder="Dimension name (e.g. Team)" value={newDimName}
-                                onChange={e => setNewDimName(e.target.value)} className="form-input" />
-                            <input placeholder="YAML field (e.g. team)" value={newDimField}
-                                onChange={e => setNewDimField(e.target.value)} className="form-input" />
+                            <FormInput value={newDimIcon} onChange={e => setNewDimIcon(e.target.value)}
+                                className="text-2xl text-center" style={{ width: 50 }} />
+                            <FormInput placeholder="Dimension name (e.g. Team)" value={newDimName}
+                                onChange={e => setNewDimName(e.target.value)} />
+                            <FormInput placeholder="YAML field (e.g. team)" value={newDimField}
+                                onChange={e => setNewDimField(e.target.value)} />
                         </div>
                         <div className="flex-row mt-12" style={{ justifyContent: 'flex-end' }}>
                             <button className="btn btn-primary text-base"
@@ -358,8 +358,8 @@ export default function AdminPage() {
                     {showAddChatbot && (
                         <div className="section-card-sm mb-16">
                             <div className="grid-2 gap-12 mb-12">
-                                <input placeholder="Profile Name (e.g. Code Assistant)" value={cName} onChange={e => setCName(e.target.value)} className="form-input" />
-                                <input placeholder="Description (Optional)" value={cDesc} onChange={e => setCDesc(e.target.value)} className="form-input" />
+                                <FormInput placeholder="Profile Name (e.g. Code Assistant)" value={cName} onChange={e => setCName(e.target.value)} />
+                                <FormInput placeholder="Description (Optional)" value={cDesc} onChange={e => setCDesc(e.target.value)} />
 
                                 <SearchableSelect
                                     options={[{ value: '', label: 'Select Model (Global Default)' }, ...((models || []) as Doc<"aiModels">[]).map(m => ({ value: m._id, label: m.displayName }))]}
@@ -414,11 +414,11 @@ export default function AdminPage() {
                                         <div className="grid-2 gap-12 mb-12">
                                             <div>
                                                 <label className="form-label">Name</label>
-                                                <input defaultValue={c.name} className="form-input" onBlur={e => updateChatbot({ configId: c._id, name: e.target.value })} />
+                                                <FormInput defaultValue={c.name} onBlur={e => updateChatbot({ configId: c._id, name: e.target.value })} />
                                             </div>
                                             <div>
                                                 <label className="form-label">Description</label>
-                                                <input defaultValue={c.description || ''} className="form-input" onBlur={e => updateChatbot({ configId: c._id, description: e.target.value })} />
+                                                <FormInput defaultValue={c.description || ''} onBlur={e => updateChatbot({ configId: c._id, description: e.target.value })} />
                                             </div>
                                             <div>
                                                 <label className="form-label">Model</label>
@@ -434,10 +434,7 @@ export default function AdminPage() {
                                             </div>
                                         </div>
                                         <div className="flex-row gap-12">
-                                            <label className="flex-row gap-6 text-base" style={{ cursor: 'pointer' }}>
-                                                <input type="checkbox" checked={c.isAgentic} onChange={e => updateChatbot({ configId: c._id, isAgentic: e.target.checked })} />
-                                                Agentic Mode
-                                            </label>
+                                            <FormCheckbox checked={c.isAgentic} onChange={e => updateChatbot({ configId: c._id, isAgentic: e.target.checked })} label="Agentic Mode" checkboxSize="sm" />
                                             <span className="text-xs text-tertiary">Temperature: {c.temperature ?? 0.7}</span>
                                         </div>
                                     </div>
@@ -460,12 +457,11 @@ export default function AdminPage() {
                     {showAddPrompt && (
                         <div className="section-card-sm mb-16">
                             <div className="flex-col gap-12">
-                                <input placeholder="Prompt Name (e.g. Product Assistant)" value={spName} onChange={e => setSpName(e.target.value)} className="form-input" />
-                                <textarea
+                                <FormInput placeholder="Prompt Name (e.g. Product Assistant)" value={spName} onChange={e => setSpName(e.target.value)} />
+                                <FormTextarea
                                     placeholder="Enter system prompt content..."
                                     value={spContent}
                                     onChange={e => setSpContent(e.target.value)}
-                                    className="form-textarea"
                                     rows={6}
                                     style={{ fontFamily: 'monospace', fontSize: '13px' }}
                                 />
@@ -514,10 +510,9 @@ export default function AdminPage() {
                                     </div>
                                     {editingPrompt === p._id && (
                                         <div style={{ padding: '0 16px 16px', borderTop: '1px solid var(--border)', paddingTop: 12 }}>
-                                            <textarea
+                                            <FormTextarea
                                                 value={editPromptContent}
                                                 onChange={e => setEditPromptContent(e.target.value)}
-                                                className="form-textarea"
                                                 rows={8}
                                                 style={{ fontFamily: 'monospace', fontSize: '13px', width: '100%' }}
                                             />

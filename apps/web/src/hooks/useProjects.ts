@@ -50,7 +50,7 @@ export function useProjects(scope: 'main' | 'child' | 'all' = 'main') {
                 last_active: p.lastActive ? new Date(p.lastActive).toISOString() : null,
                 tags: p.tags || [],
                 notes: p.notes || '',
-                path: p.repo || '',
+                path: p.repo || p.name,
                 yaml_path: p.repo ? `${p.repo}/PROJECT.yaml` : '',
                 health_score: p.healthScore || 0,
                 // New fields

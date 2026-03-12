@@ -15,7 +15,7 @@ interface FileEntry {
     type: "file" | "dir";
 }
 
-// ─── All 60 Compliance Metrics ───────────────────────────────────────────
+// ─── All 64 Compliance Metrics ───────────────────────────────────────────
 
 const ALL_METRICS = [
     // 1. Version Control & GitHub
@@ -31,7 +31,7 @@ const ALL_METRICS = [
     // 6. Documentation
     "README", "README_BADGES", "LICENSE", "CONTRIBUTING", "SECURITY", "CODE_OF_CONDUCT", "SUPPORT",
     // 7. Project Identity
-    "PROJECT_YAML", "PROJECT_NAME", "PROJECT_DESC", "PROJECT_PRIORITY", "PROJECT_TAGS", "PROJECT_DEPLOY", "ACCOUNT_YAML",
+    "PROJECT_YAML", "PROJECT_NAME", "PROJECT_DESC", "PROJECT_PRIORITY", "PROJECT_TAGS", "PROJECT_DEPLOY", "ACCOUNT_YAML", "ROADMAP_YAML", "IDEAS_YAML",
     // 8. Code Quality & Config
     "TSCONFIG_STRICT", "ESLINT_CONFIG", "PRETTIER_CONFIG", "NODE_VERSION", "ENV_EXAMPLE", "FAVICON", "LOGO", "OG_IMAGE", "APPLE_ICON", "PWA_ICONS",
     // 9. Testing
@@ -49,7 +49,7 @@ const CATEGORIES: Record<string, string[]> = {
     "NPM & Package Config": ["PKG_JSON", "PKG_NAME", "PKG_DESCRIPTION", "PKG_METADATA", "PKG_SCRIPTS", "PKG_LOCKFILE", "PKG_DEPS_HEALTHY", "PKG_DEPS_CURRENT", "NPM_PUBLISHED"],
     "UI Library": ["GEENIUS_UI", "NO_INTERNAL_UI"],
     "Documentation": ["README", "README_BADGES", "LICENSE", "CONTRIBUTING", "SECURITY", "CODE_OF_CONDUCT", "SUPPORT"],
-    "Project Identity": ["PROJECT_YAML", "PROJECT_NAME", "PROJECT_DESC", "PROJECT_PRIORITY", "PROJECT_TAGS", "PROJECT_DEPLOY", "ACCOUNT_YAML"],
+    "Project Identity": ["PROJECT_YAML", "PROJECT_NAME", "PROJECT_DESC", "PROJECT_PRIORITY", "PROJECT_TAGS", "PROJECT_DEPLOY", "ACCOUNT_YAML", "ROADMAP_YAML", "IDEAS_YAML"],
     "Code Quality & Config": ["TSCONFIG_STRICT", "ESLINT_CONFIG", "PRETTIER_CONFIG", "NODE_VERSION", "ENV_EXAMPLE", "FAVICON", "LOGO", "OG_IMAGE", "APPLE_ICON", "PWA_ICONS"],
     "Testing": ["TESTS_EXIST", "TESTS_PASS", "TEST_COVERAGE"],
     "Deployment & Infrastructure": ["DEPLOY_CONFIG", "CONVEX_DEPLOYED", "DOMAIN_CONFIGURED"],
@@ -59,7 +59,7 @@ const CATEGORIES: Record<string, string[]> = {
 // ─── Category-Specific Metric Sets ───────────────────────────────────
 
 const PROJECT_CATEGORIES = [
-    "webapp", "fullstack-app", "monorepo-app", "oss-tool", "ui-package",
+    "webapp", "fullstack-app", "monorepo-app", "monorepo-convex", "oss-tool", "ui-package",
     "library", "boilerplate", "minion-toolbox", "backend-service", "client-project",
 ] as const;
 
@@ -73,7 +73,7 @@ const CATEGORY_METRICS: Record<ProjectCategory, readonly string[]> = {
         "PKG_JSON", "PKG_NAME", "PKG_DESCRIPTION", "PKG_METADATA", "PKG_SCRIPTS", "PKG_LOCKFILE", "PKG_DEPS_HEALTHY", "PKG_DEPS_CURRENT",
         "GEENIUS_UI", "NO_INTERNAL_UI",
         "README", "LICENSE", "CONTRIBUTING", "SECURITY", "CODE_OF_CONDUCT", "SUPPORT",
-        "PROJECT_YAML", "PROJECT_NAME", "PROJECT_DESC", "PROJECT_PRIORITY", "PROJECT_TAGS", "PROJECT_DEPLOY", "ACCOUNT_YAML",
+        "PROJECT_YAML", "PROJECT_NAME", "PROJECT_DESC", "PROJECT_PRIORITY", "PROJECT_TAGS", "PROJECT_DEPLOY", "ACCOUNT_YAML", "ROADMAP_YAML", "IDEAS_YAML",
         "TSCONFIG_STRICT", "ESLINT_CONFIG", "PRETTIER_CONFIG", "NODE_VERSION", "ENV_EXAMPLE",
         "FAVICON", "LOGO", "OG_IMAGE", "APPLE_ICON", "PWA_ICONS",
         "DEPLOY_CONFIG", "CONVEX_DEPLOYED", "DOMAIN_CONFIGURED",
@@ -86,7 +86,7 @@ const CATEGORY_METRICS: Record<ProjectCategory, readonly string[]> = {
         "PKG_JSON", "PKG_NAME", "PKG_DESCRIPTION", "PKG_METADATA", "PKG_SCRIPTS", "PKG_LOCKFILE", "PKG_DEPS_HEALTHY", "PKG_DEPS_CURRENT",
         "GEENIUS_UI", "NO_INTERNAL_UI",
         "README", "README_BADGES", "LICENSE", "CONTRIBUTING", "SECURITY", "CODE_OF_CONDUCT", "SUPPORT",
-        "PROJECT_YAML", "PROJECT_NAME", "PROJECT_DESC", "PROJECT_PRIORITY", "PROJECT_TAGS", "PROJECT_DEPLOY", "ACCOUNT_YAML",
+        "PROJECT_YAML", "PROJECT_NAME", "PROJECT_DESC", "PROJECT_PRIORITY", "PROJECT_TAGS", "PROJECT_DEPLOY", "ACCOUNT_YAML", "ROADMAP_YAML", "IDEAS_YAML",
         "TSCONFIG_STRICT", "ESLINT_CONFIG", "PRETTIER_CONFIG", "NODE_VERSION", "ENV_EXAMPLE",
         "FAVICON", "LOGO", "OG_IMAGE", "APPLE_ICON", "PWA_ICONS",
         "TESTS_EXIST", "TESTS_PASS", "TEST_COVERAGE",
@@ -98,10 +98,21 @@ const CATEGORY_METRICS: Record<ProjectCategory, readonly string[]> = {
         "PKG_JSON", "PKG_NAME", "PKG_DESCRIPTION", "PKG_METADATA", "PKG_SCRIPTS", "PKG_LOCKFILE", "PKG_DEPS_HEALTHY", "PKG_DEPS_CURRENT",
         "GEENIUS_UI", "NO_INTERNAL_UI",
         "README", "LICENSE", "CONTRIBUTING", "SECURITY", "CODE_OF_CONDUCT", "SUPPORT",
-        "PROJECT_YAML", "PROJECT_NAME", "PROJECT_DESC", "PROJECT_PRIORITY", "PROJECT_TAGS", "PROJECT_DEPLOY", "ACCOUNT_YAML",
+        "PROJECT_YAML", "PROJECT_NAME", "PROJECT_DESC", "PROJECT_PRIORITY", "PROJECT_TAGS", "PROJECT_DEPLOY", "ACCOUNT_YAML", "ROADMAP_YAML", "IDEAS_YAML",
         "TSCONFIG_STRICT", "ESLINT_CONFIG", "PRETTIER_CONFIG",
         "FAVICON", "LOGO", "OG_IMAGE", "APPLE_ICON", "PWA_ICONS",
         "CONVEX_DEPLOYED", "DOMAIN_CONFIGURED",
+        "ERROR_BOUNDARY", "I18N_SETUP", "SEO_META", "ANALYTICS",
+    ],
+    "monorepo-convex": [
+        "GIT_REPO", "GIT_REMOTE", "GIT_PUSHED", "GIT_IGNORE", "GIT_NO_SECRETS",
+        "PKG_JSON", "PKG_NAME", "PKG_DESCRIPTION", "PKG_METADATA", "PKG_SCRIPTS", "PKG_LOCKFILE", "PKG_DEPS_HEALTHY", "PKG_DEPS_CURRENT",
+        "GEENIUS_UI", "NO_INTERNAL_UI",
+        "README", "LICENSE", "CONTRIBUTING", "SECURITY", "CODE_OF_CONDUCT", "SUPPORT",
+        "PROJECT_YAML", "PROJECT_NAME", "PROJECT_DESC", "PROJECT_PRIORITY", "PROJECT_TAGS", "PROJECT_DEPLOY", "ACCOUNT_YAML", "ROADMAP_YAML", "IDEAS_YAML",
+        "TSCONFIG_STRICT", "ESLINT_CONFIG", "PRETTIER_CONFIG",
+        "FAVICON", "LOGO", "OG_IMAGE", "APPLE_ICON", "PWA_ICONS",
+        "CONVEX_DEPLOYED", "CONVEX_BACKEND_PKG", "DOMAIN_CONFIGURED",
         "ERROR_BOUNDARY", "I18N_SETUP", "SEO_META", "ANALYTICS",
     ],
     "oss-tool": [
@@ -110,7 +121,7 @@ const CATEGORY_METRICS: Record<ProjectCategory, readonly string[]> = {
         "GH_RELEASES", "GH_TAGS", "CHANGELOG",
         "PKG_JSON", "PKG_NAME", "PKG_DESCRIPTION", "PKG_METADATA", "PKG_SCRIPTS", "PKG_LOCKFILE", "PKG_DEPS_HEALTHY", "PKG_DEPS_CURRENT",
         "README", "README_BADGES", "LICENSE", "CONTRIBUTING", "SECURITY", "CODE_OF_CONDUCT", "SUPPORT",
-        "PROJECT_YAML", "PROJECT_NAME", "PROJECT_DESC", "PROJECT_PRIORITY", "PROJECT_TAGS", "PROJECT_DEPLOY", "ACCOUNT_YAML",
+        "PROJECT_YAML", "PROJECT_NAME", "PROJECT_DESC", "PROJECT_PRIORITY", "PROJECT_TAGS", "PROJECT_DEPLOY", "ACCOUNT_YAML", "ROADMAP_YAML", "IDEAS_YAML",
         "TSCONFIG_STRICT", "ESLINT_CONFIG", "PRETTIER_CONFIG", "NODE_VERSION", "ENV_EXAMPLE",
         "FAVICON", "LOGO", "OG_IMAGE", "APPLE_ICON", "PWA_ICONS",
         "TESTS_EXIST", "TESTS_PASS", "TEST_COVERAGE",
@@ -123,7 +134,7 @@ const CATEGORY_METRICS: Record<ProjectCategory, readonly string[]> = {
         "GH_RELEASES", "GH_TAGS", "CHANGELOG",
         "PKG_JSON", "PKG_NAME", "PKG_DESCRIPTION", "PKG_METADATA", "PKG_SCRIPTS", "PKG_LOCKFILE", "PKG_DEPS_HEALTHY", "PKG_DEPS_CURRENT", "NPM_PUBLISHED",
         "README", "README_BADGES", "LICENSE", "CONTRIBUTING", "SECURITY", "CODE_OF_CONDUCT", "SUPPORT",
-        "PROJECT_YAML", "PROJECT_NAME", "PROJECT_DESC", "PROJECT_PRIORITY", "PROJECT_TAGS", "PROJECT_DEPLOY", "ACCOUNT_YAML",
+        "PROJECT_YAML", "PROJECT_NAME", "PROJECT_DESC", "PROJECT_PRIORITY", "PROJECT_TAGS", "PROJECT_DEPLOY", "ACCOUNT_YAML", "ROADMAP_YAML", "IDEAS_YAML",
         "TSCONFIG_STRICT", "ESLINT_CONFIG", "PRETTIER_CONFIG", "NODE_VERSION", "ENV_EXAMPLE",
         "TESTS_EXIST", "TESTS_PASS", "TEST_COVERAGE",
     ],
@@ -133,7 +144,7 @@ const CATEGORY_METRICS: Record<ProjectCategory, readonly string[]> = {
         "GH_RELEASES", "GH_TAGS", "CHANGELOG",
         "PKG_JSON", "PKG_NAME", "PKG_DESCRIPTION", "PKG_METADATA", "PKG_SCRIPTS", "PKG_LOCKFILE", "PKG_DEPS_HEALTHY", "PKG_DEPS_CURRENT", "NPM_PUBLISHED",
         "README", "README_BADGES", "LICENSE", "CONTRIBUTING", "SECURITY", "CODE_OF_CONDUCT", "SUPPORT",
-        "PROJECT_YAML", "PROJECT_NAME", "PROJECT_DESC", "PROJECT_PRIORITY", "PROJECT_TAGS", "PROJECT_DEPLOY", "ACCOUNT_YAML",
+        "PROJECT_YAML", "PROJECT_NAME", "PROJECT_DESC", "PROJECT_PRIORITY", "PROJECT_TAGS", "PROJECT_DEPLOY", "ACCOUNT_YAML", "ROADMAP_YAML", "IDEAS_YAML",
         "TSCONFIG_STRICT", "ESLINT_CONFIG", "PRETTIER_CONFIG", "NODE_VERSION", "ENV_EXAMPLE",
         "TESTS_EXIST", "TESTS_PASS", "TEST_COVERAGE",
     ],
@@ -142,7 +153,7 @@ const CATEGORY_METRICS: Record<ProjectCategory, readonly string[]> = {
         "PKG_JSON", "PKG_NAME", "PKG_DESCRIPTION", "PKG_METADATA", "PKG_SCRIPTS", "PKG_LOCKFILE",
         "GEENIUS_UI", "NO_INTERNAL_UI",
         "README", "LICENSE", "CONTRIBUTING", "SECURITY", "CODE_OF_CONDUCT", "SUPPORT",
-        "PROJECT_YAML", "PROJECT_NAME", "PROJECT_DESC", "PROJECT_PRIORITY", "PROJECT_TAGS", "PROJECT_DEPLOY", "ACCOUNT_YAML",
+        "PROJECT_YAML", "PROJECT_NAME", "PROJECT_DESC", "PROJECT_PRIORITY", "PROJECT_TAGS", "PROJECT_DEPLOY", "ACCOUNT_YAML", "ROADMAP_YAML", "IDEAS_YAML",
         "TSCONFIG_STRICT", "ESLINT_CONFIG", "PRETTIER_CONFIG", "NODE_VERSION", "ENV_EXAMPLE",
     ],
     "minion-toolbox": [
@@ -150,7 +161,7 @@ const CATEGORY_METRICS: Record<ProjectCategory, readonly string[]> = {
         "PKG_JSON", "PKG_NAME", "PKG_DESCRIPTION", "PKG_METADATA", "PKG_SCRIPTS", "PKG_LOCKFILE",
         "GEENIUS_UI", "NO_INTERNAL_UI",
         "README", "LICENSE", "CONTRIBUTING", "SECURITY", "CODE_OF_CONDUCT", "SUPPORT",
-        "PROJECT_YAML", "PROJECT_NAME", "PROJECT_DESC", "PROJECT_PRIORITY", "PROJECT_TAGS", "PROJECT_DEPLOY", "ACCOUNT_YAML",
+        "PROJECT_YAML", "PROJECT_NAME", "PROJECT_DESC", "PROJECT_PRIORITY", "PROJECT_TAGS", "PROJECT_DEPLOY", "ACCOUNT_YAML", "ROADMAP_YAML", "IDEAS_YAML",
         "TSCONFIG_STRICT", "ESLINT_CONFIG", "PRETTIER_CONFIG",
     ],
     "backend-service": [
@@ -159,7 +170,7 @@ const CATEGORY_METRICS: Record<ProjectCategory, readonly string[]> = {
         "GH_RELEASES", "GH_TAGS", "CHANGELOG",
         "PKG_JSON", "PKG_NAME", "PKG_DESCRIPTION", "PKG_METADATA", "PKG_SCRIPTS", "PKG_LOCKFILE", "PKG_DEPS_HEALTHY", "PKG_DEPS_CURRENT",
         "README", "README_BADGES", "LICENSE", "CONTRIBUTING", "SECURITY", "CODE_OF_CONDUCT", "SUPPORT",
-        "PROJECT_YAML", "PROJECT_NAME", "PROJECT_DESC", "PROJECT_PRIORITY", "PROJECT_TAGS", "PROJECT_DEPLOY", "ACCOUNT_YAML",
+        "PROJECT_YAML", "PROJECT_NAME", "PROJECT_DESC", "PROJECT_PRIORITY", "PROJECT_TAGS", "PROJECT_DEPLOY", "ACCOUNT_YAML", "ROADMAP_YAML", "IDEAS_YAML",
         "TSCONFIG_STRICT", "ESLINT_CONFIG", "PRETTIER_CONFIG", "NODE_VERSION", "ENV_EXAMPLE",
         "TESTS_EXIST", "TESTS_PASS", "TEST_COVERAGE",
         "DEPLOY_CONFIG", "CONVEX_DEPLOYED", "DOMAIN_CONFIGURED",
@@ -167,7 +178,7 @@ const CATEGORY_METRICS: Record<ProjectCategory, readonly string[]> = {
     "client-project": [
         "GIT_REPO", "GIT_REMOTE", "GIT_PUSHED", "GIT_IGNORE", "GIT_BRANCH_PROTECT", "GIT_NO_SECRETS",
         "PKG_JSON", "PKG_NAME", "PKG_DESCRIPTION", "PKG_METADATA", "PKG_SCRIPTS", "PKG_LOCKFILE", "PKG_DEPS_HEALTHY", "PKG_DEPS_CURRENT",
-        "PROJECT_YAML", "PROJECT_NAME", "PROJECT_DESC", "PROJECT_PRIORITY", "PROJECT_TAGS", "PROJECT_DEPLOY", "ACCOUNT_YAML",
+        "PROJECT_YAML", "PROJECT_NAME", "PROJECT_DESC", "PROJECT_PRIORITY", "PROJECT_TAGS", "PROJECT_DEPLOY", "ACCOUNT_YAML", "ROADMAP_YAML", "IDEAS_YAML",
         "TSCONFIG_STRICT", "ESLINT_CONFIG", "PRETTIER_CONFIG", "NODE_VERSION", "ENV_EXAMPLE",
         "FAVICON", "LOGO", "OG_IMAGE", "APPLE_ICON", "PWA_ICONS",
         "DEPLOY_CONFIG", "CONVEX_DEPLOYED", "DOMAIN_CONFIGURED",
@@ -179,7 +190,7 @@ function getMetricsForCategory(category: string | undefined): readonly string[] 
     if (category && category in CATEGORY_METRICS) {
         return CATEGORY_METRICS[category as ProjectCategory];
     }
-    return ALL_METRICS; // fallback: all 60 metrics
+    return ALL_METRICS; // fallback: all 64 metrics
 }
 
 // ─── GitHub API Helpers ──────────────────────────────────────────────────
@@ -249,7 +260,7 @@ async function runChecks(
     const [packageJsonText, tsconfigText, projectYamlText] = await Promise.all([
         fetchFileText(repoFullName, "package.json", branch, token),
         fetchFileText(repoFullName, "tsconfig.json", branch, token),
-        fetchFileText(repoFullName, "PROJECT.yaml", branch, token),
+        fetchFileText(repoFullName, ".project/PROJECT.yaml", branch, token),
     ]);
 
     let pkg: Record<string, unknown> = {};
@@ -448,8 +459,8 @@ async function runChecks(
 
     // ── 7. Project Identity ──────────────────────────────────────────────
     results.PROJECT_YAML = projectYamlText
-        ? { pass: true, detail: "PROJECT.yaml present" }
-        : { pass: false, detail: "Missing PROJECT.yaml" };
+        ? { pass: true, detail: ".project/PROJECT.yaml present" }
+        : { pass: false, detail: "Missing .project/PROJECT.yaml" };
 
     if (projectYamlText) {
         const hasName = /^name:/m.test(projectYamlText);
@@ -484,11 +495,17 @@ async function runChecks(
         results.PROJECT_DEPLOY = { pass: false, detail: "No PROJECT.yaml" };
     }
 
-    results.ACCOUNT_YAML = await fileExists(repoFullName, "ACCOUNT.yaml", branch, token)
-        ? { pass: true, detail: "ACCOUNT.yaml present" }
-        : (await fileExists(repoFullName, "ACCOUNTS.yaml", branch, token))
-            ? { pass: true, detail: "ACCOUNTS.yaml present" }
-            : { pass: false, detail: "Missing ACCOUNT.yaml" };
+    results.ACCOUNT_YAML = await fileExists(repoFullName, ".project/ACCOUNT.yaml", branch, token)
+        ? { pass: true, detail: ".project/ACCOUNT.yaml present" }
+        : { pass: false, detail: "Missing .project/ACCOUNT.yaml" };
+
+    results.ROADMAP_YAML = await fileExists(repoFullName, ".project/ROADMAP.yaml", branch, token)
+        ? { pass: true, detail: ".project/ROADMAP.yaml present" }
+        : { pass: false, detail: "Missing .project/ROADMAP.yaml" };
+
+    results.IDEAS_YAML = await fileExists(repoFullName, ".project/IDEAS.yaml", branch, token)
+        ? { pass: true, detail: ".project/IDEAS.yaml present" }
+        : { pass: false, detail: "Missing .project/IDEAS.yaml" };
 
     // ── 8. Code Quality & Config ─────────────────────────────────────────
     if (tsconfigText) {

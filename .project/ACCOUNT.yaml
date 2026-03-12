@@ -1,0 +1,8 @@
+services:
+  convex:
+    project: mission-control
+  vercel:
+    project: mission-control-app
+  github:
+    owner: mxn2020
+    repo: project-manager-mission-control

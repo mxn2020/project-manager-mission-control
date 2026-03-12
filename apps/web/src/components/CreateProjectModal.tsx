@@ -5,6 +5,7 @@ import { useAuth } from '../hooks/useAuth';
 import type { Id } from '../lib/types';
 import SearchableSelect, { type SelectOption } from './SearchableSelect';
 import { TIER_ORDER, PRIORITY_ORDER, TIER_CONFIG, PRIORITY_CONFIG } from '../lib/types';
+import { FormInput, FormTextarea, FormCheckbox } from './ui';
 
 const CATEGORY_OPTIONS: SelectOption[] = [
     { value: 'webapp', label: 'Web App', icon: '🌐' },
@@ -108,8 +109,7 @@ export default function CreateProjectModal({ onClose, onCreated, lanes }: Create
                     <div className="grid-2 gap-12">
                         <div>
                             <label className="form-label">Project Name *</label>
-                            <input value={name} onChange={e => setName(e.target.value)} placeholder="my-awesome-project"
-                                className="form-input" />
+                            <FormInput value={name} onChange={e => setName(e.target.value)} placeholder="my-awesome-project" />
                         </div>
                         <div>
                             <label className="form-label">Lane *</label>
@@ -127,8 +127,8 @@ export default function CreateProjectModal({ onClose, onCreated, lanes }: Create
                     {/* Description */}
                     <div>
                         <label className="form-label">Description</label>
-                        <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="What does this project do?"
-                            rows={2} className="form-textarea" />
+                        <FormTextarea value={description} onChange={e => setDescription(e.target.value)} placeholder="What does this project do?"
+                            rows={2} />
                     </div>
 
                     {/* Tier + Priority + OSS */}
@@ -141,10 +141,7 @@ export default function CreateProjectModal({ onClose, onCreated, lanes }: Create
                             <label className="form-label">Priority</label>
                             <SearchableSelect options={priorityOptions} value={priority} onChange={setPriority} placeholder="Priority" clearable={false} />
                         </div>
-                        <label className="flex-row gap-6 text-base" style={{ cursor: 'pointer', padding: '8px 0' }}>
-                            <input type="checkbox" checked={oss} onChange={e => setOss(e.target.checked)} />
-                            OSS
-                        </label>
+                        <FormCheckbox checked={oss} onChange={e => setOss(e.target.checked)} label="OSS" checkboxSize="sm" style={{ padding: '8px 0' }} />
                     </div>
 
                     {/* Category */}
@@ -172,17 +169,16 @@ export default function CreateProjectModal({ onClose, onCreated, lanes }: Create
                                 </button>
                             ))}
                         </div>
-                        <input value={stackInput} onChange={e => setStackInput(e.target.value)}
+                        <FormInput value={stackInput} onChange={e => setStackInput(e.target.value)}
                             onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addStack(stackInput); } }}
                             placeholder="Custom tech..."
-                            className="form-input-sm mt-6" />
+                            inputSize="sm" className="mt-6" />
                     </div>
 
                     {/* Repo URL */}
                     <div>
                         <label className="form-label">Repository URL (optional)</label>
-                        <input value={repo} onChange={e => setRepo(e.target.value)} placeholder="https://github.com/..."
-                            className="form-input" />
+                        <FormInput value={repo} onChange={e => setRepo(e.target.value)} placeholder="https://github.com/..." />
                     </div>
 
                     {/* Error */}

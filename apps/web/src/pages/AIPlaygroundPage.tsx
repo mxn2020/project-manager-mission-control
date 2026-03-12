@@ -3,6 +3,7 @@ import { useQuery, useAction, useMutation } from 'convex/react';
 import { api } from '@mission-control/backend/convex/_generated/api';
 import { useAuth } from '../hooks/useAuth';
 import type { Id } from '../lib/types';
+import { FormSelect, FormTextarea } from '../components/ui';
 
 interface VoiceModel {
     _id: string | Id<"voiceModels">;
@@ -201,7 +202,7 @@ function ChatTab({ models, aiChat, userId }: { models: LLMModel[]; aiChat: ChatA
                 <div className="playground-panel-left">
                     <div className="pg-field">
                         <label>Provider</label>
-                        <select className="pg-select" value={selectedProvider} onChange={e => {
+                        <FormSelect className="pg-select" value={selectedProvider} onChange={e => {
                             setSelectedProvider(e.target.value);
                             setSelectedModelId('');
                         }}>
@@ -211,19 +212,19 @@ function ChatTab({ models, aiChat, userId }: { models: LLMModel[]; aiChat: ChatA
                                     {p.name}
                                 </option>
                             ))}
-                        </select>
+                        </FormSelect>
                     </div>
 
                     <div className="pg-field">
                         <label>Model</label>
-                        <select className="pg-select" value={selectedModelId} onChange={e => setSelectedModelId(e.target.value)}>
+                        <FormSelect className="pg-select" value={selectedModelId} onChange={e => setSelectedModelId(e.target.value)}>
                             <option value="">Default (auto-select)</option>
                             {filteredModels.map(m => (
                                 <option key={String(m._id)} value={String(m._id)}>
                                     {m.displayName || m.modelId}{m.isDefault ? ' ⭐' : ''}
                                 </option>
                             ))}
-                        </select>
+                        </FormSelect>
                     </div>
 
                     {selectedModel && (
@@ -247,7 +248,7 @@ function ChatTab({ models, aiChat, userId }: { models: LLMModel[]; aiChat: ChatA
 
                     <div className="pg-field">
                         <label>System Prompt</label>
-                        <textarea
+                        <FormTextarea
                             className="pg-textarea"
                             value={systemPrompt}
                             onChange={e => setSystemPrompt(e.target.value)}
@@ -261,7 +262,7 @@ function ChatTab({ models, aiChat, userId }: { models: LLMModel[]; aiChat: ChatA
                     </div>
                     <div className="pg-field">
                         <label>User Message</label>
-                        <textarea
+                        <FormTextarea
                             className="pg-textarea"
                             value={prompt}
                             onChange={e => setPrompt(e.target.value)}
@@ -395,22 +396,22 @@ function STTTab({ models, transcribe }: { models: VoiceModel[]; transcribe: Tran
                 <div className="playground-panel-left">
                     <div className="pg-field">
                         <label>STT Model</label>
-                        <select className="pg-select" value={selectedModel} onChange={e => setSelectedModel(e.target.value)}>
+                        <FormSelect className="pg-select" value={selectedModel} onChange={e => setSelectedModel(e.target.value)}>
                             <option value="">Auto (first available)</option>
                             {models.map(m => (
                                 <option key={String(m._id) || m.name} value={String(m._id) || m.name} disabled={m.apiFormat === 'riva-grpc'}>
                                     {m.displayName} {m.apiFormat === 'riva-grpc' ? '(gRPC — proxy needed)' : ''}
                                 </option>
                             ))}
-                        </select>
+                        </FormSelect>
                     </div>
                     <div className="pg-field">
                         <label>Language</label>
-                        <select className="pg-select" value={language} onChange={e => setLanguage(e.target.value)}>
+                        <FormSelect className="pg-select" value={language} onChange={e => setLanguage(e.target.value)}>
                             {['en', 'de', 'fr', 'es', 'it', 'pt', 'nl', 'pl', 'ru', 'ja', 'ko', 'zh', 'ar', 'hi', 'tr', 'vi'].map(l => (
                                 <option key={l} value={l}>{l.toUpperCase()}</option>
                             ))}
-                        </select>
+                        </FormSelect>
                     </div>
                     <div className="pg-field pg-actions-row">
                         <button
@@ -517,29 +518,29 @@ function TTSTab({ models, synthesize }: { models: VoiceModel[]; synthesize: Synt
                 <div className="playground-panel-left">
                     <div className="pg-field">
                         <label>TTS Model</label>
-                        <select className="pg-select" value={selectedModel} onChange={e => setSelectedModel(e.target.value)}>
+                        <FormSelect className="pg-select" value={selectedModel} onChange={e => setSelectedModel(e.target.value)}>
                             {models.map(m => (
                                 <option key={String(m._id) || m.name} value={String(m._id) || m.name} disabled={m.apiFormat === 'riva-grpc'}>
                                     {m.displayName} {m.apiFormat === 'riva-grpc' ? '(gRPC — proxy needed)' : ''}
                                 </option>
                             ))}
-                        </select>
+                        </FormSelect>
                     </div>
                     <div className="pg-field">
                         <label>Voice</label>
-                        <select className="pg-select" value={voice} onChange={e => setVoice(e.target.value)}>
+                        <FormSelect className="pg-select" value={voice} onChange={e => setVoice(e.target.value)}>
                             {['alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer'].map(v => (
                                 <option key={v} value={v}>{v.charAt(0).toUpperCase() + v.slice(1)}</option>
                             ))}
-                        </select>
+                        </FormSelect>
                     </div>
                     <div className="pg-field">
                         <label>Language</label>
-                        <select className="pg-select" value={language} onChange={e => setLanguage(e.target.value)}>
+                        <FormSelect className="pg-select" value={language} onChange={e => setLanguage(e.target.value)}>
                             {['en', 'de', 'fr', 'es', 'it', 'pt', 'nl', 'ja', 'ko', 'zh', 'ar', 'hi', 'tr'].map(l => (
                                 <option key={l} value={l}>{l.toUpperCase()}</option>
                             ))}
-                        </select>
+                        </FormSelect>
                     </div>
                     <div className="pg-field">
                         <label>Speed: {speed.toFixed(1)}x</label>
@@ -548,7 +549,7 @@ function TTSTab({ models, synthesize }: { models: VoiceModel[]; synthesize: Synt
                     </div>
                     <div className="pg-field">
                         <label>Text</label>
-                        <textarea className="pg-textarea" value={text} onChange={e => setText(e.target.value)} rows={5} />
+                        <FormTextarea className="pg-textarea" value={text} onChange={e => setText(e.target.value)} rows={5} />
                     </div>
                     <button className="btn btn-primary" onClick={() => handleSynthesize()} disabled={loading || !text.trim()}>
                         {loading ? '⏳ Synthesizing...' : '▶ Synthesize'}
@@ -670,14 +671,14 @@ function VoiceCloningTab({ models, synthesize }: { models: VoiceModel[]; synthes
                 <div className="playground-panel-left">
                     <div className="pg-field">
                         <label>Voice Cloning Model</label>
-                        <select className="pg-select" value={selectedModel} onChange={e => setSelectedModel(e.target.value)}>
+                        <FormSelect className="pg-select" value={selectedModel} onChange={e => setSelectedModel(e.target.value)}>
                             {cloningModels.length === 0 && <option value="">No cloning models available</option>}
                             {cloningModels.map(m => (
                                 <option key={String(m._id) || m.name} value={String(m._id) || m.name} disabled={m.apiFormat === 'riva-grpc'}>
                                     {m.displayName} {m.apiFormat === 'riva-grpc' ? '(proxy needed)' : ''}
                                 </option>
                             ))}
-                        </select>
+                        </FormSelect>
                     </div>
 
                     <div className="pg-field">
@@ -704,16 +705,16 @@ function VoiceCloningTab({ models, synthesize }: { models: VoiceModel[]; synthes
 
                     <div className="pg-field">
                         <label>Language</label>
-                        <select className="pg-select" value={language} onChange={e => setLanguage(e.target.value)}>
+                        <FormSelect className="pg-select" value={language} onChange={e => setLanguage(e.target.value)}>
                             {['en', 'de', 'fr', 'es', 'it', 'ja', 'ko', 'zh', 'ar', 'hi', 'pt', 'ru', 'tr', 'nl'].map(l => (
                                 <option key={l} value={l}>{l.toUpperCase()}</option>
                             ))}
-                        </select>
+                        </FormSelect>
                     </div>
 
                     <div className="pg-field">
                         <label>Text to Clone</label>
-                        <textarea className="pg-textarea" value={text} onChange={e => setText(e.target.value)} rows={5} />
+                        <FormTextarea className="pg-textarea" value={text} onChange={e => setText(e.target.value)} rows={5} />
                     </div>
 
                     <button className="btn btn-primary" onClick={handleSynthesize}

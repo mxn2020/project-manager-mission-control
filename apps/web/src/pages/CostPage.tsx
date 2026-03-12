@@ -6,7 +6,7 @@ import SearchableSelect, { type SelectOption } from '../components/SearchableSel
 import { useAuth } from '../hooks/useAuth';
 import type { Id } from '../lib/types';
 
-import { PageHeader } from '../components/ui';
+import { PageHeader, FormInput } from '../components/ui';
 
 const CATEGORIES = ['hosting', 'domain', 'api', 'database', 'monitoring', 'ai', 'cdn', 'email', 'other'];
 const CATEGORY_ICONS: Record<string, string> = {
@@ -134,18 +134,16 @@ export default function CostPage() {
             {showCreate && (
                 <div className="section-card mb-16">
                     <div className="grid-3 gap-12 mb-12">
-                        <input placeholder="Service name *" value={newName} onChange={e => setNewName(e.target.value)}
-                            className="form-input" />
-                        <input placeholder="Monthly cost * ($)" type="number" step="0.01" value={newCost} onChange={e => setNewCost(e.target.value)}
-                            className="form-input" />
+                        <FormInput placeholder="Service name *" value={newName} onChange={e => setNewName(e.target.value)} />
+                        <FormInput placeholder="Monthly cost * ($)" type="number" step="0.01" value={newCost} onChange={e => setNewCost(e.target.value)} />
                         <SearchableSelect options={projectOptions} value={newProject} onChange={setNewProject} placeholder="Select project *" grouped allowCreate onCreateNew={(v) => setNewProject(v)} />
                     </div>
                     <div className="flex-row gap-12">
                         <div style={{ width: 160 }}>
                             <SearchableSelect options={categoryOptions} value={newCategory} onChange={setNewCategory} placeholder="Category" clearable={false} />
                         </div>
-                        <input placeholder="Notes (optional)" value={newNotes} onChange={e => setNewNotes(e.target.value)}
-                            className="form-input-sm flex-1" />
+                        <FormInput placeholder="Notes (optional)" value={newNotes} onChange={e => setNewNotes(e.target.value)}
+                            inputSize="sm" className="flex-1" />
                         <button className="btn btn-secondary" onClick={() => setShowCreate(false)}>Cancel</button>
                         <button className="btn btn-primary" onClick={handleCreate} disabled={!newName.trim() || !newCost || !newProject.trim()}>Add</button>
                     </div>

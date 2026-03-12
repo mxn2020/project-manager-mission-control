@@ -133,8 +133,13 @@ export const promote = mutation({
             updatedAt: now,
         });
 
-        // Archive the idea
-        await ctx.db.patch(args.ideaId, { archived: true, updatedAt: now });
+        // Mark idea as promoted to task
+        await ctx.db.patch(args.ideaId, {
+            archived: true,
+            promotedTo: "task",
+            promotedEntityId: taskId,
+            updatedAt: now,
+        });
 
         return { taskId, archivedIdeaId: args.ideaId };
     },

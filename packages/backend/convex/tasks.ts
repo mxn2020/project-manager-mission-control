@@ -9,6 +9,7 @@ export const list = query({
         status: v.optional(v.string()),
         priority: v.optional(v.string()),
         projectPath: v.optional(v.string()),
+        category: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
         let tasks;
@@ -35,6 +36,9 @@ export const list = query({
 
         if (args.priority) {
             tasks = tasks.filter((t) => t.priority === args.priority);
+        }
+        if (args.category) {
+            tasks = tasks.filter((t) => t.category === args.category);
         }
         return tasks.sort((a, b) => b.updatedAt - a.updatedAt);
     },
@@ -87,6 +91,10 @@ export const create = mutation({
         dueDate: v.optional(v.number()),
         githubIssueUrl: v.optional(v.string()),
         tags: v.optional(v.array(v.string())),
+        category: v.optional(v.string()),
+        featureId: v.optional(v.id("features")),
+        sprintId: v.optional(v.id("devSprints")),
+        campaignId: v.optional(v.id("campaigns")),
     },
     handler: async (ctx, args) => {
         const now = Date.now();
@@ -103,6 +111,10 @@ export const create = mutation({
             dueDate: args.dueDate,
             githubIssueUrl: args.githubIssueUrl,
             tags: args.tags || [],
+            category: args.category || "general",
+            featureId: args.featureId,
+            sprintId: args.sprintId,
+            campaignId: args.campaignId,
             createdAt: now,
             updatedAt: now,
         });

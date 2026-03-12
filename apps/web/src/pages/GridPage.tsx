@@ -67,7 +67,7 @@ export default function GridPage({ data }: { data: StatusData }) {
 
     const renderGrid = (projects: Project[]) => (
         <div className="project-grid">
-            {projects.map(p => <ProjectCard key={p.path} project={p} onClick={() => navigate(`/project/${encodeURIComponent(p.path)}`)} />)}
+            {projects.map(p => <ProjectCard key={p.id || p.path || p.name} project={p} onClick={() => navigate(`/project/${encodeURIComponent(p.path)}`)} />)}
         </div>
     );
 

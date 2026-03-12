@@ -4,340 +4,481 @@ import { api } from '@mission-control/backend/convex/_generated/api';
 import { useProjects } from '../hooks/useProjects';
 import { useAuth } from '../hooks/useAuth';
 import SearchableSelect, { type SelectOption } from '../components/SearchableSelect';
-import MultiSelect from '../components/MultiSelect';
-import PromptDialog from '../components/PromptDialog';
+import AIChatPanel, { MARKETING_PROFILES } from '../components/AIChatPanel';
+import { PageHeader, StatCard, EmptyState, FormInput, FormTextarea } from '../components/ui';
 import type { Id } from '../lib/types';
 
-const CATEGORIES = [
-    { value: 'product-launch', label: 'Product Launch', icon: '🚀' },
-    { value: 'content-campaign', label: 'Content Campaign', icon: '📝' },
-    { value: 'social-media', label: 'Social Media', icon: '📱' },
-    { value: 'email', label: 'Email', icon: '📧' },
-    { value: 'seo', label: 'SEO', icon: '🔍' },
-    { value: 'paid-ads', label: 'Paid Ads', icon: '💰' },
-    { value: 'event', label: 'Event', icon: '🎪' },
-    { value: 'custom', label: 'Custom', icon: '⚙️' },
+// ─── Constants ───────────────────────────────────────────────────────────
+
+const TABS = [
+    { id: 'strategies', label: 'Strategies', icon: '📋' },
+    { id: 'campaigns', label: 'Campaigns', icon: '📢' },
+] as const;
+
+type TabId = typeof TABS[number]['id'];
+
+const PIPELINE_STAGES = [
+    { key: 'idea', label: 'Idea', icon: '💡', color: '#a78bfa' },
+    { key: 'draft', label: 'Draft', icon: '📝', color: '#60a5fa' },
+    { key: 'in-review', label: 'In Review', icon: '👀', color: '#fbbf24' },
+    { key: 'scheduled', label: 'Scheduled', icon: '📅', color: '#f472b6' },
+    { key: 'posted', label: 'Posted', icon: '✅', color: '#34d399' },
+    { key: 'archived', label: 'Archived', icon: '📦', color: '#6b7280' },
 ];
 
-const CAT_COLORS: Record<string, string> = {
-    'product-launch': '#f472b6', 'content-campaign': '#a78bfa', 'social-media': '#60a5fa',
-    'email': '#fbbf24', 'seo': '#34d399', 'paid-ads': '#fb923c', 'event': '#818cf8', 'custom': '#6b7280',
+const PLATFORM_META: Record<string, { icon: string; label: string; color: string }> = {
+    tiktok: { icon: '🎵', label: 'TikTok', color: '#ff0050' },
+    x: { icon: '𝕏', label: 'X / Twitter', color: '#1da1f2' },
+    reddit: { icon: '🔴', label: 'Reddit', color: '#ff4500' },
+    youtube: { icon: '▶️', label: 'YouTube', color: '#ff0000' },
+    blog: { icon: '📝', label: 'Blog', color: '#34d399' },
+    medium: { icon: '📰', label: 'Medium', color: '#00ab6c' },
+    linkedin: { icon: '💼', label: 'LinkedIn', color: '#0a66c2' },
 };
 
-const STATUS_COLORS: Record<string, string> = {
-    draft: '#6b7280', active: '#34d399', completed: '#60a5fa', archived: '#4b5563',
+const CONTENT_TYPE_ICONS: Record<string, string> = {
+    slideshow: '🖼️', video: '🎬', post: '📮', article: '📄',
+    thread: '🧵', vlog: '📹',
 };
 
-const CHANNEL_OPTIONS: SelectOption[] = [
-    { value: 'twitter', label: 'Twitter/X', icon: '🐦' },
-    { value: 'linkedin', label: 'LinkedIn', icon: '💼' },
-    { value: 'blog', label: 'Blog', icon: '📝' },
-    { value: 'youtube', label: 'YouTube', icon: '📺' },
-    { value: 'instagram', label: 'Instagram', icon: '📸' },
-    { value: 'tiktok', label: 'TikTok', icon: '🎵' },
-    { value: 'email', label: 'Email/Newsletter', icon: '📧' },
-    { value: 'reddit', label: 'Reddit', icon: '🤖' },
-    { value: 'producthunt', label: 'Product Hunt', icon: '🏆' },
-    { value: 'discord', label: 'Discord', icon: '💬' },
-];
+const TONE_BADGES: Record<string, { label: string; color: string }> = {
+    controversy: { label: '🔥 Controversy', color: '#ef4444' },
+    motivational: { label: '💪 Motivational', color: '#f59e0b' },
+    educational: { label: '📚 Educational', color: '#3b82f6' },
+    storytelling: { label: '📖 Storytelling', color: '#8b5cf6' },
+    'how-to': { label: '🔧 How-To', color: '#10b981' },
+};
 
-interface Goal { id: string; title: string; done: boolean }
+const CATEGORY_LABELS: Record<string, string> = {
+    'webapp': '🌐 Web App', 'fullstack-app': '🏗️ Full-Stack', 'monorepo-app': '📦 Monorepo',
+    'oss-tool': '🔓 OSS Tool', 'ui-package': '🎨 UI Package', 'library': '📚 Library',
+    'boilerplate': '🧩 Boilerplate', 'minion-toolbox': '🤖 Toolbox',
+    'backend-service': '⚙️ Backend', 'client-project': '💼 Client',
+};
+
+const CADENCE_LABELS: Record<string, string> = {
+    'daily': 'Daily', '2x-week': '2× / week', 'weekly': 'Weekly',
+    'biweekly': 'Bi-weekly', 'monthly': 'Monthly',
+};
+
+// ─── Main Component ──────────────────────────────────────────────────────
 
 export default function MarketingPage() {
     const { orgId } = useAuth();
-
-    const [filter, setFilter] = useState('');
-    const [showCreate, setShowCreate] = useState(false);
-    const [expanded, setExpanded] = useState<string | null>(null);
-    const { data: projectData } = useProjects();
-
-    // Prompt dialog state for adding goals
-    const [promptOpen, setPromptOpen] = useState(false);
-    const [promptPlanId, setPromptPlanId] = useState<string>('');
-
-    // Create form state
-    const [newTitle, setNewTitle] = useState('');
-    const [newDesc, setNewDesc] = useState('');
-    const [newCat, setNewCat] = useState('custom');
-    const [newBudget, setNewBudget] = useState('');
-    const [newStart, setNewStart] = useState('');
-    const [newEnd, setNewEnd] = useState('');
-    const [newProjects, setNewProjects] = useState<string[]>([]);
-    const [newChannels, setNewChannels] = useState<string[]>([]);
-
-    // Convex hooks
-    const rawPlans = useQuery(api.marketing.list, orgId ? { orgId } : "skip");
-
-    const createPlan = useMutation(api.marketing.create);
-    const updatePlan = useMutation(api.marketing.update);
-    const deletePlan = useMutation(api.marketing.remove);
-    const addGoal = useMutation(api.marketing.addGoal);
-    const toggleGoalObj = useMutation(api.marketing.toggleGoal);
-    const removeGoal = useMutation(api.marketing.removeGoal);
-
-    const plans = rawPlans ? rawPlans.map(p => ({ ...p, id: p._id })) : null;
-
-    const projectOptions: SelectOption[] = useMemo(() =>
-        (projectData?.projects || []).map(p => {
-            const segs = p.path.split('/');
-            return { value: p.path, label: segs[segs.length - 1] || p.path, group: segs[0], icon: '📁' };
-        }), [projectData]);
-
-    const handleCreate = async () => {
-        if (!newTitle.trim() || !orgId) return;
-        await createPlan({
-            orgId,
-            title: newTitle.trim(), description: newDesc.trim(),
-            category: newCat, budget: newBudget.trim(),
-            startDate: newStart, endDate: newEnd,
-            linkedProjects: newProjects, channels: newChannels,
-        });
-        setShowCreate(false); setNewTitle(''); setNewDesc(''); setNewBudget('');
-        setNewStart(''); setNewEnd(''); setNewProjects([]); setNewChannels([]);
-    };
-
-    const openAddGoal = (planId: string) => {
-        setPromptPlanId(planId);
-        setPromptOpen(true);
-    };
-
-    const handleAddGoal = async (title: string) => {
-        await addGoal({ planId: promptPlanId as Id<"marketingPlans">, goalTitle: title });
-    };
-
-    const handleToggleGoal = async (planId: string, goalId: string) => {
-        await toggleGoalObj({ planId: planId as Id<"marketingPlans">, goalId });
-    };
-
-    const handleDeleteGoal = async (planId: string, goalId: string) => {
-        await removeGoal({ planId: planId as Id<"marketingPlans">, goalId });
-    };
-
-    const handleUpdateStatus = async (planId: string, status: string) => {
-        await updatePlan({ planId: planId as Id<"marketingPlans">, status });
-    };
-
-    const handleDelete = async (id: string) => {
-        if (confirm("Delete this marketing plan?")) {
-            await deletePlan({ planId: id as Id<"marketingPlans"> });
-            if (expanded === id) setExpanded(null);
-        }
-    };
-
-    const allPlans = (plans || []).filter(p => !filter || p.category === filter);
-    const completedGoals = (p: { goals?: Goal[] }) => (p.goals || []).filter((g: Goal) => g.done).length;
-    const totalGoals = (p: { goals?: Goal[] }) => (p.goals || []).length;
-
-    const formatDate = (d: string) => {
-        if (!d) return '';
-        try { return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); }
-        catch { return d; }
-    };
+    const [activeTab, setActiveTab] = useState<TabId>('strategies');
+    const [showAIChat, setShowAIChat] = useState(false);
 
     return (
         <div>
-            <div className="page-header">
-                <div className="flex-between">
-                    <div>
-                        <h1 className="page-title">📣 Marketing Plans</h1>
-                        <p className="page-description">Manage marketing strategies, campaigns, and launch plans across projects</p>
+            <PageHeader
+                title="📣 Marketing Pipeline"
+                description="AI-supported content pipeline · Create, manage, and track marketing tasks across all projects"
+                actions={
+                    <div className="flex-row gap-8">
+                        <button className="btn btn-secondary" onClick={() => setShowAIChat(!showAIChat)} title="AI Assistant">🤖 AI</button>
+                        {activeTab === 'strategies' && <SeedButton orgId={orgId} />}
                     </div>
-                    <button className="btn btn-primary" onClick={() => setShowCreate(!showCreate)}>+ New Plan</button>
-                </div>
+                }
+            />
+
+            {/* Tab Navigation */}
+            <div className="flex-row gap-4 mb-16" style={{
+                borderBottom: '1px solid var(--border)', paddingBottom: 0,
+            }}>
+                {TABS.map(tab => (
+                    <button
+                        key={tab.id}
+                        onClick={() => setActiveTab(tab.id)}
+                        className="text-md font-medium"
+                        style={{
+                            padding: '10px 16px', border: 'none', cursor: 'pointer',
+                            background: 'none',
+                            color: activeTab === tab.id ? 'var(--accent)' : 'var(--text-tertiary)',
+                            borderBottom: activeTab === tab.id ? '2px solid var(--accent)' : '2px solid transparent',
+                            transition: 'all 0.2s',
+                        }}
+                    >
+                        {tab.icon} {tab.label}
+                    </button>
+                ))}
             </div>
 
-            {/* Category stats */}
-            <div className="stats-row">
-                <div className="stat-card" onClick={() => setFilter('')} style={{ cursor: 'pointer', border: !filter ? '1px solid var(--accent)' : undefined }}>
-                    <div className="stat-value">{allPlans.length}</div>
-                    <div className="stat-label">All</div>
-                </div>
-                {CATEGORIES.map(cat => {
-                    const count = allPlans.filter(p => p.category === cat.value).length;
-                    return count > 0 ? (
-                        <div key={cat.value} className="stat-card" onClick={() => setFilter(filter === cat.value ? '' : cat.value)}
-                            style={{ cursor: 'pointer', border: filter === cat.value ? `1px solid ${CAT_COLORS[cat.value]}` : undefined }}>
-                            <div className="stat-value">{cat.icon} {count}</div>
-                            <div className="stat-label">{cat.label}</div>
-                        </div>
-                    ) : null;
-                })}
-            </div>
+            {/* Tab Content */}
+            {activeTab === 'strategies' && <StrategiesTab orgId={orgId} />}
+            {activeTab === 'campaigns' && <CampaignsTab orgId={orgId} />}
 
-            {/* Create Form */}
-            {showCreate && (
-                <div className="section-card mb-16">
-                    <input value={newTitle} onChange={e => setNewTitle(e.target.value)} placeholder="Plan title *"
-                        className="form-input mb-12" />
-                    <textarea value={newDesc} onChange={e => setNewDesc(e.target.value)} placeholder="Description (optional)"
-                        className="form-textarea mb-12" style={{ minHeight: 50 }} />
-
-                    <div className="grid-2 gap-12 mb-12">
-                        <MultiSelect options={projectOptions} value={newProjects} onChange={setNewProjects} placeholder="Link projects..." grouped />
-                        <MultiSelect options={CHANNEL_OPTIONS} value={newChannels} onChange={setNewChannels} placeholder="Channels..." />
-                    </div>
-
-                    <div className="flex-row flex-wrap gap-12">
-                        <SearchableSelect options={CATEGORIES} value={newCat} onChange={setNewCat} placeholder="Category" clearable={false} width="160px" />
-                        <input type="text" value={newBudget} onChange={e => setNewBudget(e.target.value)} placeholder="Budget (optional)"
-                            className="form-input-sm" style={{ width: 120 }} />
-                        <input type="date" value={newStart} onChange={e => setNewStart(e.target.value)}
-                            className="form-input-sm" />
-                        <span className="text-sm text-tertiary">to</span>
-                        <input type="date" value={newEnd} onChange={e => setNewEnd(e.target.value)}
-                            className="form-input-sm" />
-                        <div className="flex-1" />
-                        <button className="btn btn-secondary text-base" onClick={() => setShowCreate(false)}>Cancel</button>
-                        <button className="btn btn-primary text-base" onClick={handleCreate} disabled={!newTitle.trim()}>Create</button>
-                    </div>
-                </div>
-            )}
-
-            {/* Plans List */}
-            <div className="mt-16">
-                {plans === null ? (
-                    <div className="loading"><div className="loading-spinner" /> Loading marketing plans...</div>
-                ) : allPlans.length === 0 ? (
-                    <div className="empty-state">
-                        <div className="empty-state-icon">📣</div>
-                        <div className="empty-state-text">No marketing plans yet — create one to get started</div>
-                    </div>
-                ) : (
-                    allPlans.map(plan => {
-                        const done = completedGoals(plan);
-                        const total = totalGoals(plan);
-                        const pct = total > 0 ? Math.round((done / total) * 100) : 0;
-                        return (
-                            <div key={plan.id} className="mb-8" style={{
-                                background: 'var(--bg-secondary)', borderRadius: 10,
-                                border: expanded === plan.id ? '1px solid var(--accent)' : '1px solid var(--border)',
-                                borderLeft: `3px solid ${CAT_COLORS[plan.category] || '#6b7280'}`,
-                            }}>
-                                <div className="flex-row gap-12" style={{ padding: '14px 16px', cursor: 'pointer', alignItems: 'center' }}
-                                    onClick={() => setExpanded(expanded === plan.id ? null : plan.id)}>
-                                    <span className="text-2xl">{CATEGORIES.find(c => c.value === plan.category)?.icon || '⚙️'}</span>
-                                    <div className="flex-1">
-                                        <div className="font-semibold text-lg flex-row gap-8">
-                                            {plan.title}
-                                            <span className="text-xs font-medium" style={{
-                                                padding: '1px 8px', borderRadius: 4,
-                                                background: `${STATUS_COLORS[plan.status] || '#6b7280'}20`,
-                                                color: STATUS_COLORS[plan.status] || '#6b7280',
-                                                textTransform: 'uppercase',
-                                            }}>{plan.status}</span>
-                                        </div>
-                                        <div className="text-sm text-tertiary mt-4 flex-row flex-wrap gap-8">
-                                            <span>{plan.category}</span>
-                                            <span>· {done}/{total} goals</span>
-                                            <span>· {(plan.linkedProjects || []).length} projects</span>
-                                            {plan.budget && <span>· 💰 {plan.budget}</span>}
-                                            {(plan.startDate || plan.endDate) && (
-                                                <span>· {formatDate(plan.startDate || '')}{plan.endDate ? ` – ${formatDate(plan.endDate)}` : ''}</span>
-                                            )}
-                                        </div>
-                                    </div>
-                                    {/* Channels */}
-                                    {(plan.channels || []).length > 0 && (
-                                        <div className="flex-row gap-4 flex-shrink-0">
-                                            {(plan.channels as string[]).slice(0, 5).map(ch => {
-                                                const chOpt = CHANNEL_OPTIONS.find(o => o.value === ch);
-                                                return <span key={ch} title={chOpt?.label || ch} className="text-lg">{chOpt?.icon || '📢'}</span>;
-                                            })}
-                                            {(plan.channels as string[]).length > 5 && <span className="text-xs text-tertiary">+{(plan.channels as string[]).length - 5}</span>}
-                                        </div>
-                                    )}
-                                    {total > 0 && (
-                                        <div style={{ width: 80, height: 6, background: 'var(--bg-primary)', borderRadius: 3, overflow: 'hidden' }}>
-                                            <div style={{ width: `${pct}%`, height: '100%', background: pct === 100 ? '#34d399' : '#818cf8', borderRadius: 3, transition: 'width 0.3s' }} />
-                                        </div>
-                                    )}
-                                    <button onClick={e => { e.stopPropagation(); handleDelete(plan.id); }} className="icon-btn text-tertiary">✕</button>
-                                </div>
-
-                                {expanded === plan.id && (
-                                    <div style={{ padding: '0 16px 16px', borderTop: '1px solid var(--border)' }}>
-                                        {plan.description && <div className="text-md text-muted" style={{ padding: '12px 0' }}>{plan.description}</div>}
-
-                                        {/* Status selector */}
-                                        <div className="flex-row flex-wrap gap-6 mb-12">
-                                            {['draft', 'active', 'completed', 'archived'].map(s => (
-                                                <button key={s} onClick={() => handleUpdateStatus(plan.id, s || '')}
-                                                    className="text-xs font-medium" style={{
-                                                        padding: '3px 10px', borderRadius: 4, cursor: 'pointer',
-                                                        textTransform: 'uppercase', border: 'none',
-                                                        background: plan.status === s ? `${STATUS_COLORS[s]}30` : 'var(--bg-primary)',
-                                                        color: plan.status === s ? STATUS_COLORS[s] : 'var(--text-tertiary)',
-                                                    }}>{s}</button>
-                                            ))}
-                                        </div>
-
-                                        {/* Linked projects — inline edit */}
-                                        <div className="mb-12">
-                                            <MultiSelect
-                                                options={projectOptions}
-                                                value={plan.linkedProjects || []}
-                                                onChange={async (newProjects) => {
-                                                    await updatePlan({ planId: plan.id as Id<"marketingPlans">, linkedProjects: newProjects as string[] });
-                                                }}
-                                                placeholder="Link projects..."
-                                                grouped
-                                            />
-                                        </div>
-
-                                        {/* Channels — inline edit */}
-                                        <div className="mb-12">
-                                            <MultiSelect
-                                                options={CHANNEL_OPTIONS}
-                                                value={plan.channels || []}
-                                                onChange={async (newChannels) => {
-                                                    await updatePlan({ planId: plan.id as Id<"marketingPlans">, channels: newChannels as string[] });
-                                                }}
-                                                placeholder="Channels..."
-                                            />
-                                        </div>
-
-                                        {/* Goals */}
-                                        <div className="section-label mb-8">
-                                            Goals ({total})
-                                        </div>
-                                        {(plan.goals || []).map((goal: Goal, i: number) => (
-                                            <div key={goal.id} className="flex-row gap-10 mb-4" style={{
-                                                padding: '8px 12px', alignItems: 'center',
-                                                background: 'var(--bg-primary)', borderRadius: 8,
-                                                border: '1px solid var(--border)', opacity: goal.done ? 0.5 : 1,
-                                            }}>
-                                                <div onClick={() => handleToggleGoal(plan.id, goal.id)}
-                                                    className="flex-center flex-shrink-0" style={{
-                                                        width: 20, height: 20, borderRadius: 4, cursor: 'pointer',
-                                                        border: `2px solid ${goal.done ? '#34d399' : 'var(--border)'}`,
-                                                        background: goal.done ? '#34d399' : 'transparent',
-                                                        color: 'white', fontSize: 12,
-                                                    }}>
-                                                    {goal.done && '✓'}
-                                                </div>
-                                                <span className="text-sm text-tertiary font-mono" style={{ width: 20 }}>{i + 1}</span>
-                                                <span className="text-md flex-1" style={{ textDecoration: goal.done ? 'line-through' : 'none' }}>{goal.title}</span>
-                                                <button onClick={() => handleDeleteGoal(plan.id, goal.id)} className="icon-btn text-tertiary text-xs">✕</button>
-                                            </div>
-                                        ))}
-                                        <button onClick={() => openAddGoal(plan.id)}
-                                            className="btn btn-secondary text-sm mt-8" style={{ padding: '4px 12px' }}>
-                                            + Add Goal
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
-                        );
-                    })
-                )}
-            </div>
-            <PromptDialog
-                open={promptOpen}
-                onClose={() => setPromptOpen(false)}
-                onSubmit={handleAddGoal}
-                title="Add Goal"
-                placeholder="Enter goal…"
+            <AIChatPanel
+                pageContext="Marketing"
+                profiles={MARKETING_PROFILES}
+                isOpen={showAIChat}
+                onToggle={() => setShowAIChat(false)}
             />
         </div>
     );
 }
+
+// ─── Seed Button ─────────────────────────────────────────────────────────
+
+function SeedButton({ orgId }: { orgId: Id<"organizations"> | undefined }) {
+    const seedDefaults = useMutation(api.marketingStrategies.seedDefaults);
+    const [seeding, setSeeding] = useState(false);
+
+    const handleSeed = async () => {
+        if (!orgId) return;
+        setSeeding(true);
+        try {
+            const result = await seedDefaults({ orgId });
+            if (!result.seeded) alert(result.message);
+        } catch (err) {
+            alert(String(err));
+        }
+        setSeeding(false);
+    };
+
+    return (
+        <button className="btn btn-secondary text-base" onClick={handleSeed} disabled={seeding || !orgId}>
+            {seeding ? '⏳ Seeding...' : '🌱 Seed Default Strategies'}
+        </button>
+    );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ── STRATEGIES TAB ────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════
+
+interface Tactic {
+    id: string;
+    platform: string;
+    contentType: string;
+    tone: string;
+    description: string;
+    example: string;
+    frequency: string;
+}
+
+function StrategiesTab({ orgId }: { orgId: Id<"organizations"> | undefined }) {
+    const rawStrategies = useQuery(api.marketingStrategies.list, orgId ? { orgId } : "skip");
+    const strategies = rawStrategies || [];
+    const { data: projectData } = useProjects();
+
+    const [catFilter, setCatFilter] = useState('');
+    const [expanded, setExpanded] = useState<string | null>(null);
+    const [applyProject, setApplyProject] = useState<string | null>(null);
+    const [selectedProject, setSelectedProject] = useState('');
+
+    const generateFromStrategy = useMutation(api.marketingTasks.generateFromStrategy);
+
+    const projectOptions: SelectOption[] = useMemo(() =>
+        (projectData?.projects || []).filter(p => p.name).map(p => ({
+            value: p.id as string,
+            label: p.name,
+            sublabel: p.tier,
+            icon: '📁',
+        })), [projectData]);
+
+    const filtered = strategies.filter(s => !catFilter || s.projectCategory === catFilter);
+    const categories = [...new Set(strategies.map(s => s.projectCategory))];
+
+    const handleApply = async (strategyId: string) => {
+        if (!orgId || !selectedProject) return;
+        const project = (projectData?.projects || []).find(p => (p.id as string) === selectedProject);
+        if (!project) return;
+
+        await generateFromStrategy({
+            orgId,
+            strategyId: strategyId as Id<"marketingStrategies">,
+            projectId: project.id,
+            projectPath: project.name,
+            projectName: project.name,
+        });
+        setApplyProject(null);
+        setSelectedProject('');
+    };
+
+    return (
+        <div>
+            {/* Category Filter */}
+            {categories.length > 1 && (
+                <div className="flex-row flex-wrap gap-6 mb-16">
+                    <button
+                        className={`btn text-sm ${!catFilter ? 'btn-primary' : 'btn-secondary'}`}
+                        onClick={() => setCatFilter('')}
+                    >All ({strategies.length})</button>
+                    {categories.map(cat => (
+                        <button
+                            key={cat}
+                            className={`btn text-sm ${catFilter === cat ? 'btn-primary' : 'btn-secondary'}`}
+                            onClick={() => setCatFilter(catFilter === cat ? '' : cat)}
+                        >{CATEGORY_LABELS[cat] || cat} ({strategies.filter(s => s.projectCategory === cat).length})</button>
+                    ))}
+                </div>
+            )}
+
+            {strategies.length === 0 ? (
+                <EmptyState icon="📋" message="No strategies yet — click 'Seed Default Strategies' to get started" />
+            ) : filtered.length === 0 ? (
+                <EmptyState icon="🔍" message="No strategies match this filter" />
+            ) : (
+                <div className="flex-col gap-8">
+                    {filtered.map(strategy => (
+                        <div key={strategy._id} style={{
+                            background: 'var(--bg-secondary)', borderRadius: 12,
+                            border: expanded === strategy._id ? '1px solid var(--accent)' : '1px solid var(--border)',
+                            transition: 'border-color 0.2s', position: 'relative',
+                        }}>
+                            {/* Header */}
+                            <div
+                                className="flex-row gap-12"
+                                style={{ padding: '14px 16px', cursor: 'pointer', alignItems: 'center' }}
+                                onClick={() => setExpanded(expanded === strategy._id ? null : strategy._id)}
+                            >
+                                <div className="flex-1">
+                                    <div className="flex-row gap-8 flex-wrap" style={{ alignItems: 'center' }}>
+                                        <span className="font-semibold text-md">{strategy.name}</span>
+                                        <span className="text-xs" style={{
+                                            padding: '2px 8px', borderRadius: 4,
+                                            background: 'rgba(99,102,241,0.12)', color: 'var(--accent)',
+                                        }}>{CATEGORY_LABELS[strategy.projectCategory] || strategy.projectCategory}</span>
+                                        <span className="text-xs text-tertiary">
+                                            📡 {CADENCE_LABELS[strategy.cadence] || strategy.cadence}
+                                        </span>
+                                    </div>
+                                    {strategy.description && (
+                                        <div className="text-sm text-tertiary mt-4" style={{
+                                            maxWidth: 600, overflow: 'hidden', textOverflow: 'ellipsis',
+                                            whiteSpace: expanded === strategy._id ? 'normal' : 'nowrap',
+                                        }}>{strategy.description}</div>
+                                    )}
+                                </div>
+
+                                {/* Channel badges */}
+                                <div className="flex-row gap-4 flex-shrink-0">
+                                    {strategy.channels.slice(0, 6).map(ch => (
+                                        <span key={ch} title={PLATFORM_META[ch]?.label || ch} className="text-lg">
+                                            {PLATFORM_META[ch]?.icon || '📢'}
+                                        </span>
+                                    ))}
+                                </div>
+
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); setApplyProject(applyProject === strategy._id ? null : strategy._id); }}
+                                    className="btn btn-primary text-sm"
+                                    style={{ padding: '6px 12px', flexShrink: 0 }}
+                                >🚀 Apply</button>
+                            </div>
+
+                            {/* Apply Project Selector */}
+                            {applyProject === strategy._id && (
+                                <div style={{ padding: '0 16px 12px', borderTop: '1px solid var(--border)' }}>
+                                    <div className="flex-row gap-8 mt-12" style={{ alignItems: 'center' }}>
+                                        <div style={{ flex: 1 }}>
+                                            <SearchableSelect
+                                                options={projectOptions}
+                                                value={selectedProject}
+                                                onChange={setSelectedProject}
+                                                placeholder="Select a project to generate tasks..."
+                                                grouped
+                                            />
+                                        </div>
+                                        <button
+                                            className="btn btn-primary text-sm"
+                                            disabled={!selectedProject}
+                                            onClick={() => handleApply(strategy._id)}
+                                            style={{ padding: '8px 16px' }}
+                                        >⚡ Generate Tasks</button>
+                                        <button
+                                            className="btn btn-secondary text-sm"
+                                            onClick={() => { setApplyProject(null); setSelectedProject(''); }}
+                                            style={{ padding: '8px 12px' }}
+                                        >Cancel</button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Expanded Tactics */}
+                            {expanded === strategy._id && (
+                                <div style={{ padding: '0 16px 16px', borderTop: '1px solid var(--border)' }}>
+                                    <div className="section-label mt-12 mb-8">
+                                        Tactics ({(strategy.tactics as Tactic[]).length})
+                                    </div>
+                                    <div className="flex-col gap-6">
+                                        {(strategy.tactics as Tactic[]).map((tactic: Tactic, i: number) => (
+                                            <div key={tactic.id || i} style={{
+                                                padding: '10px 14px', borderRadius: 8,
+                                                background: 'var(--bg-primary)', border: '1px solid var(--border)',
+                                            }}>
+                                                <div className="flex-row gap-8 flex-wrap" style={{ alignItems: 'center', marginBottom: 4 }}>
+                                                    <span className="text-lg">{PLATFORM_META[tactic.platform]?.icon || '📢'}</span>
+                                                    <span className="text-sm font-medium">{PLATFORM_META[tactic.platform]?.label || tactic.platform}</span>
+                                                    <span className="text-xs" style={{
+                                                        padding: '1px 6px', borderRadius: 4,
+                                                        background: 'rgba(255,255,255,0.06)',
+                                                    }}>{CONTENT_TYPE_ICONS[tactic.contentType] || '📄'} {tactic.contentType}</span>
+                                                    <span className="text-xs" style={{
+                                                        padding: '1px 6px', borderRadius: 4,
+                                                        background: `${TONE_BADGES[tactic.tone]?.color || '#6b7280'}18`,
+                                                        color: TONE_BADGES[tactic.tone]?.color || '#6b7280',
+                                                    }}>{TONE_BADGES[tactic.tone]?.label || tactic.tone}</span>
+                                                    <span className="text-xs text-tertiary">📡 {tactic.frequency}</span>
+                                                </div>
+                                                <div className="text-sm">{tactic.description}</div>
+                                                <div className="text-xs text-tertiary mt-4" style={{ fontStyle: 'italic' }}>
+                                                    💡 {tactic.example}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
+// Pipeline, Calendar, Cross-Project tabs moved to ContentPage.tsx
+
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ── CAMPAIGNS TAB ─────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════
+
+const CAMPAIGN_STATUS = [
+    { key: 'draft', label: 'Draft', icon: '📝', color: '#a78bfa' },
+    { key: 'active', label: 'Active', icon: '🟢', color: '#34d399' },
+    { key: 'paused', label: 'Paused', icon: '⏸️', color: '#fbbf24' },
+    { key: 'completed', label: 'Completed', icon: '✅', color: '#60a5fa' },
+    { key: 'cancelled', label: 'Cancelled', icon: '❌', color: '#6b7280' },
+];
+
+function CampaignsTab({ orgId }: { orgId: Id<"organizations"> | undefined }) {
+    const campaigns = useQuery(api.campaigns.list, orgId ? { orgId } : 'skip');
+    const strategies = useQuery(api.marketingStrategies.list, orgId ? { orgId } : 'skip');
+    const createCampaign = useMutation(api.campaigns.create);
+    const updateCampaign = useMutation(api.campaigns.update);
+    const deleteCampaign = useMutation(api.campaigns.remove);
+    const generateTasks = useMutation(api.campaigns.generateTasks);
+
+    const [showCreate, setShowCreate] = useState(false);
+    const [newName, setNewName] = useState('');
+    const [newDesc, setNewDesc] = useState('');
+    const [newStrategy, setNewStrategy] = useState('');
+
+    const strategyOptions = useMemo(() =>
+        (strategies || []).map(s => ({
+            value: s._id,
+            label: s.name,
+            sublabel: s.projectCategory,
+            icon: '📋',
+        })), [strategies]
+    );
+
+    const handleCreate = async () => {
+        if (!newName.trim() || !orgId) return;
+        await createCampaign({
+            orgId,
+            name: newName.trim(),
+            description: newDesc.trim(),
+            strategyId: newStrategy ? newStrategy as Id<"marketingStrategies"> : undefined,
+        });
+        setNewName('');
+        setNewDesc('');
+        setNewStrategy('');
+        setShowCreate(false);
+    };
+
+    const handleStatusChange = async (id: string, status: string) => {
+        await updateCampaign({ campaignId: id as Id<"campaigns">, status });
+    };
+
+    const handleDelete = async (id: string) => {
+        if (confirm('Delete this campaign?')) {
+            await deleteCampaign({ campaignId: id as Id<"campaigns"> });
+        }
+    };
+
+    const handleGenerateTasks = async (id: string) => {
+        if (!orgId) return;
+        const result = await generateTasks({ campaignId: id as Id<"campaigns">, orgId });
+        alert(`Generated ${result.created} marketing tasks!`);
+    };
+
+    const allCampaigns = campaigns || [];
+
+    return (
+        <div>
+            {/* Create Form */}
+            <div className="flex-row gap-8 mb-16">
+                <button className="btn btn-primary" onClick={() => setShowCreate(!showCreate)}>+ New Campaign</button>
+            </div>
+
+            {showCreate && (
+                <div className="section-card mb-16">
+                    <div className="grid-2 gap-12 mb-12">
+                        <FormInput value={newName} onChange={e => setNewName(e.target.value)} placeholder="Campaign name *" />
+                        <SearchableSelect options={strategyOptions} value={newStrategy} onChange={setNewStrategy} placeholder="Link strategy (optional)" />
+                    </div>
+                    <FormTextarea value={newDesc} onChange={e => setNewDesc(e.target.value)} placeholder="Description (optional)" className="mb-12" style={{ minHeight: 60 }} />
+                    <div className="flex-row gap-12">
+                        <div className="flex-1" />
+                        <button className="btn btn-secondary" onClick={() => setShowCreate(false)}>Cancel</button>
+                        <button className="btn btn-primary" onClick={handleCreate} disabled={!newName.trim()}>Create</button>
+                    </div>
+                </div>
+            )}
+
+            {/* Campaigns Kanban */}
+            <div style={{ display: 'grid', gridTemplateColumns: `repeat(${CAMPAIGN_STATUS.length}, minmax(180px, 1fr))`, gap: 12, overflowX: 'auto' }}>
+                {CAMPAIGN_STATUS.map(col => {
+                    const colCampaigns = allCampaigns.filter(c => c.status === col.key);
+                    return (
+                        <div key={col.key} style={{ background: `${col.color}08`, borderRadius: 12, padding: 12, minHeight: 300, border: `1px solid ${col.color}20` }}>
+                            <div className="flex-row gap-6 mb-12" style={{ alignItems: 'center' }}>
+                                <span>{col.icon}</span>
+                                <span className="text-sm font-semibold">{col.label}</span>
+                                <span className="text-xs font-semibold" style={{ padding: '1px 6px', borderRadius: 10, background: `${col.color}20`, color: col.color, marginLeft: 'auto' }}>{colCampaigns.length}</span>
+                            </div>
+                            <div className="flex-col gap-6">
+                                {colCampaigns.map(campaign => (
+                                    <div key={campaign._id} style={{ background: 'var(--bg-secondary)', borderRadius: 8, border: '1px solid var(--border)', padding: '10px 12px' }}>
+                                        <div className="font-medium text-sm mb-4">{campaign.name}</div>
+                                        {campaign.description && <div className="text-xs text-tertiary mb-6">{campaign.description}</div>}
+                                        <div className="flex-row flex-wrap gap-4 mb-6">
+                                            {campaign.strategyId && <span className="text-xs" style={{ padding: '1px 6px', borderRadius: 4, background: 'rgba(99,102,241,0.12)', color: 'var(--accent)' }}>📋 Strategy linked</span>}
+                                            {campaign.tags.length > 0 && campaign.tags.slice(0, 3).map((tag: string) => (
+                                                <span key={tag} className="tag" style={{ fontSize: 9 }}>{tag}</span>
+                                            ))}
+                                        </div>
+                                        <div className="flex-row gap-4">
+                                            {campaign.status === 'draft' && (
+                                                <>
+                                                    <button className="btn btn-secondary text-xs" style={{ padding: '2px 6px' }} onClick={() => handleStatusChange(campaign._id, 'active')}>▶ Start</button>
+                                                    <button className="btn btn-secondary text-xs" style={{ padding: '2px 6px' }} onClick={() => handleGenerateTasks(campaign._id)} title="Generate tasks">⚡ Tasks</button>
+                                                </>
+                                            )}
+                                            {campaign.status === 'active' && (
+                                                <>
+                                                    <button className="btn btn-secondary text-xs" style={{ padding: '2px 6px' }} onClick={() => handleStatusChange(campaign._id, 'paused')}>⏸️</button>
+                                                    <button className="btn btn-secondary text-xs" style={{ padding: '2px 6px' }} onClick={() => handleStatusChange(campaign._id, 'completed')}>✅</button>
+                                                </>
+                                            )}
+                                            {campaign.status === 'paused' && (
+                                                <button className="btn btn-secondary text-xs" style={{ padding: '2px 6px' }} onClick={() => handleStatusChange(campaign._id, 'active')}>▶ Resume</button>
+                                            )}
+                                            <button onClick={() => handleDelete(campaign._id)} className="icon-btn text-xs" style={{ background: 'rgba(248,113,113,0.1)', color: '#f87171', marginLeft: 'auto' }} title="Delete">✕</button>
+                                        </div>
+                                    </div>
+                                ))}
+                                {colCampaigns.length === 0 && <div className="text-sm text-tertiary text-center" style={{ padding: 24, opacity: 0.5 }}>No campaigns</div>}
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+}
+

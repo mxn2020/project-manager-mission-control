@@ -12,16 +12,19 @@
   },
   "dependencies": {
     "@convex-dev/auth": "^0.0.91",
+    "@geenius-ui/react-css": "^0.1.5",
     "@mission-control/api": "workspace:*",
     "@mission-control/backend": "workspace:*",
     "@mission-control/hooks": "workspace:*",
     "@mission-control/types": "workspace:*",
     "@vercel/analytics": "^1.6.1",
     "convex": "^1.32.0",
+    "i18next": "^25.8.18",
     "minions-sdk": "^0.2.5",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-hot-toast": "^2.6.0",
+    "react-i18next": "^16.5.8",
     "react-router-dom": "^7.13.1"
   },
   "devDependencies": {

@@ -76,7 +76,7 @@ export default function TablePage({ data }: { data: StatusData }) {
                     <thead><tr><SH field="name" label="Project" /><SH field="tier" label="Tier" /><SH field="lane" label="Lane" /><SH field="priority" label="Priority" /><SH field="health_score" label="Health" /><SH field="oss" label="OSS" /><SH field="last_active" label="Active" /></tr></thead>
                     <tbody>
                         {filtered.map(p => (
-                            <tr key={p.path} onClick={() => navigate(`/project/${encodeURIComponent(p.path)}`)}>
+                            <tr key={p.id || p.path || p.name} onClick={() => navigate(`/project/${encodeURIComponent(p.path)}`)}>
                                 <td><div className="table-name">{p.name}</div><div className="table-path">{p.path}</div></td>
                                 <td><Badge variant="tier" tier={p.tier} /></td>
                                 <td><span style={{ color: LANE_COLORS[p.lane] || 'var(--text-tertiary)', fontWeight: 600, fontSize: 13 }}>{p.lane}</span></td>

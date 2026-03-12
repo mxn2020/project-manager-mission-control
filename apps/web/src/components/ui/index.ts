@@ -6,3 +6,8 @@ export { default as FilterBar } from './FilterBar';
 export { default as EmptyState } from './EmptyState';
 export { default as GripIcon } from './GripIcon';
 export { default as DimensionPicker } from './DimensionPicker';
+export { default as FormInput } from './FormInput';
+export { default as FormTextarea } from './FormTextarea';
+export { default as FormCheckbox } from './FormCheckbox';
+export { default as FormSelect } from './FormSelect';
+export type { FormSelectOption } from './FormSelect';

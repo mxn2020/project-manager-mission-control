@@ -1,0 +1,58 @@
+{
+  "app": {
+    "name": "Mission Control",
+    "tagline": "Project Management for Developers"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "tasks": "Tasks",
+    "workflows": "Workflows",
+    "marketing": "Marketing",
+    "content": "Content",
+    "ideas": "Ideas",
+    "wiki": "Wiki",
+    "roadmap": "Roadmap",
+    "files": "Files",
+    "minions": "Minions",
+    "analytics": "Analytics",
+    "costs": "Costs",
+    "dependencies": "Dependencies",
+    "compliance": "Compliance",
+    "ai": "AI",
+    "playground": "Playground",
+    "agents": "Agents",
+    "repositories": "Repositories",
+    "admin": "Admin",
+    "integrations": "Integrations"
+  },
+  "nav_groups": {
+    "work": "Work",
+    "knowledge": "Knowledge",
+    "data": "Data",
+    "system": "System"
+  },
+  "views": {
+    "overview": "Overview",
+    "grid": "Grid",
+    "table": "Table",
+    "tree": "Tree",
+    "kanban": "Kanban",
+    "focus": "Focus"
+  },
+  "actions": {
+    "sync": "Sync",
+    "scanning": "Scanning…",
+    "signOut": "Sign out",
+    "reload": "Reload Page",
+    "newChat": "New Chat"
+  },
+  "auth": {
+    "authenticating": "Authenticating…",
+    "loading": "Loading Mission Control…"
+  },
+  "errors": {
+    "somethingWentWrong": "Something went wrong",
+    "tryRefreshing": "An unexpected error occurred. Please try refreshing the page.",
+    "failedToConnect": "Failed to connect"
+  }
+}

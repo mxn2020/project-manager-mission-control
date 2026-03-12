@@ -1,5 +1,6 @@
 declare const __APP_VERSION__: string;
 import { BrowserRouter, Routes, Route, NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@mission-control/backend/convex/_generated/api';
 import { useProjects } from './hooks/useProjects';
@@ -38,6 +39,7 @@ import AgentRunsPage from './pages/AgentRunsPage';
 import AIPlaygroundPage from './pages/AIPlaygroundPage';
 import IntegrationsPage from './pages/IntegrationsPage';
 import CompliancePage from './pages/CompliancePage';
+import DevelopmentPage from './pages/DevelopmentPage';
 import type { Id } from './lib/types';
 
 function AppShell() {
@@ -73,6 +75,7 @@ function AppShell() {
     if (p.startsWith('/minions')) return WORKSPACES.find(ws => ws.id === 'minions')!;
     if (p.startsWith('/ai')) return WORKSPACES.find(ws => ws.id === 'ai')!;
     if (p.startsWith('/tasks')) return WORKSPACES.find(ws => ws.id === 'tasks')!;
+    if (p.startsWith('/development')) return WORKSPACES.find(ws => ws.id === 'development')!;
     if (p.startsWith('/content')) return WORKSPACES.find(ws => ws.id === 'content')!;
     if (p.startsWith('/costs')) return WORKSPACES.find(ws => ws.id === 'costs')!;
     if (p.startsWith('/analytics')) return WORKSPACES.find(ws => ws.id === 'analytics')!;
@@ -106,8 +109,9 @@ function AppShell() {
 
           {/* Grouped dropdowns */}
           {[
-            { label: '📋 Work', ids: ['tasks', 'workflows', 'marketing', 'content', 'ideas'] },
-            { label: '📖 Knowledge', ids: ['wiki', 'roadmap', 'files'] },
+            { label: '📋 Work', ids: ['tasks', 'development', 'workflows'] },
+            { label: '💡 Product', ids: ['ideas', 'roadmap', 'marketing', 'content'] },
+            { label: '📖 Knowledge', ids: ['wiki', 'files'] },
             { label: '📦 Data', ids: ['minions', 'analytics', 'costs', 'dependencies', 'compliance'] },
             { label: '⚙️ System', ids: ['ai', 'playground', 'agents', 'repositories', 'admin'] },
           ].map(group => {
@@ -241,6 +245,7 @@ function AppShell() {
             <Route path="/agents" element={<AgentRunsPage />} />
             <Route path="/playground" element={<AIPlaygroundPage />} />
             <Route path="/compliance" element={<CompliancePage />} />
+            <Route path="/development" element={<DevelopmentPage />} />
           </Routes>
         </div>
       </div>
@@ -347,8 +352,10 @@ function AISidebar({ userId }: { userId?: string }) {
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <AppShell />
-    </BrowserRouter>
+    <ErrorBoundary>
+      <BrowserRouter>
+        <AppShell />
+      </BrowserRouter>
+    </ErrorBoundary>
   );
 }

@@ -7,6 +7,7 @@ import type { Id } from '../lib/types';
 import SearchableSelect, { type SelectOption } from '../components/SearchableSelect';
 import MultiSelect from '../components/MultiSelect';
 import PromptDialog from '../components/PromptDialog';
+import { FormInput, FormTextarea, FormCheckbox } from '../components/ui';
 
 const CATEGORIES = [
     { value: 'project-setup', label: 'Project Setup', icon: '🏗️' },
@@ -30,6 +31,7 @@ export default function WorkflowsPage() {
     const typedOrgId = orgId as Id<"organizations"> | undefined;
 
     const [filter, setFilter] = useState('');
+    const [searchText, setSearchText] = useState('');
     const [showCreate, setShowCreate] = useState(false);
     const [expanded, setExpanded] = useState<string | null>(null);
     const { data: projectData } = useProjects();
@@ -97,7 +99,14 @@ export default function WorkflowsPage() {
         }
     };
 
-    const allWorkflows = (workflows || []).filter(w => !filter || w.category === filter);
+    const allWorkflows = (workflows || []).filter(w => {
+        if (filter && w.category !== filter) return false;
+        if (searchText) {
+            const q = searchText.toLowerCase();
+            if (!w.title.toLowerCase().includes(q) && !(w.description || '').toLowerCase().includes(q)) return false;
+        }
+        return true;
+    });
     const completedSteps = (wf: { steps?: Step[] }) => (wf.steps || []).filter((s: Step) => s.done).length;
     const totalSteps = (wf: { steps?: Step[] }) => (wf.steps || []).length;
 
@@ -131,21 +140,26 @@ export default function WorkflowsPage() {
                 })}
             </div>
 
+            {/* Search */}
+            <div className="filter-bar flex-row gap-8 mb-16">
+                <FormInput value={searchText} onChange={e => setSearchText(e.target.value)} placeholder="🔍 Search workflows..."
+                    inputSize="sm" style={{ width: 240, background: 'var(--bg-secondary)' }} />
+                <span className="text-sm text-tertiary" style={{ lineHeight: '32px' }}>{allWorkflows.length} workflows</span>
+            </div>
+
             {/* Create Form */}
             {showCreate && (
                 <div className="section-card mb-16">
-                    <input value={newTitle} onChange={e => setNewTitle(e.target.value)} placeholder="Workflow title *"
-                        className="form-input mb-12" />
-                    <textarea value={newDesc} onChange={e => setNewDesc(e.target.value)} placeholder="Description (optional)"
-                        className="form-textarea mb-12" style={{ minHeight: 50 }} />
+                    <FormInput value={newTitle} onChange={e => setNewTitle(e.target.value)} placeholder="Workflow title *"
+                        className="mb-12" />
+                    <FormTextarea value={newDesc} onChange={e => setNewDesc(e.target.value)} placeholder="Description (optional)"
+                        className="mb-12" style={{ minHeight: 50 }} />
                     <div className="mb-12">
                         <MultiSelect options={projectOptions} value={newProjects} onChange={setNewProjects} placeholder="Link projects..." grouped />
                     </div>
                     <div className="flex-row flex-wrap gap-12">
                         <SearchableSelect options={CATEGORIES} value={newCat} onChange={setNewCat} placeholder="Category" clearable={false} width="160px" />
-                        <label className="flex-row gap-6 text-base" style={{ cursor: 'pointer' }}>
-                            <input type="checkbox" checked={newIsTemplate} onChange={e => setNewIsTemplate(e.target.checked)} /> Template
-                        </label>
+                        <FormCheckbox checked={newIsTemplate} onChange={e => setNewIsTemplate(e.target.checked)} label="Template" checkboxSize="sm" />
                         <div className="flex-1" />
                         <button className="btn btn-secondary text-base" onClick={() => setShowCreate(false)}>Cancel</button>
                         <button className="btn btn-primary text-base" onClick={handleCreate} disabled={!newTitle.trim()}>Create</button>

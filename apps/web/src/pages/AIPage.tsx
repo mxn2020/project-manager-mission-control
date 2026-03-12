@@ -4,6 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import { api } from '@mission-control/backend/convex/_generated/api';
 import { useAuth } from '../hooks/useAuth';
 import SearchableSelect from '../components/SearchableSelect';
+import { FormCheckbox } from '../components/ui';
 import type { Id } from '../lib/types';
 
 interface Message {
@@ -552,17 +553,14 @@ export default function AIPage() {
                 </div>
 
                 <div className="chat-settings-group">
-                    <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <input
-                            type="checkbox"
-                            checked={currentSettings.toolsEnabled}
-                            onChange={e => updateSettings({
-                                userId: userId as Id<"users">,
-                                toolsEnabled: e.target.checked,
-                            })}
-                        />
-                        Enable Minions Tools
-                    </label>
+                    <FormCheckbox
+                        checked={currentSettings.toolsEnabled}
+                        onChange={e => updateSettings({
+                            userId: userId as Id<"users">,
+                            toolsEnabled: e.target.checked,
+                        })}
+                        label="Enable Minions Tools"
+                    />
                 </div>
 
                 {lastMeta && (

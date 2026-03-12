@@ -2877,9 +2877,105 @@ a:hover {
   color: inherit;
   font-size: 13px;
   font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%236b7280'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 28px;
+}
+
+.form-select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.15);
+}
+
+.form-input-sm:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.15);
+  outline: none;
+}
+
+/* ─── Checkbox Toggle ──────────────────────────────────────────────────── */
+.form-checkbox-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  user-select: none;
+  color: var(--text-primary);
+}
+
+.form-checkbox {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.form-checkbox-toggle {
+  position: relative;
+  width: 32px;
+  height: 18px;
+  border-radius: 10px;
+  background: var(--border-hover);
+  transition: background 0.2s, box-shadow 0.2s;
+  flex-shrink: 0;
+}
+
+.form-checkbox-toggle::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  transition: transform 0.2s ease;
+}
+
+.form-checkbox:checked + .form-checkbox-toggle {
+  background: var(--accent);
+}
+
+.form-checkbox:checked + .form-checkbox-toggle::after {
+  transform: translateX(14px);
+}
+
+.form-checkbox:focus-visible + .form-checkbox-toggle {
+  box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.3);
+}
+
+.form-checkbox-sm .form-checkbox-toggle {
+  width: 26px;
+  height: 14px;
+  border-radius: 8px;
+}
+
+.form-checkbox-sm .form-checkbox-toggle::after {
+  width: 10px;
+  height: 10px;
+  top: 2px;
+  left: 2px;
+}
+
+.form-checkbox-sm .form-checkbox:checked + .form-checkbox-toggle::after {
+  transform: translateX(12px);
+}
+
+.form-checkbox-text {
+  color: var(--text-primary);
+  font-size: inherit;
 }
 
 /* ─── List Items ────────────────────────────────────────────────────────── */
+
 .list-row {
   display: flex;
   align-items: center;

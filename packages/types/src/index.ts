@@ -148,6 +148,7 @@ export const WORKSPACES: Workspace[] = [
     { id: 'minions', label: 'Minions', icon: '📦', path: '/minions' },
     { id: 'ai', label: 'AI', icon: '🤖', path: '/ai' },
     { id: 'tasks', label: 'Tasks', icon: '📋', path: '/tasks' },
+    { id: 'development', label: 'Development', icon: '🏗️', path: '/development' },
     { id: 'content', label: 'Content', icon: '📢', path: '/content' },
     { id: 'workflows', label: 'Workflows', icon: '🔄', path: '/workflows' },
     { id: 'marketing', label: 'Marketing', icon: '📣', path: '/marketing' },

@@ -6,6 +6,7 @@ import { useAuth } from '../hooks/useAuth';
 import type { Id } from '../lib/types';
 import { useProjects } from '../hooks/useProjects';
 import SearchableSelect, { type SelectOption } from '../components/SearchableSelect';
+import { FormInput, FormTextarea, FormCheckbox } from '../components/ui';
 import { TIER_ORDER, PRIORITY_ORDER, TIER_CONFIG, PRIORITY_CONFIG } from '../lib/types';
 
 const CATEGORY_OPTIONS: SelectOption[] = [
@@ -107,7 +108,7 @@ export default function NewProjectPage() {
             <div className="mobile-form">
                 <div className="mobile-form-group">
                     <label className="mobile-form-label">Project Name *</label>
-                    <input
+                    <FormInput
                         className="mobile-form-input"
                         placeholder="my-awesome-project"
                         value={name}
@@ -129,7 +130,7 @@ export default function NewProjectPage() {
 
                 <div className="mobile-form-group">
                     <label className="mobile-form-label">Description</label>
-                    <textarea
+                    <FormTextarea
                         className="mobile-form-input mobile-form-textarea"
                         placeholder="What does this project do?"
                         value={description}
@@ -177,7 +178,7 @@ export default function NewProjectPage() {
                             </button>
                         ))}
                     </div>
-                    <input
+                    <FormInput
                         className="mobile-form-input text-md"
                         value={stackInput}
                         onChange={e => setStackInput(e.target.value)}
@@ -189,7 +190,7 @@ export default function NewProjectPage() {
 
                 <div className="mobile-form-group">
                     <label className="mobile-form-label">Repository URL (optional)</label>
-                    <input
+                    <FormInput
                         className="mobile-form-input"
                         placeholder="https://github.com/..."
                         value={repo}
@@ -197,15 +198,11 @@ export default function NewProjectPage() {
                     />
                 </div>
 
-                <label className="flex-row gap-10 text-lg" style={{ cursor: 'pointer' }}>
-                    <input
-                        type="checkbox"
-                        checked={oss}
-                        onChange={e => setOss(e.target.checked)}
-                        style={{ width: 18, height: 18, accentColor: 'var(--accent)' }}
-                    />
-                    Open Source (OSS)
-                </label>
+                <FormCheckbox
+                    checked={oss}
+                    onChange={e => setOss(e.target.checked)}
+                    label="Open Source (OSS)"
+                />
 
                 {error && (
                     <div className="text-md" style={{ padding: '10px 14px', background: 'rgba(248,113,113,0.1)', borderRadius: 8, color: 'var(--error)' }}>
