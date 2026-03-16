@@ -17,7 +17,7 @@
     "@mission-control/backend": "workspace:*",
     "@mission-control/hooks": "workspace:*",
     "@mission-control/types": "workspace:*",
-    "@vercel/analytics": "^1.6.1",
+    "@vercel/analytics": "^2.0.1",
     "convex": "^1.32.0",
     "i18next": "^25.8.18",
     "minions-sdk": "^0.2.5",
